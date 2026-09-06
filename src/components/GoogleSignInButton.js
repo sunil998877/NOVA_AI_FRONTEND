@@ -5,18 +5,9 @@ import { authApi } from "../lib/api";
 import { loadGoogleIdentity } from "../lib/google";
 import { useAuth } from "../lib/AuthContext";
 
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1"]);
-
-function localAppUrl() {
-  const { protocol, port, pathname, search, hash } = window.location;
-  const suffix = port ? `:${port}` : "";
-  return `${protocol}//localhost${suffix}${pathname}${search}${hash}`;
-}
-
 function currentOriginPort() {
   return window.location.port || (window.location.protocol === "https:" ? "443" : "80");
 }
-
 
 function clientIdForCurrentOrigin() {
   const port = currentOriginPort();
@@ -104,18 +95,6 @@ export function GoogleSignInButton({ disabled }) {
     let cancelled = false;
 
     const start = async () => {
-      if (!LOCAL_HOSTS.has(window.location.hostname)) {
-        if (!cancelled) {
-          setError(`Google Sign-In requires http://localhost:${window.location.port || "80"}. Open ${localAppUrl()}`);
-        }
-        return;
-      }
-
-      if (window.location.hostname === "127.0.0.1") {
-        window.location.replace(localAppUrl());
-        return;
-      }
-
       try {
         const clientId = await resolveGoogleClientId();
         if (!clientId) {
