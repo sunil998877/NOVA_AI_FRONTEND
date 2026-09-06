@@ -1,9 +1,10 @@
 import { clearSession, getToken } from "./auth";
 
-export const API_URL = (process.env.REACT_APP_API_URL || "http://localhost:3001").replace(
-  /\/$/,
-  ""
-);
+export const API_URL = (
+  import.meta.env.DEV
+    ? ""
+    : (process.env.REACT_APP_API_URL || "https://salmon-spoonbill-632915.hostingersite.com")
+).replace(/\/$/, "");
 
 export class ApiError extends Error {
   constructor(message, status, payload) {
@@ -37,8 +38,11 @@ export async function api(path, { method = "GET", body, auth = true, token } = {
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-  } catch {
-    throw new ApiError("Cannot reach the NOVA backend. Is it running on port 3001?", 0);
+  } catch (err) {
+    throw new ApiError(
+      `Cannot reach the NOVA backend. Please check server status or connection.`,
+      0
+    );
   }
 
   const payload = await response.json().catch(() => ({}));

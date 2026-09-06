@@ -28,8 +28,12 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         "/api": {
-          target: "http://localhost:3001",
+          target:
+            env.BACKEND_PROXY_TARGET ||
+            env.REACT_APP_API_URL ||
+            "https://salmon-spoonbill-632915.hostingersite.com",
           changeOrigin: true,
+          secure: false,
         },
       },
     },
