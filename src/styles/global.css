@@ -1,0 +1,258 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 23% 96%;
+    --foreground: 222 47% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 8%;
+    --primary: 14 86% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 16% 93%;
+    --secondary-foreground: 222 47% 12%;
+    --muted: 40 14% 92%;
+    --muted-foreground: 215 16% 40%;
+    --accent: 14 80% 95%;
+    --accent-foreground: 14 80% 36%;
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 12% 86%;
+    --input: 40 12% 86%;
+    --ring: 14 86% 56%;
+    --radius: 0.65rem;
+    --sidebar-background: 40 20% 97%;
+    --sidebar-foreground: 222 47% 12%;
+    --sidebar-primary: 14 86% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 14 70% 94%;
+    --sidebar-accent-foreground: 14 80% 32%;
+    --sidebar-border: 40 12% 88%;
+    --sidebar-ring: 14 86% 56%;
+    --chart-1: 14 86% 56%;
+    --chart-2: 14 70% 46%;
+    --chart-3: 14 80% 64%;
+    --chart-4: 24 90% 55%;
+    --chart-5: 8 78% 48%;
+    color-scheme: light;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+    --card: 217 33% 12%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 173 80% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 16% 65%;
+    --accent: 173 32% 14%;
+    --accent-foreground: 173 80% 75%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 173 80% 40%;
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 173 80% 40%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 173 40% 16%;
+    --sidebar-accent-foreground: 173 80% 70%;
+    --sidebar-border: 217 33% 16%;
+    --sidebar-ring: 173 80% 40%;
+    --chart-1: 173 80% 40%;
+    --chart-2: 173 58% 32%;
+    --chart-3: 173 70% 55%;
+    --chart-4: 172 66% 50%;
+    --chart-5: 175 84% 32%;
+    color-scheme: dark;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  select option {
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 3px;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 0.35; }
+  50% { transform: translateY(-18px) translateX(8px); opacity: 0.85; }
+}
+
+@keyframes phone-feed-scroll {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+
+.phone-feed-scroll {
+  animation: phone-feed-scroll 32s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 639px) {
+  .landing-hero-title {
+    font-size: clamp(1.75rem, 8vw, 2.5rem);
+  }
+}
+
+@media (max-width: 639px) {
+  .landing-overview-title {
+    width: 100%;
+    max-width: 100%;
+    font-size: clamp(1.9rem, 9vw, 2.6rem);
+  }
+}
+
+@media (max-width: 639px) {
+  .landing-features-title {
+    font-size: clamp(1.9rem, 9vw, 2.6rem);
+  }
+}
+
+@media (max-width: 639px) {
+  .landing-cta-title {
+    font-size: clamp(1.75rem, 8.5vw, 2.5rem);
+  }
+}
+
+@media (max-width: 767px) {
+  .film-audience-card {
+    min-height: 155px;
+    padding: 1.25rem;
+  }
+  .film-audience-card p.text-2xl {
+    font-size: 1.3rem;
+  }
+}
+
+@media (max-width: 479px) {
+  .film-telemetry-grid {
+    gap: 0.5rem;
+  }
+  .film-telemetry-grid > div {
+    padding: 0.875rem;
+  }
+  .film-telemetry-grid p.font-black {
+    font-size: 1.25rem;
+  }
+  .film-telemetry-title {
+    font-size: 1.3rem;
+  }
+  .film-telemetry-stream {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.65rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .film-hud-live-text {
+    display: none;
+  }
+  .film-hud-left {
+    gap: 0.5rem;
+  }
+  .film-hud-left .film-hud-scene {
+    padding: 0.15rem 0.6rem;
+    font-size: 0.55rem;
+    letter-spacing: 0.08em;
+  }
+
+  .film-msg-head,
+  .film-telemetry-head {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+}
+
+@media (max-width: 479px) {
+
+  .film-hero-title {
+    font-size: clamp(1.8rem, 9vw, 2.25rem);
+  }
+
+  .film-audience-card {
+    min-height: 132px;
+    padding: 1rem;
+  }
+  .film-audience-card p.text-2xl {
+    font-size: 1.15rem;
+  }
+
+  .film-telemetry-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

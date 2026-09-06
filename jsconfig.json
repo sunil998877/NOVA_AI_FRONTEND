@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "checkJs": false,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "noResolve": true,
+    "types": [],
+    "typeRoots": ["./node_modules/@types"]
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.less",
+    "**/*.css",
+    "**/*.scss"
+  ]
+}
