@@ -155,7 +155,7 @@ export function GoogleSignInButton({ disabled }) {
       ) : null}
       <div
         ref={officialRef}
-        className={ready && !disabled && !busy ? "flex w-full justify-center" : "h-0 overflow-hidden"}
+        className={ready && !disabled && !busy ? "flex w-full justify-center overflow-hidden rounded-full" : "h-0 overflow-hidden"}
       />
       {busy ? <p className="text-center text-sm text-muted-foreground">Signing in with Google...</p> : null}
       {error ? <p className="text-center text-sm text-destructive">{error}</p> : null}

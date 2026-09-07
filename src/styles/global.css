@@ -78,8 +78,15 @@
     color-scheme: dark;
   }
 
-  * {
+  *:not(iframe) {
     @apply border-border;
+  }
+
+  iframe {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   html {
