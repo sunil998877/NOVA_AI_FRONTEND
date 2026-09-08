@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { Card } from "../components/ui/card";
 import {
@@ -29,13 +28,6 @@ import {
   TableRow,
 } from "../components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -43,18 +35,12 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { CampaignFormDialog } from "../components/CampaignFormDialog";
+import { RecipientManagerModal } from "../components/RecipientManagerModal";
+import { CampaignPreviewDialog } from "../components/CampaignPreviewDialog";
 import { campaignApi, mailApi } from "../lib/api";
 import { useWorkspaceData } from "../hooks/useWorkspaceData";
 import { toCampaignRow } from "../lib/campaigns";
 import { useToast } from "../components/ui/toast";
-
-function parseRecipientEmails(raw) {
-  return String(raw || "")
-    .split(/[\n,;]+/)
-    .map((email) => email.trim())
-    .filter(Boolean)
-    .map((email) => ({ email }));
-}
 
 function Campaigns() {
   const navigate = useNavigate();
@@ -69,10 +55,8 @@ function Campaigns() {
   const [completingId, setCompletingId] = useState(null);
   const [recipientOpen, setRecipientOpen] = useState(false);
   const [recipientCampaign, setRecipientCampaign] = useState(null);
-  const [recipientEmails, setRecipientEmails] = useState("");
-  const [recipientName, setRecipientName] = useState("");
-  const [recipientError, setRecipientError] = useState("");
-  const [savingRecipients, setSavingRecipients] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewCampaign, setPreviewCampaign] = useState(null);
   const [formError, setFormError] = useState("");
 
   const rows = useMemo(
@@ -119,9 +103,6 @@ function Campaigns() {
 
   const openAddRecipients = (row) => {
     setRecipientCampaign(row);
-    setRecipientEmails("");
-    setRecipientName("");
-    setRecipientError("");
     setRecipientOpen(true);
   };
 
@@ -169,33 +150,8 @@ function Campaigns() {
     }
   };
 
-  const handleAddRecipients = async (event) => {
-    event.preventDefault();
-    if (!recipientCampaign?.id) return;
-    const parsed = parseRecipientEmails(recipientEmails);
-    if (parsed.length === 0) {
-      setRecipientError("Enter at least one email address");
-      return;
-    }
-    setSavingRecipients(true);
-    setRecipientError("");
-    try {
-      const mails = parsed.map((item, index) => ({
-        email: item.email,
-        full_name: index === 0 && recipientName ? recipientName : undefined,
-      }));
-      await mailApi.batchCreate(recipientCampaign.id, mails);
-      setRecipientOpen(false);
-      toast.success(
-        "Recipients added",
-        `Added ${mails.length} recipient${mails.length === 1 ? "" : "s"} to "${recipientCampaign.name}". You can Send now.`
-      );
-      await reload();
-    } catch (err) {
-      setRecipientError(err.message || "Could not add recipients");
-    } finally {
-      setSavingRecipients(false);
-    }
+  const handleRecipientSuccess = async () => {
+    await reload();
   };
 
   const handleStart = async (row) => {
@@ -381,23 +337,51 @@ function Campaigns() {
                         )}
                         {sendingId === campaign.id ? "Sending..." : "Send"}
                       </Button>
-                    ) : null}
-                    {campaign.status === "processing" ? (
+                    ) : campaign.status === "completed" && campaign.recipients > 0 ? (
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 gap-1.5 border-amber-500/40 text-amber-600"
-                        disabled={completingId === campaign.id}
-                        onClick={() => handleComplete(campaign)}
-                        title="Emails already sent? Mark this campaign completed"
+                        className="h-8 gap-1.5"
+                        disabled={sendingId === campaign.id}
+                        onClick={() => handleStart(campaign)}
+                        title="Send this campaign again"
                       >
-                        {completingId === campaign.id ? (
+                        {sendingId === campaign.id ? (
                           <Loader2 className="size-3.5 animate-spin" />
                         ) : (
-                          <CheckCircle2 className="size-3.5" />
+                          <Send className="size-3.5" />
                         )}
-                        {completingId === campaign.id ? "Updating..." : "Mark completed"}
+                        {sendingId === campaign.id ? "Sending..." : "Resend"}
                       </Button>
+                    ) : null}
+                    {campaign.status === "processing" ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 gap-1.5 border-amber-500/40 text-amber-600"
+                          disabled={completingId === campaign.id}
+                          onClick={() => handleComplete(campaign)}
+                          title="Emails already sent? Mark this campaign completed"
+                        >
+                          {completingId === campaign.id ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="size-3.5" />
+                          )}
+                          {completingId === campaign.id ? "Updating..." : "Mark completed"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                          disabled={sendingId === campaign.id}
+                          onClick={() => handleStart(campaign)}
+                          title="Retry sending"
+                        >
+                          Retry
+                        </Button>
+                      </div>
                     ) : null}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -409,6 +393,11 @@ function Campaigns() {
                         <DropdownMenuItem onClick={() => openAddRecipients(campaign)}>
                           <UserPlus /> Add recipients
                         </DropdownMenuItem>
+                        {campaign.recipients > 0 ? (
+                          <DropdownMenuItem onClick={() => handleStart(campaign)}>
+                            <Send /> {campaign.status === "completed" ? "Resend campaign" : "Send campaign"}
+                          </DropdownMenuItem>
+                        ) : null}
                         {campaign.status === "processing" ? (
                           <DropdownMenuItem onClick={() => handleComplete(campaign)}>
                             <CheckCircle2 /> Mark completed
@@ -417,7 +406,12 @@ function Campaigns() {
                         <DropdownMenuItem onClick={() => navigate("/email-management")}>
                           <Mail /> Email management
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate("/email-tracking")}>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setPreviewCampaign(campaign);
+                            setPreviewOpen(true);
+                          }}
+                        >
                           <Eye /> Preview
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => navigate("/campaign-analytics")}>
@@ -481,56 +475,19 @@ function Campaigns() {
         submitLabel={editing ? "Save changes" : "Create Campaign"}
       />
 
-      <Dialog open={recipientOpen} onOpenChange={setRecipientOpen}>
-        <DialogContent>
-          <form onSubmit={handleAddRecipients}>
-            <DialogHeader>
-              <DialogTitle>
-                Add recipients
-                {recipientCampaign ? ` — ${recipientCampaign.name}` : ""}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <p className="text-sm text-muted-foreground">
-                This campaign has no emails yet. Add at least one recipient before sending.
-              </p>
-              <div className="grid gap-2">
-                <Label htmlFor="recipient-name">Name (optional)</Label>
-                <Input
-                  id="recipient-name"
-                  value={recipientName}
-                  onChange={(e) => setRecipientName(e.target.value)}
-                  placeholder="First recipient name"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="recipient-emails">Email(s)</Label>
-                <textarea
-                  id="recipient-emails"
-                  value={recipientEmails}
-                  onChange={(e) => setRecipientEmails(e.target.value)}
-                  placeholder={"one@example.com\ntwo@example.com"}
-                  required
-                  rows={4}
-                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Separate multiple emails with commas or new lines.
-                </p>
-              </div>
-              {recipientError ? <p className="text-sm text-destructive">{recipientError}</p> : null}
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="secondary" onClick={() => setRecipientOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={savingRecipients}>
-                {savingRecipients ? "Saving..." : "Add recipients"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <RecipientManagerModal
+        open={recipientOpen}
+        onOpenChange={setRecipientOpen}
+        campaign={recipientCampaign}
+        onSuccess={handleRecipientSuccess}
+      />
+
+      <CampaignPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        campaign={previewCampaign}
+        onSend={handleStart}
+      />
     </div>
   );
 }

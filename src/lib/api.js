@@ -94,6 +94,7 @@ export const campaignApi = {
   update: (id, body) => api(`/api/campaigns/${id}`, { method: "PATCH", body }),
   updateStatus: (id, body) => api(`/api/campaigns/${id}/status`, { method: "PATCH", body }),
   send: (id) => api(`/api/campaigns/${id}/send`, { method: "POST" }),
+  preview: (id) => api(`/api/campaigns/${id}/preview`),
   complete: (id, body = {}) => api(`/api/campaigns/${id}/complete`, { method: "POST", body }),
   remove: (id) => api(`/api/campaigns/${id}`, { method: "DELETE" }),
 };
@@ -143,4 +144,21 @@ export const webhookApi = {
 
 export const healthApi = {
   ping: () => api("/api/health", { auth: false }),
+};
+
+export const contactApi = {
+  list: (q = "", page = 1, limit = 50) => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (q) params.set("q", q);
+    return api(`/api/contacts?${params}`);
+  },
+  create: (body) => api("/api/contacts", { method: "POST", body }),
+};
+
+export const recipientApi = {
+  list: (campaignId) => api(`/api/campaigns/${campaignId}/recipients`),
+  add: (campaignId, contactIds) =>
+    api(`/api/campaigns/${campaignId}/recipients`, { method: "POST", body: { contactIds } }),
+  remove: (campaignId, contactId) =>
+    api(`/api/campaigns/${campaignId}/recipients/${contactId}`, { method: "DELETE" }),
 };
