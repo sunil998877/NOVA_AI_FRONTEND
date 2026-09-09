@@ -27,7 +27,7 @@ const socials = [
   },
   {
     label: "Telegram",
-    href: "https://telegram.org",
+    href: "https://t.me",
     icon: (
       <svg viewBox="0 0 24 24" className="size-[18px]" fill="currentColor" aria-hidden>
         <path d="M20.7 4.3 3.9 10.8c-1.1.4-1.1 1.1-.2 1.4l4.3 1.3 10.4-6.6c.5-.3.9-.1.6.2l-8.4 7.6-.3 4.3c.5 0 .7-.2 1-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8l3.1-14.6c.3-1.2-.4-1.8-1.5-1.4Z" />

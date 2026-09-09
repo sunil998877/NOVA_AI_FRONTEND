@@ -140,7 +140,6 @@ function Campaigns() {
     try {
       await campaignApi.create({
         title: `${row.name} copy`,
-        workMail: row.workMail || null,
         status: "draft",
       });
       await reload();
@@ -270,13 +269,7 @@ function Campaigns() {
                       <Mail className="size-4" />
                     </div>
                     <div>
-                      <div className="font-medium">{campaign.name}</div>
-                      <div className="text-xs text-muted-foreground">{campaign.subject}</div>
-                      {campaign.body ? (
-                        <div className="mt-0.5 line-clamp-1 max-w-[340px] text-xs text-muted-foreground/70">
-                          {campaign.body}
-                        </div>
-                      ) : null}
+                      <div className="font-medium text-foreground">{campaign.name}</div>
                     </div>
                   </div>
                 </TableCell>

@@ -50,7 +50,7 @@ function DashboardView() {
         const status = normalizeCampaignStatus(campaign);
         return {
           title: `${campaign.title} ${status}`,
-          detail: `${metrics.recipients} recipients · ${campaign.workMail || "No sender"}`,
+          detail: `${metrics.recipients} recipients · Sender: NOVA AI`,
           time: relativeTime(campaign.updatedAt || campaign.createdAt),
           status: status === "sent" ? "done" : status,
         };

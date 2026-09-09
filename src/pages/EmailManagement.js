@@ -65,35 +65,21 @@ function EmailManagement() {
           contacts: metrics.recipients,
           status: campaign.status === "sent" ? "Active" : campaign.status || "Draft",
           updated: formatStamp(campaign.updatedAt || campaign.createdAt),
-          workMail: campaign.workMail,
         };
       }),
     [campaigns, mails]
   );
 
   const senders = useMemo(() => {
-    const fromCampaigns = campaigns
-      .filter((campaign) => campaign.workMail)
-      .map((campaign) => ({
-        name: campaign.title,
-        email: campaign.workMail,
-        domain: "Connected",
-      }));
-    const unique = [];
-    const seen = new Set();
-    if (user?.email) {
-      unique.push({ name: user.fullName || "You", email: user.email, domain: "Account" });
-      seen.add(user.email.toLowerCase());
-    }
-    fromCampaigns.forEach((item) => {
-      const key = String(item.email).toLowerCase();
-      if (!seen.has(key)) {
-        seen.add(key);
-        unique.push(item);
-      }
-    });
-    return unique;
-  }, [campaigns, user]);
+    return [
+      {
+        name: "NOVA AI",
+        email: "nova@evokeaisolutions.com",
+        domain: "Global SMTP Sender",
+        status: "Active",
+      },
+    ];
+  }, []);
 
   const handleCreateList = async (payload) => {
     setSaving(true);
@@ -234,8 +220,8 @@ function EmailManagement() {
       {tab === "senders" && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Sender identities</CardTitle>
-            <CardDescription>From names and Gmail addresses used in outbound mail</CardDescription>
+            <CardTitle className="text-base">Sender Identity</CardTitle>
+            <CardDescription>Global sender address used for all outgoing NOVA marketing campaigns</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {senders
@@ -249,9 +235,6 @@ function EmailManagement() {
                   <Badge variant="success">{item.domain}</Badge>
                 </div>
               ))}
-            {senders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Add a workMail when you create a campaign.</p>
-            ) : null}
           </CardContent>
         </Card>
       )}

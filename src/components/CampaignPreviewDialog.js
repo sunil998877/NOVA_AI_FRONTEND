@@ -15,7 +15,7 @@ export function CampaignPreviewDialog({ open, onOpenChange, campaign, onSend }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [previewData, setPreviewData] = useState(null);
-  const [viewMode, setViewMode] = useState("desktop"); // 'desktop' | 'mobile'
+  const [viewMode, setViewMode] = useState("desktop");
 
   useEffect(() => {
     if (!open || !campaign?.id) {
@@ -118,9 +118,8 @@ export function CampaignPreviewDialog({ open, onOpenChange, campaign, onSend }) 
             </div>
           ) : previewData?.html ? (
             <div
-              className={`transition-all duration-200 bg-white rounded-xl shadow-lg border overflow-hidden ${
-                viewMode === "mobile" ? "w-[380px] max-w-full" : "w-full max-w-[660px]"
-              }`}
+              className={`transition-all duration-200 bg-white rounded-xl shadow-lg border overflow-hidden ${viewMode === "mobile" ? "w-[380px] max-w-full" : "w-full max-w-[660px]"
+                }`}
             >
               <iframe
                 title="Email Preview"

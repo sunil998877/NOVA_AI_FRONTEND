@@ -21,7 +21,7 @@ export function mailsForCampaign(mails, campaignId) {
 
 export function campaignMetrics(campaign, mails = []) {
   const related = mailsForCampaign(mails, campaign.id);
-  // Prefer real mail rows so Send/UI aren't fooled by a stale total_recipients.
+
   const recipients =
     related.length > 0
       ? related.length
@@ -55,9 +55,7 @@ export function toCampaignRow(campaign, mails = []) {
   return {
     id: campaign.id,
     name: campaign.title,
-    subject:
-      campaign.subject ||
-      (campaign.workMail ? `From ${campaign.workMail}` : "No subject yet"),
+    subject: campaign.subject || "No subject yet",
     body: campaign.body || "",
     status: normalizeCampaignStatus(campaign),
     recipients: metrics.recipients,
@@ -66,8 +64,7 @@ export function toCampaignRow(campaign, mails = []) {
     opened: metrics.opened,
     clicked: 0,
     date: formatDate(campaign.scheduledDate || campaign.createdAt),
-    list: campaign.workMail || "—",
-    workMail: campaign.workMail || "",
+    list: campaign.title,
     raw: campaign,
   };
 }
