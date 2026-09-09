@@ -231,7 +231,7 @@ function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
-        <Card>
+        <Card className="min-w-0">
           <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-base">Performance Over Time</CardTitle>
@@ -278,7 +278,7 @@ function Dashboard() {
         <Calendar />
       </div>
 
-      <Card>
+      <Card className="min-w-0">
         <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="text-base">Emails Sent by Month</CardTitle>

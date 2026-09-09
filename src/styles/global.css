@@ -90,7 +90,7 @@
   }
 
   html {
-    scroll-behavior: smooth;
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -262,4 +262,77 @@
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+@keyframes novaLetterWave {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.85;
+    filter: drop-shadow(0 2px 8px rgba(239, 90, 46, 0.25));
+  }
+  50% {
+    transform: translateY(-14px) scale(1.12);
+    opacity: 1;
+    filter: drop-shadow(0 12px 24px rgba(239, 90, 46, 0.6));
+  }
+}
+
+@keyframes novaDotPulse {
+  0%, 100% {
+    transform: scale(0.6) translateY(0);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(1.3) translateY(-6px);
+    opacity: 1;
+    box-shadow: 0 0 12px hsl(var(--primary));
+  }
+}
+
+@keyframes novaProgressSlide {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(30%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.nova-loading-letter {
+  display: inline-block;
+  animation: novaLetterWave 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform, opacity;
+  background-size: 200% auto;
+}
+
+.nova-loading-dot {
+  display: inline-block;
+  animation: novaDotPulse 1.4s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.nova-loading-progress {
+  width: 60%;
+  animation: novaProgressSlide 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes novaGentleFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.nova-logo-float {
+  animation: novaGentleFloat 7s ease-in-out infinite;
+  will-change: transform;
+}
+
+.recharts-responsive-container {
+  min-width: 0 !important;
 }

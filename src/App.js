@@ -1,5 +1,5 @@
-import React, { lazy, Suspense, useEffect } from "react";
-import { Routes, Route, Outlet, Navigate } from "react-router-dom";
+import React, { lazy, Suspense, useEffect, useState } from "react";
+import { Routes, Route, Outlet, Navigate, useLocation } from "react-router-dom";
 import { SidebarInset, SidebarProvider } from "./components/ui/sidebar";
 import AppSidebar from "./components/AppSidebar";
 import SiteHeader from "./components/SiteHeader";
@@ -19,16 +19,26 @@ const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 import { useAuth } from "./lib/AuthContext";
 import { applyTheme, getTheme } from "./lib/theme";
+import LoadingScreen from "./components/LoadingScreen";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 function AppShell() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="min-w-0 flex-1 overflow-x-hidden">
         <SiteHeader />
-        <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 pt-4 md:p-6 lg:p-8">
+        <div className="flex min-h-0 flex-1 min-w-0 flex-col gap-4 p-4 pt-4 md:p-6 lg:p-8 overflow-x-hidden">
           <Outlet />
         </div>
       </SidebarInset>
@@ -45,12 +55,23 @@ function RequireAuth() {
 }
 
 function App() {
+  const [initialLoading, setInitialLoading] = useState(true);
+
   useEffect(() => {
     applyTheme(getTheme());
+    const timer = setTimeout(() => {
+      setInitialLoading(false);
+    }, 3000);
+    return () => clearTimeout(timer);
   }, []);
 
+  if (initialLoading) {
+    return <LoadingScreen duration={3000} />;
+  }
+
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+    <Suspense fallback={null}>
+      <ScrollToTop />
       <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
@@ -70,6 +91,7 @@ function App() {
         <Route path="/find-influencers" element={<FindInfluencers />} />
         <Route path="/my-influencers" element={<MyInfluencers />} />
       </Route>
+      <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
   );
