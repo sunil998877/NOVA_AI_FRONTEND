@@ -13,6 +13,7 @@ import {
   Send,
   Loader2,
   UserPlus,
+  Users,
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -37,6 +38,7 @@ import {
 import { CampaignFormDialog } from "../components/CampaignFormDialog";
 import { RecipientManagerModal } from "../components/RecipientManagerModal";
 import { CampaignPreviewDialog } from "../components/CampaignPreviewDialog";
+import { CampaignRecipientsDialog } from "../components/CampaignRecipientsDialog";
 import { campaignApi, mailApi } from "../lib/api";
 import { useWorkspaceData } from "../hooks/useWorkspaceData";
 import { toCampaignRow } from "../lib/campaigns";
@@ -57,7 +59,14 @@ function Campaigns() {
   const [recipientCampaign, setRecipientCampaign] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewCampaign, setPreviewCampaign] = useState(null);
+  const [viewRecipientsOpen, setViewRecipientsOpen] = useState(false);
+  const [viewRecipientsCampaign, setViewRecipientsCampaign] = useState(null);
   const [formError, setFormError] = useState("");
+
+  const openViewRecipients = (campaign) => {
+    setViewRecipientsCampaign(campaign);
+    setViewRecipientsOpen(true);
+  };
 
   const rows = useMemo(
     () => campaigns.map((campaign) => toCampaignRow(campaign, mails)),
@@ -275,14 +284,29 @@ function Campaigns() {
                 </TableCell>
                 <TableCell>{getStatusBadge(campaign.status)}</TableCell>
                 <TableCell className="tabular-nums">
-                  <span className={campaign.recipients === 0 ? "text-destructive" : ""}>
-                    {campaign.recipients.toLocaleString()}
-                  </span>
+                  {campaign.recipients > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => openViewRecipients(campaign)}
+                      className="inline-flex items-center gap-1 font-semibold text-primary hover:underline hover:opacity-80 transition cursor-pointer"
+                      title="Click to view recipient open status"
+                    >
+                      <Users className="size-3.5" />
+                      {campaign.recipients.toLocaleString()}
+                    </button>
+                  ) : (
+                    <span className="text-destructive">0</span>
+                  )}
                 </TableCell>
                 <TableCell className="tabular-nums">{campaign.sent.toLocaleString()}</TableCell>
                 <TableCell className="tabular-nums">{campaign.failed.toLocaleString()}</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openViewRecipients(campaign)}
+                    className="flex items-center gap-2 text-left hover:opacity-80 transition cursor-pointer"
+                    title="Click to inspect open breakdown"
+                  >
                     <div className="h-1.5 w-14 overflow-hidden rounded-full bg-secondary">
                       <div
                         className="h-full bg-primary"
@@ -292,7 +316,7 @@ function Campaigns() {
                     <span className="text-xs font-semibold text-primary">
                       {getRate(campaign.opened, campaign.sent)}
                     </span>
-                  </div>
+                  </button>
                 </TableCell>
                 <TableCell className="text-muted-foreground">{campaign.date}</TableCell>
                 <TableCell>
@@ -383,6 +407,9 @@ function Campaigns() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openViewRecipients(campaign)}>
+                          <Eye /> View recipients & opens
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openAddRecipients(campaign)}>
                           <UserPlus /> Add recipients
                         </DropdownMenuItem>
@@ -480,6 +507,13 @@ function Campaigns() {
         onOpenChange={setPreviewOpen}
         campaign={previewCampaign}
         onSend={handleStart}
+      />
+
+      <CampaignRecipientsDialog
+        open={viewRecipientsOpen}
+        onOpenChange={setViewRecipientsOpen}
+        campaign={viewRecipientsCampaign}
+        mails={mails}
       />
     </div>
   );

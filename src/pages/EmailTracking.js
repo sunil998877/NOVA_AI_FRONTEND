@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Search, MousePointerClick, Eye, AlertTriangle, MailOpen } from "lucide-react";
+import { Search, Eye, AlertTriangle, MailOpen } from "lucide-react";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -15,10 +15,10 @@ import {
 import { useWorkspaceData } from "../hooks/useWorkspaceData";
 import { mailEvent } from "../lib/campaigns";
 
-function eventBadge(event) {
-  if (event === "Opened") return <Badge variant="success">Opened</Badge>;
+function eventBadge(event, openCount) {
+  if (event === "Opened") return <Badge variant="success">Opened {openCount > 1 ? `(${openCount}x)` : ""}</Badge>;
   if (event === "Clicked") return <Badge>Clicked</Badge>;
-  if (event === "Sent") return <Badge>Sent</Badge>;
+  if (event === "Sent") return <Badge variant="outline" className="border-blue-500/40 text-blue-600">Sent</Badge>;
   if (event === "Bounced") return <Badge variant="destructive">Bounced</Badge>;
   return <Badge variant="outline">{event}</Badge>;
 }
@@ -50,7 +50,6 @@ function EmailTracking() {
 
   const statsCards = [
     { label: "Opens", value: String(stats.opened || openedCount), icon: Eye },
-    { label: "Clicks", value: "0", icon: MousePointerClick },
     { label: "Recipients", value: String(stats.total || events.length), icon: MailOpen },
     { label: "Bounces", value: String(events.filter((row) => row.event === "Bounced").length), icon: AlertTriangle },
   ];
@@ -60,13 +59,13 @@ function EmailTracking() {
       <div>
         <h2 className="text-2xl font-bold tracking-tight md:text-3xl">Email tracking</h2>
         <p className="text-sm text-muted-foreground md:text-base">
-          Opens, clicks, and delivery events as they come in.
+          Opens and delivery events as they come in.
         </p>
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {statsCards.map((item) => (
           <Card key={item.label}>
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
@@ -106,6 +105,7 @@ function EmailTracking() {
                 <TableHead>Recipient</TableHead>
                 <TableHead>Campaign</TableHead>
                 <TableHead>Event</TableHead>
+                <TableHead>Opens</TableHead>
                 <TableHead>Device</TableHead>
                 <TableHead>Time</TableHead>
               </TableRow>
@@ -113,9 +113,15 @@ function EmailTracking() {
             <TableBody>
               {filtered.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell className="font-medium">{row.email}</TableCell>
+                  <TableCell className="font-medium">
+                    <div>{row.email}</div>
+                    {row.name ? <div className="text-xs text-muted-foreground">{row.name}</div> : null}
+                  </TableCell>
                   <TableCell>{row.campaign}</TableCell>
-                  <TableCell>{eventBadge(row.event)}</TableCell>
+                  <TableCell>{eventBadge(row.event, row.openCount)}</TableCell>
+                  <TableCell className="tabular-nums font-semibold text-primary">
+                    {row.openCount > 0 ? row.openCount : "—"}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{row.device}</TableCell>
                   <TableCell className="text-muted-foreground">{row.time}</TableCell>
                 </TableRow>

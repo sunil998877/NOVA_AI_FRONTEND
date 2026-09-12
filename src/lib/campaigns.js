@@ -29,24 +29,42 @@ export function campaignMetrics(campaign, mails = []) {
         ? Number(campaign.total_recipients)
         : 0;
   const sentFromMails = related.filter(
-    (mail) => mail.delivery_status === "sent" || mail.status || mail.sent_at
+    (mail) => mail.delivery_status === "sent" || mail.delivery_status === "opened" || mail.status || mail.sent_at
   ).length;
   const failedFromMails = related.filter((mail) => mail.delivery_status === "failed").length;
+  const opened = related.filter(
+    (mail) => (Number(mail.open_count) || 0) > 0 || mail.delivery_status === "opened"
+  ).length;
+  const clicked = related.filter((mail) => (Number(mail.click_count) || 0) > 0).length;
+
   const sent =
-    campaign.sent_count !== undefined && campaign.sent_count !== null
+    campaign.sent_count !== undefined && campaign.sent_count !== null && Number(campaign.sent_count) > 0
       ? Number(campaign.sent_count)
-      : sentFromMails;
+      : (sentFromMails > 0 ? sentFromMails : (opened > 0 ? opened : 0));
   const failed =
     campaign.failed_count !== undefined && campaign.failed_count !== null
       ? Number(campaign.failed_count)
       : failedFromMails;
-  const opened = related.filter((mail) => (mail.open_count || 0) > 0).length;
+  const totalOpens = related.reduce(
+    (acc, mail) => acc + (Number(mail.open_count) || (mail.delivery_status === "opened" ? 1 : 0)),
+    0
+  );
+  const totalClicks = related.reduce((acc, mail) => acc + (Number(mail.click_count) || 0), 0);
+  const openBase = sent > 0 ? sent : recipients;
+  const openRate = openBase > 0 ? Number(((opened / openBase) * 100).toFixed(1)) : 0;
+  const clickRate = openBase > 0 ? Number(((clicked / openBase) * 100).toFixed(1)) : 0;
+
   return {
     recipients,
-    sent,
+    sent: sent > 0 ? sent : (opened > 0 ? opened : sentFromMails),
     failed,
     opened,
-    unopened: Math.max(sent - opened, 0),
+    unopened: Math.max((sent > 0 ? sent : recipients) - opened, 0),
+    clicked,
+    totalOpens,
+    totalClicks,
+    openRate,
+    clickRate,
   };
 }
 
@@ -55,6 +73,8 @@ export function toCampaignRow(campaign, mails = []) {
   return {
     id: campaign.id,
     name: campaign.title,
+    sender_name: campaign.sender_name || "",
+    sender_email: campaign.sender_email || "",
     subject: campaign.subject || "No subject yet",
     body: campaign.body || "",
     status: normalizeCampaignStatus(campaign),
@@ -62,7 +82,10 @@ export function toCampaignRow(campaign, mails = []) {
     sent: metrics.sent,
     failed: metrics.failed,
     opened: metrics.opened,
-    clicked: 0,
+    clicked: metrics.clicked,
+    unopened: metrics.unopened,
+    openRate: metrics.openRate,
+    clickRate: metrics.clickRate,
     date: formatDate(campaign.scheduledDate || campaign.createdAt),
     list: campaign.title,
     raw: campaign,
@@ -82,9 +105,12 @@ export function buildWeeklyPerformance(mails = []) {
     if (Number.isNaN(date.getTime()) || date.getTime() < weekAgo) return;
     const bucket = buckets[date.getDay()];
     bucket.sent += 1;
-    if ((mail.open_count || 0) > 0) {
+    if ((Number(mail.open_count) || 0) > 0) {
       bucket.opened += 1;
-      bucket.opens += mail.open_count || 1;
+      bucket.opens += Number(mail.open_count) || 1;
+    }
+    if ((Number(mail.click_count) || 0) > 0) {
+      bucket.clicks += Number(mail.click_count) || 1;
     }
   });
 
@@ -124,22 +150,27 @@ export function buildMonthlyData(campaigns = [], mails = []) {
 }
 
 export function mailEvent(mail, campaignsById) {
-  const opened = (mail.open_count || 0) > 0;
-  const bounced = String(mail.email || "").includes("invalid");
+  const clicked = (Number(mail.click_count) || 0) > 0;
+  const opened = (Number(mail.open_count) || 0) > 0 || mail.delivery_status === "opened";
+  const bounced = String(mail.email || "").includes("invalid") || mail.delivery_status === "failed";
   let event = "Queued";
-  if (mail.status || mail.sent_at) event = "Opened";
-  if (opened) event = "Opened";
-  else if (mail.status || mail.sent_at) event = "Sent";
+  if (clicked) event = "Clicked";
+  else if (opened) event = "Opened";
+  else if (mail.delivery_status === "sent" || mail.status || mail.sent_at) event = "Sent";
   if (bounced) event = "Bounced";
+
+  const opens = Number(mail.open_count) || (mail.delivery_status === "opened" ? 1 : 0);
+  const clicks = Number(mail.click_count) || 0;
 
   return {
     id: mail.id,
     email: mail.email || "unknown",
     name: mail.full_name || "",
     campaign: campaignsById[String(mail.campaign_id)]?.title || "Campaign",
-    event: opened ? "Opened" : event === "Bounced" ? "Bounced" : mail.status || mail.sent_at ? "Sent" : "Queued",
-    time: formatDate(mail.sent_at || mail.updatedAt || mail.createdAt),
-    device: opened ? "Email client" : "—",
-    openCount: mail.open_count || 0,
+    event,
+    time: formatDate(mail.last_opened_at || mail.sent_at || mail.updatedAt || mail.createdAt),
+    device: clicked ? "Web link" : opened ? "Email client" : "—",
+    openCount: opens,
+    clickCount: clicks,
   };
 }

@@ -12,6 +12,7 @@ const MessageCrafter = lazy(() => import("./pages/MessageCrafter"));
 const MessageCrafting = lazy(() => import("./pages/MessageCrafting"));
 const FindInfluencers = lazy(() => import("./pages/FindInfluencers"));
 const MyInfluencers = lazy(() => import("./pages/MyInfluencers"));
+const CollaborationHistory = lazy(() => import("./pages/CollaborationHistory"));
 const EmailManagement = lazy(() => import("./pages/EmailManagement"));
 const EmailTracking = lazy(() => import("./pages/EmailTracking"));
 const NewsletterTracking = lazy(() => import("./pages/NewsletterTracking"));
@@ -90,6 +91,7 @@ function App() {
         <Route path="/newsletter-tracking" element={<NewsletterTracking />} />
         <Route path="/find-influencers" element={<FindInfluencers />} />
         <Route path="/my-influencers" element={<MyInfluencers />} />
+        <Route path="/collaboration-history" element={<CollaborationHistory />} />
       </Route>
       <Route path="*" element={<NotFound />} />
       </Routes>

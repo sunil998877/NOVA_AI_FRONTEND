@@ -4,13 +4,24 @@ import { campaignApi, mailApi, statsApi } from "../lib/api";
 export function useWorkspaceData() {
   const [campaigns, setCampaigns] = useState([]);
   const [mails, setMails] = useState([]);
-  const [stats, setStats] = useState({ total: 0, delivered: 0, opened: 0, campaigns: 0 });
+  const [stats, setStats] = useState({
+    total: 0,
+    delivered: 0,
+    opened: 0,
+    unopened: 0,
+    clicked: 0,
+    openRate: 0,
+    clickRate: 0,
+    campaigns: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const reload = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError("");
+    }
     try {
       const [campaignRes, mailRes, statsRes] = await Promise.all([
         campaignApi.list({ limit: 100 }),
@@ -19,16 +30,26 @@ export function useWorkspaceData() {
       ]);
       setCampaigns(campaignRes.data || []);
       setMails(mailRes.data || []);
-      setStats(statsRes);
+      setStats(statsRes || {});
     } catch (err) {
-      setError(err.message || "Failed to load workspace data");
+      if (!silent) {
+        setError(err.message || "Failed to load workspace data");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    reload();
+    reload(false);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        reload(true);
+      }
+    }, 8000);
+    return () => clearInterval(interval);
   }, [reload]);
 
   return { campaigns, mails, stats, loading, error, reload, setCampaigns, setMails };

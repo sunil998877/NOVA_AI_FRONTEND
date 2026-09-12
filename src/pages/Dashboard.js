@@ -80,6 +80,7 @@ function StatCard({ stat }) {
       <CardContent>
         <div className="text-2xl font-bold tabular-nums md:text-3xl">
           <AnimatedNumber value={stat.value} />
+          {stat.suffix || ""}
         </div>
         <p className="mt-1 text-sm text-muted-foreground">{stat.label}</p>
       </CardContent>
@@ -180,13 +181,18 @@ function Dashboard() {
   const [formError, setFormError] = useState("");
   const chart = useChartColors();
 
-  const unopened = Math.max((stats.delivered || 0) - (stats.opened || 0), 0);
+  const sent = Number(stats.total || 0);
+  const delivered = Number(stats.delivered || 0);
+  const opened = Number(stats.opened || 0);
+  const unopened = stats.unopened !== undefined ? Number(stats.unopened) : Math.max(delivered - opened, 0);
+  const openRate = stats.openRate !== undefined ? Number(stats.openRate) : (delivered > 0 ? Number(((opened / delivered) * 100).toFixed(1)) : 0);
+
   const statsCards = [
-    { label: "Total Campaigns", value: stats.campaigns || 0, icon: Mail, trend: "up", change: loading ? "…" : "Live" },
-    { label: "Total Mails", value: stats.total || 0, icon: Send, trend: "up", change: loading ? "…" : "Live" },
-    { label: "Delivered", value: stats.delivered || 0, icon: ArrowUpRight, trend: "up", change: loading ? "…" : "Live" },
-    { label: "Opened", value: stats.opened || 0, icon: Eye, trend: "up", change: loading ? "…" : "Live" },
-    { label: "Unopened", value: unopened, icon: EyeOff, trend: "down", change: loading ? "…" : "Live" },
+    { label: "Sent", value: sent, icon: Send, trend: "up", change: loading ? "…" : "Live" },
+    { label: "Delivered", value: delivered, icon: ArrowUpRight, trend: "up", change: loading ? "…" : "Live" },
+    { label: "Opened", value: opened, icon: Eye, trend: "up", change: loading ? "…" : "Live" },
+    { label: "Unopened", value: unopened, icon: EyeOff, trend: unopened > 0 ? "down" : "up", change: loading ? "…" : "Live" },
+    { label: "Open Rate", value: openRate, suffix: "%", icon: TrendingUp, trend: "up", change: loading ? "…" : "Live" },
   ];
 
   const monthlyData = useMemo(() => buildMonthlyData(campaigns, mails), [campaigns, mails]);
@@ -224,7 +230,7 @@ function Dashboard() {
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {statsCards.map((stat) => (
           <StatCard key={stat.label} stat={stat} />
         ))}

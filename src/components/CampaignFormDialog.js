@@ -16,6 +16,7 @@ import { generateEmail } from "../lib/novaChat";
 
 const empty = {
   title: "",
+  sender_name: "",
   scheduledDate: "",
   subject: "",
   body: "",
@@ -45,6 +46,7 @@ export function CampaignFormDialog({
     if (!open) return;
     setForm({
       title: initial?.title || initial?.name || "",
+      sender_name: initial?.sender_name || initial?.senderName || initial?.raw?.sender_name || "",
       scheduledDate: initial?.scheduledDate
         ? String(initial.scheduledDate).slice(0, 16)
         : "",
@@ -62,6 +64,7 @@ export function CampaignFormDialog({
     const scheduledDate = form.scheduledDate ? new Date(form.scheduledDate).toISOString() : null;
     onSubmit({
       title: form.title.trim(),
+      sender_name: form.sender_name.trim() || null,
       scheduledDate,
       subject: form.subject.trim() || null,
       body: form.body.trim() || null,
@@ -122,6 +125,16 @@ export function CampaignFormDialog({
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="campaign-sender-name">Sender Name</Label>
+              <Input
+                id="campaign-sender-name"
+                placeholder="e.g., Sunil"
+                value={form.sender_name}
+                onChange={(e) => setForm({ ...form, sender_name: e.target.value })}
               />
             </div>
 

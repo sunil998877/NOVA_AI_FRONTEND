@@ -39,6 +39,7 @@ const pageMeta = {
   "/newsletter-tracking": { title: "Newsletter Tracking", section: "Email" },
   "/find-influencers": { title: "Find Influencers", section: "Network" },
   "/my-influencers": { title: "My Influencers", section: "Network" },
+  "/collaboration-history": { title: "Collaboration History", section: "Network" },
 };
 
 function SiteHeader() {

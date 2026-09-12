@@ -15,6 +15,7 @@ import {
   LogOut,
   Settings,
   User,
+  History,
 } from "lucide-react";
 import {
   Sidebar,
@@ -70,6 +71,7 @@ const navGroups = [
     items: [
       { path: "/find-influencers", label: "Find Influencers", icon: Users },
       { path: "/my-influencers", label: "My Influencers", icon: Star },
+      { path: "/collaboration-history", label: "Collaboration History", icon: History },
     ],
   },
 ];

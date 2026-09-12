@@ -95,6 +95,7 @@ export const campaignApi = {
   updateStatus: (id, body) => api(`/api/campaigns/${id}/status`, { method: "PATCH", body }),
   send: (id) => api(`/api/campaigns/${id}/send`, { method: "POST" }),
   preview: (id) => api(`/api/campaigns/${id}/preview`),
+  analytics: (id) => api(`/api/campaigns/${id}/analytics`),
   complete: (id, body = {}) => api(`/api/campaigns/${id}/complete`, { method: "POST", body }),
   remove: (id) => api(`/api/campaigns/${id}`, { method: "DELETE" }),
 };
@@ -133,9 +134,30 @@ export const openaiApi = {
 
 export const influencerApi = {
   list: () => api("/api/influencers"),
+  search: (params = {}) => {
+    const cleanParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== "") {
+        cleanParams.set(key, String(val));
+      }
+    });
+    return api(`/api/influencers/search?${cleanParams.toString()}`);
+  },
   create: (body) => api("/api/influencers", { method: "POST", body }),
   update: (id, body) => api(`/api/influencers/${id}`, { method: "PATCH", body }),
   remove: (id) => api(`/api/influencers/${id}`, { method: "DELETE" }),
+  outreach: (body) => api("/api/influencers/outreach", { method: "POST", body }),
+  collaborations: (params = {}) => {
+    const cleanParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== "") {
+        cleanParams.set(key, String(val));
+      }
+    });
+    return api(`/api/influencers/collaborations?${cleanParams.toString()}`);
+  },
+  updateCollaboration: (id, body) => api(`/api/influencers/collaborations/${id}`, { method: "PATCH", body }),
+  deleteCollaboration: (id) => api(`/api/influencers/collaborations/${id}`, { method: "DELETE" }),
 };
 
 export const webhookApi = {

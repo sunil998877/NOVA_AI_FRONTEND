@@ -10,7 +10,7 @@ import {
   Bar,
   BarChart,
 } from "recharts";
-import { Eye, MousePointerClick, Send, TrendingUp } from "lucide-react";
+import { Eye, Send, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import {
@@ -36,10 +36,13 @@ function CampaignAnalytics() {
         const metrics = campaignMetrics(campaign, mails);
         const open = metrics.sent ? Number(((metrics.opened / metrics.sent) * 100).toFixed(1)) : 0;
         return {
+          id: campaign.id,
           name: campaign.title,
           sent: metrics.sent,
+          delivered: metrics.sent,
+          opened: metrics.opened,
+          unopened: metrics.unopened,
           open,
-          click: 0,
           bounce: 0,
         };
       }),
@@ -48,9 +51,7 @@ function CampaignAnalytics() {
 
   const avgOpen = rows.length
     ? rows.reduce((sum, row) => sum + row.open, 0) / rows.length
-    : stats.total
-      ? ((stats.opened || 0) / stats.total) * 100
-      : 0;
+    : stats.openRate || 0;
   const best = rows.reduce((top, row) => (row.open > (top?.open || 0) ? row : top), null);
   const sources = [
     { name: "Broadcast", value: campaigns.filter((c) => !/news/i.test(c.title || "")).length },
@@ -60,7 +61,6 @@ function CampaignAnalytics() {
 
   const kpis = [
     { label: "Avg. open rate", value: `${avgOpen.toFixed(1)}%`, change: loading ? "…" : "Live", icon: Eye },
-    { label: "Avg. click rate", value: "0%", change: "Not tracked yet", icon: MousePointerClick },
     { label: "Emails analyzed", value: String(stats.total || 0), change: `${stats.campaigns || 0} campaigns`, icon: Send },
     { label: "Best campaign", value: best ? `${best.open}%` : "—", change: best?.name || "No sends yet", icon: TrendingUp },
   ];
@@ -70,13 +70,13 @@ function CampaignAnalytics() {
       <div>
         <h2 className="text-2xl font-bold tracking-tight md:text-3xl">Campaign analytics</h2>
         <p className="text-sm text-muted-foreground md:text-base">
-          Compare opens, clicks, and send performance across recent campaigns.
+          Compare opens and send performance across recent campaigns.
         </p>
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {kpis.map((item) => (
           <Card key={item.label}>
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
@@ -94,7 +94,7 @@ function CampaignAnalytics() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.5fr_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Opens vs clicks</CardTitle>
+            <CardTitle className="text-base">Opens over time</CardTitle>
             <CardDescription>Last 7 days</CardDescription>
           </CardHeader>
           <CardContent>
@@ -118,7 +118,6 @@ function CampaignAnalytics() {
                     }}
                   />
                   <Area type="monotone" dataKey="opens" stroke={chart.primary} fill="url(#opensFill)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="clicks" stroke={chart.accent} fill="transparent" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -168,21 +167,23 @@ function CampaignAnalytics() {
                 <TableRow>
                   <TableHead>Campaign</TableHead>
                   <TableHead>Sent</TableHead>
+                  <TableHead>Delivered</TableHead>
+                  <TableHead>Opened</TableHead>
+                  <TableHead>Unopened</TableHead>
                   <TableHead>Open rate</TableHead>
-                  <TableHead>Click rate</TableHead>
-                  <TableHead>Bounce</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map((row) => (
-                  <TableRow key={row.name}>
+                  <TableRow key={row.id || row.name}>
                     <TableCell className="font-medium">{row.name}</TableCell>
                     <TableCell>{row.sent.toLocaleString()}</TableCell>
+                    <TableCell>{row.delivered.toLocaleString()}</TableCell>
+                    <TableCell>{row.opened.toLocaleString()}</TableCell>
+                    <TableCell>{row.unopened.toLocaleString()}</TableCell>
                     <TableCell>
                       <Badge variant="success">{row.open}%</Badge>
                     </TableCell>
-                    <TableCell>{row.click}%</TableCell>
-                    <TableCell className="text-muted-foreground">{row.bounce}%</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

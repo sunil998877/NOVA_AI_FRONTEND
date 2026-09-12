@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Search, Star, Users, Mail, Plus, Globe } from "lucide-react";
+import { Search, Star, ExternalLink, Mail, Check, AlertCircle, ChevronLeft, ChevronRight, SlidersHorizontal, Send, Loader2, CheckCircle2, Copy } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent } from "../components/ui/card";
-import { Avatar, AvatarFallback } from "../components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
+import { Skeleton } from "../components/ui/skeleton";
 import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -14,113 +16,313 @@ import {
   DialogTitle,
 } from "../components/ui/dialog";
 import { influencerApi } from "../lib/api";
+import { useToast } from "../components/ui/toast";
 
 const platforms = [
-  { id: "all", label: "All" },
+  { id: "youtube", label: "YouTube" },
   { id: "instagram", label: "Instagram" },
   { id: "twitter", label: "Twitter/X" },
-  { id: "youtube", label: "YouTube" },
+  { id: "all", label: "All Platforms" },
 ];
 
-const catalog = [
-  { name: "Sarah Chen", handle: "@sarahcreates", platform: "instagram", followers: "2.4M", engagement: "4.8%", niche: "Tech & Lifestyle", location: "San Francisco, CA", avatar: "SC", verified: true },
-  { name: "Marcus Johnson", handle: "@marcusj", platform: "youtube", followers: "890K", engagement: "6.2%", niche: "Finance & Investing", location: "New York, NY", avatar: "MJ", verified: true },
-  { name: "Emma Wilson", handle: "@emmaw", platform: "twitter", followers: "1.1M", engagement: "3.9%", niche: "Marketing & Growth", location: "London, UK", avatar: "EW", verified: false },
-  { name: "David Park", handle: "@davidpark", platform: "instagram", followers: "3.2M", engagement: "5.1%", niche: "Fitness & Health", location: "Los Angeles, CA", avatar: "DP", verified: true },
-  { name: "Aisha Patel", handle: "@aishatech", platform: "youtube", followers: "650K", engagement: "7.3%", niche: "AI & Technology", location: "Toronto, CA", avatar: "AP", verified: true },
-  { name: "James Miller", handle: "@jamesm", platform: "twitter", followers: "450K", engagement: "5.6%", niche: "SaaS & Startups", location: "Austin, TX", avatar: "JM", verified: false },
-  { name: "Lisa Zhang", handle: "@lisaz", platform: "instagram", followers: "1.8M", engagement: "4.2%", niche: "Fashion & Beauty", location: "Miami, FL", avatar: "LZ", verified: true },
-  { name: "Ryan Cooper", handle: "@ryancooper", platform: "youtube", followers: "1.5M", engagement: "5.8%", niche: "Gaming & Entertainment", location: "Seattle, WA", avatar: "RC", verified: true },
+const categories = [
+  "Fitness",
+  "Technology",
+  "Travel",
+  "Food",
+  "Fashion",
+  "Gaming",
+  "Business",
+  "AI & SaaS",
 ];
+
+function formatNumber(num) {
+  if (num === null || num === undefined) return "N/A";
+  const n = Number(num);
+  if (Number.isNaN(n)) return "N/A";
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  return n.toLocaleString();
+}
 
 function FindInfluencers() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPlatform, setSelectedPlatform] = useState("all");
-  const [saved, setSaved] = useState([]);
+  const [selectedPlatform, setSelectedPlatform] = useState("youtube");
+  const [minSubscribers, setMinSubscribers] = useState("");
+  const [maxSubscribers, setMaxSubscribers] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  const [influencers, setInfluencers] = useState([]);
+  const [savedIds, setSavedIds] = useState(new Set());
+  const [savedMap, setSavedMap] = useState(new Map());
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [manualOpen, setManualOpen] = useState(false);
-  const [manual, setManual] = useState({ name: "", handle: "", platform: "instagram", email: "", niche: "" });
-  const [saving, setSaving] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const [nextPageToken, setNextPageToken] = useState(null);
+  const [prevPageToken, setPrevPageToken] = useState(null);
+  const [pageHistory, setPageHistory] = useState([]);
+
+  const [outreachOpen, setOutreachOpen] = useState(false);
+  const [selectedInfluencer, setSelectedInfluencer] = useState(null);
+  const [outreachEmail, setOutreachEmail] = useState("");
+  const [outreachSubject, setOutreachSubject] = useState("");
+  const [outreachMessage, setOutreachMessage] = useState("");
+  const [sendingOutreach, setSendingOutreach] = useState(false);
+  const [hasVerifiedEmail, setHasVerifiedEmail] = useState(false);
+  const [saveEmailToProfile, setSaveEmailToProfile] = useState(true);
+
+  const isValidEmail = (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(val || "").trim());
+
+  const toast = useToast();
 
   const loadSaved = async () => {
     try {
-      const result = await influencerApi.list();
-      setSaved(result.data || []);
-    } catch (err) {
-      setError(err.message || "Could not load saved influencers");
-    }
+      const res = await influencerApi.list();
+      const list = res.data || [];
+      const idSet = new Set();
+      const map = new Map();
+      list.forEach((item) => {
+        const key = `${item.platform}:${item.platform_user_id || item.platformUserId || item.id}`;
+        idSet.add(key);
+        map.set(key, item.id);
+      });
+      setSavedIds(idSet);
+      setSavedMap(map);
+    } catch (_) {}
   };
 
   useEffect(() => {
     loadSaved();
   }, []);
 
-  const filtered = catalog.filter((inf) => {
-    const matchesSearch =
-      inf.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inf.handle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inf.niche.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesPlatform = selectedPlatform === "all" || inf.platform === selectedPlatform;
-    return matchesSearch && matchesPlatform;
-  });
+  const handleSearch = async (token = null, isBack = false) => {
+    const q = searchQuery.trim();
+    if (!q) return;
 
-  const savedHandle = (handle) => saved.find((item) => item.handle === handle);
+    setLoading(true);
+    setHasSearched(true);
 
-  const reachOut = async (inf) => {
-    setError("");
-    const existing = savedHandle(inf.handle);
     try {
-      if (existing) {
-        await influencerApi.update(existing.id, {
-          status: "contacted",
-          lastContact: new Date().toISOString(),
-        });
-      } else {
-        await influencerApi.create({ ...inf, status: "contacted" });
-      }
-      await loadSaved();
-    } catch (err) {
-      setError(err.message || "Could not save influencer");
-    }
-  };
-
-  const toggleSave = async (inf) => {
-    setError("");
-    const existing = savedHandle(inf.handle);
-    try {
-      if (existing) {
-        await influencerApi.remove(existing.id);
-      } else {
-        await influencerApi.create({ ...inf, status: "saved" });
-      }
-      await loadSaved();
-    } catch (err) {
-      setError(err.message || "Could not update influencer");
-    }
-  };
-
-  const handleManual = async (event) => {
-    event.preventDefault();
-    setSaving(true);
-    setError("");
-    try {
-      await influencerApi.create({
-        name: manual.name,
-        handle: manual.handle,
-        platform: manual.platform,
-        niche: manual.niche,
-        notes: manual.email ? `Reach: ${manual.email}` : "",
-        status: "saved",
-        avatar: manual.name.slice(0, 2).toUpperCase(),
+      const res = await influencerApi.search({
+        q,
+        platform: selectedPlatform,
+        pageToken: token || undefined,
+        minSubscribers: minSubscribers || undefined,
+        maxSubscribers: maxSubscribers || undefined,
+        maxResults: 12,
       });
-      setManualOpen(false);
-      setManual({ name: "", handle: "", platform: "instagram", email: "", niche: "" });
+
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setError("");
+      }
+      setInfluencers(res.data || []);
+      setNextPageToken(res.nextPageToken || null);
+      setPrevPageToken(res.prevPageToken || null);
+
+      if (!isBack && token) {
+        setPageHistory((prev) => [...prev, token]);
+      } else if (!token) {
+        setPageHistory([]);
+      }
+    } catch (err) {
+      setError(err.message || "Failed to discover influencers");
+      setInfluencers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSearchSubmit = (e) => {
+    e?.preventDefault();
+    handleSearch(null);
+  };
+
+  const handleCategoryClick = (cat) => {
+    setSearchQuery(cat);
+    setTimeout(() => {
+      setLoading(true);
+      setHasSearched(true);
+      influencerApi
+        .search({
+          q: cat,
+          platform: selectedPlatform,
+          minSubscribers: minSubscribers || undefined,
+          maxSubscribers: maxSubscribers || undefined,
+          maxResults: 12,
+        })
+        .then((res) => {
+          if (res.error) {
+            setError(res.error);
+          } else {
+            setError("");
+          }
+          setInfluencers(res.data || []);
+          setNextPageToken(res.nextPageToken || null);
+          setPrevPageToken(res.prevPageToken || null);
+          setPageHistory([]);
+        })
+        .catch((err) => {
+          setError(err.message || "Failed to discover influencers");
+          setInfluencers([]);
+        })
+        .finally(() => setLoading(false));
+    }, 50);
+  };
+
+  const handleToggleSave = async (inf) => {
+    const key = `${inf.platform}:${inf.platformUserId}`;
+    const isSaved = savedIds.has(key);
+
+    try {
+      if (isSaved) {
+        const savedId = savedMap.get(key);
+        if (savedId) {
+          await influencerApi.remove(savedId);
+          setSavedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+          setSavedMap((prev) => {
+            const next = new Map(prev);
+            next.delete(key);
+            return next;
+          });
+          toast.success("Removed from My Influencers");
+        }
+      } else {
+        const res = await influencerApi.create({
+          platform: inf.platform,
+          platformUserId: inf.platformUserId,
+          name: inf.name,
+          username: inf.username,
+          email: inf.email || undefined,
+          description: inf.description,
+          profileImage: inf.profileImage,
+          profileUrl: inf.profileUrl,
+          subscribers: inf.subscribers,
+          videoCount: inf.videoCount,
+          viewCount: inf.viewCount,
+          location: inf.location,
+          status: "saved",
+        });
+        setSavedIds((prev) => new Set(prev).add(key));
+        if (res?.id) {
+          setSavedMap((prev) => new Map(prev).set(key, res.id));
+        }
+        toast.success("Added to My Influencers", inf.name);
+      }
+    } catch (err) {
+      toast.error("Could not update influencer", err.message);
+    }
+  };
+
+  const openOutreach = (inf) => {
+    setSelectedInfluencer(inf);
+    const hasVerified = Boolean(inf?.email && isValidEmail(inf.email));
+    setHasVerifiedEmail(hasVerified);
+    setOutreachEmail(hasVerified ? inf.email : "");
+    setSaveEmailToProfile(true);
+    setOutreachSubject(`Collaboration Opportunity: NOVA & ${inf.name}`);
+    setOutreachMessage(
+      `Hi ${inf.name},\n\nWe love your content on ${String(inf.platform || "").toUpperCase()} and would love to discuss a potential collaboration with our brand.\n\nBest regards,\nNOVA Partnerships Team`
+    );
+    setOutreachOpen(true);
+  };
+
+  const handleSendOutreach = async (e) => {
+    e.preventDefault();
+    const cleanEmail = outreachEmail.trim();
+    if (!cleanEmail || !isValidEmail(cleanEmail)) {
+      toast.error("Please enter a valid recipient email");
+      return;
+    }
+    if (!outreachSubject.trim() || !outreachMessage.trim()) {
+      toast.error("Please complete subject and message fields");
+      return;
+    }
+
+    setSendingOutreach(true);
+    try {
+      const key = selectedInfluencer ? `${selectedInfluencer.platform}:${selectedInfluencer.platformUserId}` : "";
+      let savedId = savedMap.get(key);
+
+      if (saveEmailToProfile && selectedInfluencer) {
+        if (!savedId) {
+          try {
+            const res = await influencerApi.create({
+              platform: selectedInfluencer.platform,
+              platformUserId: selectedInfluencer.platformUserId,
+              name: selectedInfluencer.name,
+              username: selectedInfluencer.username,
+              email: cleanEmail,
+              description: selectedInfluencer.description,
+              profileImage: selectedInfluencer.profileImage,
+              profileUrl: selectedInfluencer.profileUrl,
+              subscribers: selectedInfluencer.subscribers,
+              videoCount: selectedInfluencer.videoCount,
+              viewCount: selectedInfluencer.viewCount,
+              location: selectedInfluencer.location,
+              status: "saved",
+            });
+            if (res?.id) {
+              savedId = res.id;
+              setSavedIds((prev) => new Set(prev).add(key));
+              setSavedMap((prev) => new Map(prev).set(key, res.id));
+            }
+          } catch (_) {}
+        } else {
+          try {
+            await influencerApi.update(savedId, { email: cleanEmail });
+          } catch (_) {}
+        }
+      }
+
+      await influencerApi.outreach({
+        influencerId: savedId || undefined,
+        name: selectedInfluencer?.name,
+        username: selectedInfluencer?.username,
+        platform: selectedInfluencer?.platform,
+        profileImage: selectedInfluencer?.profileImage,
+        profileUrl: selectedInfluencer?.profileUrl,
+        email: cleanEmail,
+        subject: outreachSubject,
+        message: outreachMessage,
+      });
+
+      toast.success("Outreach email sent successfully", `Delivered to ${cleanEmail}`);
+      setInfluencers((prev) =>
+        prev.map((i) =>
+          i.platform === selectedInfluencer.platform && i.platformUserId === selectedInfluencer.platformUserId
+            ? { ...i, email: cleanEmail }
+            : i
+        )
+      );
+      setOutreachOpen(false);
       await loadSaved();
     } catch (err) {
-      setError(err.message || "Could not add influencer");
+      toast.error("Outreach delivery failed", err.message);
     } finally {
-      setSaving(false);
+      setSendingOutreach(false);
     }
+  };
+
+  const getPlatformBadge = (platform) => {
+    const p = String(platform || "").toLowerCase();
+    if (p === "youtube") {
+      return <Badge className="bg-red-600/15 text-red-600 hover:bg-red-600/20 border-red-600/30">YouTube</Badge>;
+    }
+    if (p === "instagram") {
+      return <Badge className="bg-pink-600/15 text-pink-600 hover:bg-pink-600/20 border-pink-600/30">Instagram</Badge>;
+    }
+    if (p === "twitter") {
+      return <Badge className="bg-sky-600/15 text-sky-600 hover:bg-sky-600/20 border-sky-600/30">Twitter/X</Badge>;
+    }
+    return <Badge variant="secondary">{platform}</Badge>;
   };
 
   return (
@@ -129,162 +331,526 @@ function FindInfluencers() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight md:text-3xl">Find Influencers</h2>
           <p className="text-sm text-muted-foreground md:text-base">
-            Discover and connect with influencers for your campaigns.
+            Discover real YouTube, Instagram, and X creators with live subscriber metrics.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline">
-            <Globe /> Filters
-          </Button>
-          <Button onClick={() => setManualOpen(true)}>
-            <Plus /> Add Manually
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          onClick={() => setShowFilters(!showFilters)}
+          className={showFilters ? "border-primary text-primary" : ""}
+        >
+          <SlidersHorizontal className="mr-1.5 size-4" /> Filters
+        </Button>
       </div>
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
-      <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <div className="relative w-full md:max-w-sm">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, handle, or niche..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
-          />
+      <form onSubmit={onSearchSubmit} className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search creators, topics, or channel names (e.g. fitness, tech reviews, vloggers)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-11"
+            />
+          </div>
+          <Button
+            type="submit"
+            disabled={loading || !searchQuery.trim()}
+            className="h-11 min-w-[125px] px-6 font-semibold shrink-0"
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="size-4 animate-spin" />
+                <span>Searching...</span>
+              </span>
+            ) : (
+              "Search"
+            )}
+          </Button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {platforms.map((p) => (
-            <Button
-              key={p.id}
-              size="sm"
-              variant={selectedPlatform === p.id ? "default" : "outline"}
-              onClick={() => setSelectedPlatform(p.id)}
-            >
-              {p.label}
-            </Button>
-          ))}
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground mr-1">Platform:</span>
+            {platforms.map((p) => (
+              <Button
+                key={p.id}
+                type="button"
+                size="sm"
+                variant={selectedPlatform === p.id ? "default" : "outline"}
+                onClick={() => {
+                  setSelectedPlatform(p.id);
+                  if (hasSearched && searchQuery.trim()) {
+                    setTimeout(() => handleSearch(null), 50);
+                  }
+                }}
+              >
+                {p.label}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground mr-1">Categories:</span>
+            {categories.map((cat) => (
+              <Button
+                key={cat}
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => handleCategoryClick(cat)}
+                className="h-7 text-xs px-2.5 rounded-full hover:bg-primary/10 hover:text-primary"
+              >
+                {cat}
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <p className="text-sm text-muted-foreground">
-        Found <span className="font-semibold text-foreground">{filtered.length}</span> influencers · {saved.length} saved
-      </p>
+        {showFilters && (
+          <Card className="border-dashed bg-muted/20">
+            <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="min-subs" className="text-xs">Minimum Subscribers / Followers</Label>
+                <Input
+                  id="min-subs"
+                  type="number"
+                  placeholder="e.g. 10000"
+                  value={minSubscribers}
+                  onChange={(e) => setMinSubscribers(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="max-subs" className="text-xs">Maximum Subscribers / Followers</Label>
+                <Input
+                  id="max-subs"
+                  type="number"
+                  placeholder="e.g. 1000000"
+                  value={maxSubscribers}
+                  onChange={(e) => setMaxSubscribers(e.target.value)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </form>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        {filtered.map((inf) => {
-          const isSaved = Boolean(savedHandle(inf.handle));
-          return (
-            <Card key={inf.handle} className="relative overflow-hidden transition-colors hover:border-primary/40">
-              <div className="absolute inset-x-0 top-0 h-0.5 bg-primary" />
-              <CardContent className="pt-6">
-                <div className="mb-4 flex items-start gap-3">
-                  <Avatar className="size-12">
-                    <AvatarFallback>{inf.avatar}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-0.5 flex items-center gap-1.5">
-                      <h3 className="truncate text-sm font-semibold">{inf.name}</h3>
-                      {inf.verified && (
-                        <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                          ✓
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">{inf.handle}</p>
-                    <span className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-[11px] capitalize text-muted-foreground">
-                      {inf.platform}
-                    </span>
+      {error && (
+        <div className="flex items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+          <AlertCircle className="size-5 shrink-0" />
+          <div className="flex-1">{error}</div>
+        </div>
+      )}
+
+      {hasSearched && !loading && !error && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div>
+            Showing <span className="font-semibold text-foreground">{influencers.length}</span> live creators
+          </div>
+          <div>{savedIds.size} saved to My Influencers</div>
+        </div>
+      )}
+
+      {loading && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <CardContent className="p-5 space-y-4">
+                <div className="flex items-start gap-3">
+                  <Skeleton className="size-12 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={isSaved ? "text-primary" : "text-muted-foreground"}
-                    onClick={() => toggleSave(inf)}
-                  >
-                    <Star className={isSaved ? "fill-primary" : ""} />
-                  </Button>
                 </div>
-
-                <div className="mb-4 grid grid-cols-2 gap-3 border-y py-3">
-                  <div>
-                    <div className="text-lg font-bold tabular-nums">{inf.followers}</div>
-                    <div className="text-xs text-muted-foreground">Followers</div>
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold tabular-nums text-primary">{inf.engagement}</div>
-                    <div className="text-xs text-muted-foreground">Engagement</div>
-                  </div>
+                <div className="grid grid-cols-2 gap-2 border-y py-3">
+                  <Skeleton className="h-8" />
+                  <Skeleton className="h-8" />
                 </div>
-
-                <div className="mb-4 flex flex-wrap gap-1.5">
-                  <Badge variant="outline" className="border-primary/30 text-primary">{inf.niche}</Badge>
-                  <Badge variant="secondary">{inf.location}</Badge>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button className="flex-1" size="sm" onClick={() => reachOut(inf)}>
-                    <Mail /> Reach Out
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Users /> Profile
-                  </Button>
-                </div>
+                <Skeleton className="h-10 w-full" />
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {filtered.length === 0 && (
-        <div className="flex flex-col items-center px-4 py-16 text-center">
-          <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-primary/15 text-primary">
-            <Search className="size-7" />
+      {!loading && influencers.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {influencers.map((inf) => {
+            const key = `${inf.platform}:${inf.platformUserId}`;
+            const isSaved = savedIds.has(key);
+            return (
+              <Card key={key} className="flex flex-col overflow-hidden transition-all hover:border-primary/50">
+                <div className="h-1 bg-gradient-to-r from-primary/60 to-primary" />
+                <CardContent className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div>
+                    <div className="flex items-start gap-3">
+                      <Avatar className="size-12 border">
+                        {inf.profileImage && <AvatarImage src={inf.profileImage} alt={inf.name} />}
+                        <AvatarFallback className="bg-primary/10 font-bold text-primary">
+                          {(inf.name || "Y").slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-base font-semibold" title={inf.name}>
+                          {inf.name}
+                        </h3>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {inf.username || `@${inf.name.toLowerCase().replace(/\s+/g, "")}`}
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          {getPlatformBadge(inf.platform)}
+                          {inf.location && (
+                            <span className="text-[11px] text-muted-foreground">{inf.location}</span>
+                          )}
+                          {inf.email ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle2 className="size-2.5" /> Verified Email
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                              <AlertCircle className="size-2.5 text-amber-500" /> No Email
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={isSaved ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground"}
+                        onClick={() => handleToggleSave(inf)}
+                        title={isSaved ? "Remove from saved" : "Save to My Influencers"}
+                      >
+                        <Star className={`size-5 ${isSaved ? "fill-amber-500" : ""}`} />
+                      </Button>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-2 rounded-lg border bg-muted/20 p-2.5 text-center">
+                      <div>
+                        <div className="text-base font-bold tabular-nums text-foreground">
+                          {formatNumber(inf.subscribers)}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {inf.platform === "youtube" ? "Subscribers" : "Followers"}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-base font-bold tabular-nums text-foreground">
+                          {inf.videoCount !== null ? formatNumber(inf.videoCount) : "N/A"}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {inf.platform === "youtube" ? "Videos" : "Posts"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {inf.description && (
+                      <p className="mt-3 line-clamp-2 text-xs text-muted-foreground" title={inf.description}>
+                        {inf.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="pt-2 flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        variant={isSaved ? "secondary" : "default"}
+                        onClick={() => handleToggleSave(inf)}
+                      >
+                        {isSaved ? (
+                          <>
+                            <Check className="mr-1 size-3.5" /> Saved
+                          </>
+                        ) : (
+                          <>
+                            <Star className="mr-1 size-3.5" /> Save
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={inf.email ? "default" : "outline"}
+                        onClick={() => openOutreach(inf)}
+                        className="gap-1.5"
+                        title={inf.email ? "Send outreach (Verified Email)" : "Outreach (No email available - manual entry or social contact)"}
+                      >
+                        <Mail className="size-3.5" />
+                        <span className="text-xs">{inf.email ? "Outreach" : "Contact"}</span>
+                      </Button>
+                    </div>
+
+                    {inf.profileUrl && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => window.open(inf.profileUrl, "_blank", "noopener,noreferrer")}
+                      >
+                        <ExternalLink className="mr-1.5 size-3" /> View Channel
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {!loading && hasSearched && !error && influencers.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed p-12 text-center">
+          <div className="mb-3 flex size-14 items-center justify-center rounded-full bg-muted">
+            <Search className="size-6 text-muted-foreground" />
           </div>
-          <h3 className="text-base font-semibold">No influencers found</h3>
+          <h3 className="text-base font-semibold">No creators found</h3>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Try adjusting your search or filters to discover more influencers.
+            Try adjusting your search terms or subscriber filter ranges.
           </p>
         </div>
       )}
 
-      <Dialog open={manualOpen} onOpenChange={setManualOpen}>
-        <DialogContent>
-          <form onSubmit={handleManual}>
+      {!loading && !hasSearched && !error && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed p-16 text-center">
+          <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Search className="size-8" />
+          </div>
+          <h3 className="text-lg font-semibold">Search Real Creators</h3>
+          <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
+            Search live YouTube creators, discover their real subscriber stats, and bookmark them for your outreach campaigns.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            {categories.slice(0, 5).map((cat) => (
+              <Button key={cat} variant="outline" size="sm" onClick={() => handleCategoryClick(cat)}>
+                {cat}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(prevPageToken || nextPageToken) && (
+        <div className="flex items-center justify-center gap-3 pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!prevPageToken && pageHistory.length === 0}
+            onClick={() => {
+              const prev = pageHistory[pageHistory.length - 2] || null;
+              setPageHistory((curr) => curr.slice(0, -1));
+              handleSearch(prev, true);
+            }}
+          >
+            <ChevronLeft className="mr-1 size-4" /> Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!nextPageToken}
+            onClick={() => handleSearch(nextPageToken)}
+          >
+            Next <ChevronRight className="ml-1 size-4" />
+          </Button>
+        </div>
+      )}
+
+      <Dialog open={outreachOpen} onOpenChange={setOutreachOpen}>
+        <DialogContent className="max-w-lg">
+          <form onSubmit={handleSendOutreach}>
             <DialogHeader>
-              <DialogTitle>Add influencer</DialogTitle>
+              <div className="flex items-center gap-3">
+                <Avatar className="size-11 border">
+                  {selectedInfluencer?.profileImage && (
+                    <AvatarImage src={selectedInfluencer.profileImage} alt={selectedInfluencer?.name} />
+                  )}
+                  <AvatarFallback className="bg-primary/10 font-bold text-primary">
+                    {(selectedInfluencer?.name || "Y").slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="truncate text-base font-semibold">
+                    Send Outreach to {selectedInfluencer?.name}
+                  </DialogTitle>
+                  <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                    <span className="truncate">
+                      {selectedInfluencer?.username || `@${selectedInfluencer?.name?.toLowerCase().replace(/\s+/g, "")}`}
+                    </span>
+                    <span>•</span>
+                    <span className="uppercase font-medium">{selectedInfluencer?.platform}</span>
+                  </div>
+                </div>
+              </div>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="inf-name">Name</Label>
-                <Input id="inf-name" value={manual.name} onChange={(e) => setManual({ ...manual, name: e.target.value })} required />
+
+            <div className="mt-4 space-y-3">
+              {hasVerifiedEmail ? (
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-emerald-900 dark:text-emerald-200">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-full bg-emerald-500/20 p-1 text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="size-4" />
+                    </div>
+                    <div className="text-xs leading-relaxed">
+                      <div className="font-semibold text-emerald-950 dark:text-emerald-100 flex items-center gap-1.5">
+                        Verified Email Available
+                        <span className="rounded-full bg-emerald-600/20 px-2 py-0.2 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                          Auto-filled
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-emerald-800/90 dark:text-emerald-300/90">
+                        This creator's verified email was detected and populated automatically. You can review and send outreach right away.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-3.5 text-amber-900 dark:text-amber-200">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-full bg-amber-500/20 p-1 text-amber-600 dark:text-amber-400">
+                        <AlertCircle className="size-4" />
+                      </div>
+                      <div className="text-xs leading-relaxed">
+                        <div className="font-semibold text-amber-950 dark:text-amber-100 flex items-center gap-1.5">
+                          No email available
+                          <span className="rounded-full bg-amber-600/20 px-2 py-0.2 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                            Action required
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-amber-800/90 dark:text-amber-300/90">
+                          This creator has not published a verified email address. You can add their email manually below or use the available platform contact links.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-border/80 bg-muted/40 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Available Contact Methods
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedInfluencer?.profileUrl && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs gap-1.5 bg-background"
+                          onClick={() => window.open(selectedInfluencer.profileUrl, "_blank", "noopener,noreferrer")}
+                        >
+                          <ExternalLink className="size-3 text-primary" />
+                          Open {selectedInfluencer.platform ? selectedInfluencer.platform.charAt(0).toUpperCase() + selectedInfluencer.platform.slice(1) : "Platform"} Profile
+                        </Button>
+                      )}
+                      {selectedInfluencer?.profileUrl && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs gap-1.5 bg-background"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedInfluencer.profileUrl);
+                            toast.success("Profile URL copied to clipboard");
+                          }}
+                        >
+                          <Copy className="size-3" />
+                          Copy Link
+                        </Button>
+                      )}
+                    </div>
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      💡 Tip: Visit their profile & channel "About" tab to find business contact details, or message their handle directly.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-3.5 py-4">
+              <div className="grid gap-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="outreach-to" className="text-xs font-semibold">
+                    {hasVerifiedEmail ? "Recipient Email" : "Add Email Manually"}
+                  </Label>
+                  {hasVerifiedEmail ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="size-3" /> Auto-filled
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                      Enter email to enable send
+                    </span>
+                  )}
+                </div>
+                <Input
+                  id="outreach-to"
+                  type="email"
+                  placeholder={hasVerifiedEmail ? "creator@channel.com" : "Enter creator's email (e.g. business@creator.com)"}
+                  value={outreachEmail}
+                  onChange={(e) => setOutreachEmail(e.target.value)}
+                  required
+                  className={!hasVerifiedEmail && !outreachEmail.trim() ? "border-amber-500/50 focus-visible:ring-amber-500/30" : ""}
+                />
+                {!hasVerifiedEmail && (
+                  <label className="flex items-center gap-2 cursor-pointer mt-1 select-none">
+                    <input
+                      type="checkbox"
+                      className="rounded border-input text-primary focus:ring-primary size-3.5"
+                      checked={saveEmailToProfile}
+                      onChange={(e) => setSaveEmailToProfile(e.target.checked)}
+                    />
+                    <span className="text-[11px] text-muted-foreground">
+                      Save this email to creator's profile for future outreach
+                    </span>
+                  </label>
+                )}
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="inf-handle">Handle</Label>
-                <Input id="inf-handle" value={manual.handle} onChange={(e) => setManual({ ...manual, handle: e.target.value })} placeholder="@handle" />
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="outreach-subj" className="text-xs font-semibold">Subject</Label>
+                <Input
+                  id="outreach-subj"
+                  value={outreachSubject}
+                  onChange={(e) => setOutreachSubject(e.target.value)}
+                  required
+                />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="inf-platform">Platform</Label>
-                <select
-                  id="inf-platform"
-                  value={manual.platform}
-                  onChange={(e) => setManual({ ...manual, platform: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm"
-                >
-                  <option value="instagram">Instagram</option>
-                  <option value="youtube">YouTube</option>
-                  <option value="twitter">Twitter/X</option>
-                </select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="inf-niche">Niche</Label>
-                <Input id="inf-niche" value={manual.niche} onChange={(e) => setManual({ ...manual, niche: e.target.value })} />
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="outreach-msg" className="text-xs font-semibold">Message</Label>
+                <Textarea
+                  id="outreach-msg"
+                  rows={5}
+                  value={outreachMessage}
+                  onChange={(e) => setOutreachMessage(e.target.value)}
+                  required
+                />
               </div>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="secondary" onClick={() => setManualOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="secondary" onClick={() => setOutreachOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={sendingOutreach || !outreachEmail.trim() || !isValidEmail(outreachEmail)}
+                title={!outreachEmail.trim() ? "Please add a recipient email to send" : ""}
+              >
+                {sendingOutreach ? (
+                  <>
+                    <Loader2 className="mr-1.5 size-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    Send Outreach
+                    <Send className="ml-1.5 size-4" />
+                  </>
+                )}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

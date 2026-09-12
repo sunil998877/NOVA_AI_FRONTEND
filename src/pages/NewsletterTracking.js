@@ -40,7 +40,6 @@ function NewsletterTracking() {
         status: status === "sent" ? "Sent" : status === "scheduled" ? "Scheduled" : "Draft",
         sent: metrics.sent,
         open: metrics.sent ? `${((metrics.opened / metrics.sent) * 100).toFixed(1)}%` : "—",
-        click: "—",
       };
     });
   }, [campaigns, mails]);
@@ -155,7 +154,7 @@ function NewsletterTracking() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Recent issues</CardTitle>
-          <CardDescription>Open and click rates by edition</CardDescription>
+          <CardDescription>Open rates by edition</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -166,7 +165,6 @@ function NewsletterTracking() {
                 <TableHead>Status</TableHead>
                 <TableHead>Sent</TableHead>
                 <TableHead>Open</TableHead>
-                <TableHead>Click</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -185,7 +183,6 @@ function NewsletterTracking() {
                   </TableCell>
                   <TableCell>{row.sent ? row.sent.toLocaleString() : "—"}</TableCell>
                   <TableCell>{row.open}</TableCell>
-                  <TableCell>{row.click}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
