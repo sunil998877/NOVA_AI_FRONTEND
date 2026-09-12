@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Mail, Trash2, ExternalLink, Users, Send, Search, CheckCircle2, AlertCircle, Copy, Loader2 } from "lucide-react";
+import { Mail, Trash2, ExternalLink, Users, Send, Search, CheckCircle2, AlertCircle, Copy, Loader2, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -51,10 +51,74 @@ function MyInfluencers() {
   const [hasVerifiedEmail, setHasVerifiedEmail] = useState(false);
   const [saveEmailToProfile, setSaveEmailToProfile] = useState(true);
 
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [newInfluencer, setNewInfluencer] = useState({
+    name: "",
+    platform: "youtube",
+    username: "",
+    email: "",
+    profileUrl: "",
+    subscribers: "",
+    videoCount: "",
+    status: "saved",
+    notes: "",
+  });
+  const [addingInfluencer, setAddingInfluencer] = useState(false);
+
   const isValidEmail = (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(val || "").trim());
 
   const toast = useToast();
   const navigate = useNavigate();
+
+  const handleAddManualInfluencer = async (e) => {
+    e.preventDefault();
+    if (!newInfluencer.name.trim()) {
+      toast.error("Influencer name is required");
+      return;
+    }
+    if (newInfluencer.email && !isValidEmail(newInfluencer.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    setAddingInfluencer(true);
+    try {
+      const payload = {
+        name: newInfluencer.name.trim(),
+        platform: newInfluencer.platform || "youtube",
+        username: newInfluencer.username.trim() || null,
+        email: newInfluencer.email.trim() || null,
+        profileUrl: newInfluencer.profileUrl.trim() || null,
+        subscribers: newInfluencer.subscribers ? Number(newInfluencer.subscribers) : 0,
+        videoCount: newInfluencer.videoCount ? Number(newInfluencer.videoCount) : 0,
+        status: newInfluencer.status || "saved",
+        notes: newInfluencer.notes.trim() || null,
+      };
+
+      const result = await influencerApi.create(payload);
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+      toast.success("Influencer added successfully", newInfluencer.name);
+      setAddModalOpen(false);
+      setNewInfluencer({
+        name: "",
+        platform: "youtube",
+        username: "",
+        email: "",
+        profileUrl: "",
+        subscribers: "",
+        videoCount: "",
+        status: "saved",
+        notes: "",
+      });
+      load();
+    } catch (err) {
+      toast.error("Could not add influencer", err.message);
+    } finally {
+      setAddingInfluencer(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -200,7 +264,10 @@ function MyInfluencers() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => navigate("/find-influencers")}>
+          <Button onClick={() => setAddModalOpen(true)} className="gap-1.5">
+            <UserPlus className="size-4" /> Add Influencer
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/find-influencers")}>
             <Search className="mr-1.5 size-4" /> Find Creators
           </Button>
           <div className="inline-flex items-center gap-2 rounded-md border bg-card px-4 py-2">
@@ -338,9 +405,14 @@ function MyInfluencers() {
               Discover real creators on YouTube, Instagram, and X to add them to your audience.
             </p>
             {!loading && (
-              <Button className="mt-5" onClick={() => navigate("/find-influencers")}>
-                Find Influencers
-              </Button>
+              <div className="mt-5 flex items-center gap-2.5">
+                <Button onClick={() => setAddModalOpen(true)} className="gap-1.5">
+                  <UserPlus className="size-4" /> Add Influencer
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/find-influencers")}>
+                  Find Influencers
+                </Button>
+              </div>
             )}
           </div>
         )}
@@ -538,6 +610,161 @@ function MyInfluencers() {
                   <>
                     Send Outreach
                     <Send className="ml-1.5 size-4" />
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+        <DialogContent className="max-w-lg">
+          <form onSubmit={handleAddManualInfluencer}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base font-semibold">
+                <UserPlus className="size-5 text-primary" />
+                Add Influencer Manually
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="grid gap-3.5 py-4 text-sm">
+              <div className="grid gap-1.5">
+                <Label htmlFor="manual-name" className="text-xs font-semibold">
+                  Name / Channel Title <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="manual-name"
+                  placeholder="e.g. Marques Brownlee"
+                  value={newInfluencer.name}
+                  onChange={(e) => setNewInfluencer((prev) => ({ ...prev, name: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="manual-platform" className="text-xs font-semibold">Platform</Label>
+                  <select
+                    id="manual-platform"
+                    value={newInfluencer.platform}
+                    onChange={(e) => setNewInfluencer((prev) => ({ ...prev, platform: e.target.value }))}
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="youtube">YouTube</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="twitter">Twitter / X</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label htmlFor="manual-username" className="text-xs font-semibold">Handle / Username</Label>
+                  <Input
+                    id="manual-username"
+                    placeholder="e.g. @mkbhd"
+                    value={newInfluencer.username}
+                    onChange={(e) => setNewInfluencer((prev) => ({ ...prev, username: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="manual-email" className="text-xs font-semibold">Email Address</Label>
+                    {newInfluencer.email && isValidEmail(newInfluencer.email) && (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-500 font-medium">
+                        <CheckCircle2 className="size-2.5" /> Valid
+                      </span>
+                    )}
+                  </div>
+                  <Input
+                    id="manual-email"
+                    type="email"
+                    placeholder="e.g. business@mkbhd.com"
+                    value={newInfluencer.email}
+                    onChange={(e) => setNewInfluencer((prev) => ({ ...prev, email: e.target.value }))}
+                  />
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label htmlFor="manual-status" className="text-xs font-semibold">Initial Status</Label>
+                  <select
+                    id="manual-status"
+                    value={newInfluencer.status}
+                    onChange={(e) => setNewInfluencer((prev) => ({ ...prev, status: e.target.value }))}
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring capitalize"
+                  >
+                    <option value="saved">Saved</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="negotiating">Negotiating</option>
+                    <option value="collaborating">Collaborating</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="manual-subs" className="text-xs font-semibold">Followers / Subscribers</Label>
+                  <Input
+                    id="manual-subs"
+                    type="number"
+                    placeholder="e.g. 50000"
+                    value={newInfluencer.subscribers}
+                    onChange={(e) => setNewInfluencer((prev) => ({ ...prev, subscribers: e.target.value }))}
+                  />
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label htmlFor="manual-videos" className="text-xs font-semibold">Video / Post Count</Label>
+                  <Input
+                    id="manual-videos"
+                    type="number"
+                    placeholder="e.g. 150"
+                    value={newInfluencer.videoCount}
+                    onChange={(e) => setNewInfluencer((prev) => ({ ...prev, videoCount: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="manual-url" className="text-xs font-semibold">Channel / Profile URL</Label>
+                <Input
+                  id="manual-url"
+                  placeholder="https://youtube.com/@channel"
+                  value={newInfluencer.profileUrl}
+                  onChange={(e) => setNewInfluencer((prev) => ({ ...prev, profileUrl: e.target.value }))}
+                />
+              </div>
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="manual-notes" className="text-xs font-semibold">Notes / Collaboration Pitch</Label>
+                <Textarea
+                  id="manual-notes"
+                  rows={3}
+                  placeholder="Optional notes about audience, niche, past collaborations..."
+                  value={newInfluencer.notes}
+                  onChange={(e) => setNewInfluencer((prev) => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="secondary" onClick={() => setAddModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={addingInfluencer || !newInfluencer.name.trim()}>
+                {addingInfluencer ? (
+                  <>
+                    <Loader2 className="mr-1.5 size-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="mr-1.5 size-4" />
+                    Add Influencer
                   </>
                 )}
               </Button>
