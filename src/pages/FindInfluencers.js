@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Search, Star, ExternalLink, Mail, Check, AlertCircle, ChevronLeft, ChevronRight, SlidersHorizontal, Send, Loader2, CheckCircle2, Copy, UserPlus } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Search, Star, ExternalLink, Mail, Check, AlertCircle, ChevronLeft, ChevronRight, SlidersHorizontal, Send, Loader2, CheckCircle2, Copy, UserPlus, Pencil } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -76,6 +76,10 @@ function FindInfluencers() {
   const [sendingOutreach, setSendingOutreach] = useState(false);
   const [hasVerifiedEmail, setHasVerifiedEmail] = useState(false);
   const [saveEmailToProfile, setSaveEmailToProfile] = useState(true);
+  const [isEditingSubject, setIsEditingSubject] = useState(false);
+  const [isEditingMessage, setIsEditingMessage] = useState(false);
+  const subjectInputRef = useRef(null);
+  const messageInputRef = useRef(null);
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newInfluencer, setNewInfluencer] = useState({
@@ -367,6 +371,8 @@ function FindInfluencers() {
     setOutreachMessage(
       `Hi ${inf.name},\n\nWe love your content on ${String(inf.platform || "").toUpperCase()} and would love to discuss a potential collaboration with our brand.\n\nBest regards,\nNOVA Partnerships Team`
     );
+    setIsEditingSubject(false);
+    setIsEditingMessage(false);
     setOutreachOpen(true);
   };
 
@@ -918,28 +924,85 @@ function FindInfluencers() {
                 <Label htmlFor="outreach-subj" className="text-xs font-semibold">
                   Subject
                 </Label>
-                <Input
-                  id="outreach-subj"
-                  value={outreachSubject}
-                  onChange={(e) => setOutreachSubject(e.target.value)}
-                  placeholder="Subject line..."
-                  required
-                />
+                {isEditingSubject ? (
+                  <div className="flex items-center gap-2 rounded-xl border border-primary/60 bg-slate-900/40 p-2.5 ring-1 ring-primary/40">
+                    <Input
+                      ref={subjectInputRef}
+                      id="outreach-subj"
+                      placeholder="Subject line..."
+                      value={outreachSubject}
+                      onChange={(e) => setOutreachSubject(e.target.value)}
+                      className="h-8 flex-1 border-0 bg-transparent p-0 text-sm font-medium text-slate-100 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
+                      autoFocus
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-7 px-2.5 text-xs gap-1"
+                      onClick={() => setIsEditingSubject(false)}
+                    >
+                      <Check className="size-3" /> Done
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="group flex items-center gap-3 rounded-xl border border-slate-700/60 bg-slate-900/40 p-2.5 shadow-sm transition-all hover:border-slate-600/80">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingSubject(true)}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-700/70 bg-slate-800/90 text-slate-300 hover:bg-slate-700 hover:text-white shadow-xs transition-all cursor-pointer"
+                      title="Click to edit subject"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <p className="flex-1 text-sm font-semibold text-slate-100 select-text truncate">
+                      {outreachSubject || <span className="text-muted-foreground italic font-normal">No subject</span>}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="outreach-msg" className="text-xs font-semibold">
                   Message
                 </Label>
-                <Textarea
-                  id="outreach-msg"
-                  rows={5}
-                  value={outreachMessage}
-                  onChange={(e) => setOutreachMessage(e.target.value)}
-                  placeholder="Write your pitch..."
-                  required
-                  className="resize-none font-normal leading-relaxed text-sm"
-                />
+                {isEditingMessage ? (
+                  <div className="space-y-2 rounded-xl border border-primary/60 bg-slate-900/40 p-3 ring-1 ring-primary/40">
+                    <Textarea
+                      ref={messageInputRef}
+                      id="outreach-msg"
+                      rows={5}
+                      placeholder="Write your pitch..."
+                      value={outreachMessage}
+                      onChange={(e) => setOutreachMessage(e.target.value)}
+                      className="min-h-[120px] resize-y border-0 bg-transparent p-0 text-sm leading-relaxed text-slate-200 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
+                      autoFocus
+                    />
+                    <div className="flex justify-end pt-2 border-t border-slate-700/40">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => setIsEditingMessage(false)}
+                      >
+                        <Check className="size-3" /> Done
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="group flex items-start gap-3 rounded-xl border border-slate-700/60 bg-slate-900/40 p-3.5 shadow-sm transition-all hover:border-slate-600/80">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingMessage(true)}
+                      className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-700/70 bg-slate-800/90 text-slate-300 hover:bg-slate-700 hover:text-white shadow-xs transition-all cursor-pointer"
+                      title="Click to edit message"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <div className="flex-1 text-sm leading-relaxed text-slate-200 whitespace-pre-wrap select-text max-h-[220px] overflow-y-auto">
+                      {outreachMessage || <span className="text-muted-foreground italic">No message written</span>}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
