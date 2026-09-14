@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Sparkles, Wand2, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Sparkles, Wand2, Loader2, ChevronDown, ChevronUp, Pencil, Check } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -42,21 +42,33 @@ export function CampaignFormDialog({
   const [crafting, setCrafting] = useState(false);
   const [craftError, setCraftError] = useState("");
 
+  const [generatedByNova, setGeneratedByNova] = useState(false);
+  const [isEditingSubject, setIsEditingSubject] = useState(false);
+  const [isEditingBody, setIsEditingBody] = useState(false);
+
+  const subjectInputRef = useRef(null);
+  const bodyTextareaRef = useRef(null);
+
   useEffect(() => {
     if (!open) return;
+    const initialSubject = initial?.subject || "";
+    const initialBody = initial?.body || "";
     setForm({
       title: initial?.title || initial?.name || "",
       sender_name: initial?.sender_name || initial?.senderName || initial?.raw?.sender_name || "",
       scheduledDate: initial?.scheduledDate
         ? String(initial.scheduledDate).slice(0, 16)
         : "",
-      subject: initial?.subject || "",
-      body: initial?.body || "",
+      subject: initialSubject,
+      body: initialBody,
     });
     setCraftOpen(false);
     setCraftPrompt("");
     setCraftTone("Professional");
     setCraftError("");
+    setGeneratedByNova(Boolean(initialSubject || initialBody));
+    setIsEditingSubject(false);
+    setIsEditingBody(false);
   }, [open, initial]);
 
   const handleSubmit = (event) => {
@@ -100,6 +112,9 @@ export function CampaignFormDialog({
         subject: parsed.subject || prev.subject,
         body: parsed.body || raw || prev.body,
       }));
+      setGeneratedByNova(true);
+      setIsEditingSubject(false);
+      setIsEditingBody(false);
       setCraftOpen(false);
       setCraftPrompt("");
     } catch (err) {
@@ -195,24 +210,112 @@ export function CampaignFormDialog({
               </div>
             ) : null}
 
+            {/* Email Subject Section */}
             <div className="grid gap-2">
-              <Label htmlFor="email-subject">Email subject</Label>
-              <Input
-                id="email-subject"
-                placeholder="e.g., Summer Sale — Up to 50% off"
-                value={form.subject}
-                onChange={(e) => setForm({ ...form, subject: e.target.value })}
-              />
+              <Label htmlFor="email-subject" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Email Subject
+              </Label>
+
+              {generatedByNova ? (
+                isEditingSubject ? (
+                  <div className="flex items-center gap-2 rounded-xl border border-primary/60 bg-slate-900/40 p-2.5 ring-1 ring-primary/40">
+                    <Input
+                      ref={subjectInputRef}
+                      id="email-subject"
+                      placeholder="e.g., Summer Sale — Up to 50% off"
+                      value={form.subject}
+                      onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                      className="h-8 flex-1 border-0 bg-transparent p-0 text-sm font-medium text-slate-100 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
+                      autoFocus
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-7 px-2.5 text-xs gap-1"
+                      onClick={() => setIsEditingSubject(false)}
+                    >
+                      <Check className="size-3" /> Done
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="group flex items-center gap-3 rounded-xl border border-slate-700/60 bg-slate-900/40 p-2.5 shadow-sm transition-all hover:border-slate-600/80">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingSubject(true)}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-700/70 bg-slate-800/90 text-slate-300 hover:bg-slate-700 hover:text-white shadow-xs transition-all cursor-pointer"
+                      title="Click to edit subject"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <p className="flex-1 text-sm font-semibold text-slate-100 select-text">
+                      {form.subject || <span className="text-muted-foreground italic font-normal">No subject generated</span>}
+                    </p>
+                  </div>
+                )
+              ) : (
+                <Input
+                  id="email-subject"
+                  placeholder="e.g., Summer Sale — Up to 50% off"
+                  value={form.subject}
+                  onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                />
+              )}
             </div>
+
+            {/* Email Body Section */}
             <div className="grid gap-2">
-              <Label htmlFor="email-body">Email body</Label>
-              <Textarea
-                id="email-body"
-                rows={7}
-                placeholder="Paste or write the email body here…"
-                value={form.body}
-                onChange={(e) => setForm({ ...form, body: e.target.value })}
-              />
+              <Label htmlFor="email-body" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Email Body
+              </Label>
+
+              {generatedByNova ? (
+                isEditingBody ? (
+                  <div className="space-y-2 rounded-xl border border-primary/60 bg-slate-900/40 p-3 ring-1 ring-primary/40">
+                    <Textarea
+                      ref={bodyTextareaRef}
+                      id="email-body"
+                      rows={7}
+                      placeholder="Paste or write the email body here…"
+                      value={form.body}
+                      onChange={(e) => setForm({ ...form, body: e.target.value })}
+                      className="min-h-[160px] resize-y border-0 bg-transparent p-0 text-sm leading-relaxed text-slate-200 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
+                      autoFocus
+                    />
+                    <div className="flex justify-end pt-2 border-t border-slate-700/40">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => setIsEditingBody(false)}
+                      >
+                        <Check className="size-3" /> Done Editing
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="group flex items-start gap-3 rounded-xl border border-slate-700/60 bg-slate-900/40 p-3.5 shadow-sm transition-all hover:border-slate-600/80">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingBody(true)}
+                      className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-700/70 bg-slate-800/90 text-slate-300 hover:bg-slate-700 hover:text-white shadow-xs transition-all cursor-pointer"
+                      title="Click to edit body"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <div className="flex-1 text-sm leading-relaxed text-slate-200 whitespace-pre-wrap select-text max-h-[260px] overflow-y-auto">
+                      {form.body || <span className="text-muted-foreground italic">No email body generated</span>}
+                    </div>
+                  </div>
+                )
+              ) : (
+                <Textarea
+                  id="email-body"
+                  rows={7}
+                  placeholder="Paste or write the email body here…"
+                  value={form.body}
+                  onChange={(e) => setForm({ ...form, body: e.target.value })}
+                />
+              )}
             </div>
 
             <div className="grid gap-2">

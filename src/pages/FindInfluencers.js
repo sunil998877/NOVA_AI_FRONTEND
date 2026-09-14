@@ -17,6 +17,7 @@ import {
 } from "../components/ui/dialog";
 import { influencerApi } from "../lib/api";
 import { useToast } from "../components/ui/toast";
+import { SegmentedPagination } from "../components/ui/pagination";
 
 const platforms = [
   { id: "youtube", label: "YouTube" },
@@ -62,6 +63,9 @@ function FindInfluencers() {
 
   const [nextPageToken, setNextPageToken] = useState(null);
   const [prevPageToken, setPrevPageToken] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1023);
+  const [pageTokens, setPageTokens] = useState({ 1: null });
   const [pageHistory, setPageHistory] = useState([]);
 
   const [outreachOpen, setOutreachOpen] = useState(false);
@@ -111,7 +115,7 @@ function FindInfluencers() {
     loadSaved();
   }, []);
 
-  const handleSearch = async (token = null, isBack = false) => {
+  const handleSearch = async (token = null, targetPage = 1) => {
     const q = searchQuery.trim();
     if (!q) return;
 
@@ -136,17 +140,53 @@ function FindInfluencers() {
       setInfluencers(res.data || []);
       setNextPageToken(res.nextPageToken || null);
       setPrevPageToken(res.prevPageToken || null);
+      setCurrentPage(targetPage);
 
-      if (!isBack && token) {
-        setPageHistory((prev) => [...prev, token]);
-      } else if (!token) {
-        setPageHistory([]);
+      if (res.totalResults) {
+        const calculated = Math.max(1, Math.ceil(res.totalResults / 12));
+        setTotalPages(calculated);
+      } else {
+        setTotalPages(1023);
       }
+
+      setPageTokens((prev) => {
+        const next = { ...prev, [targetPage]: token };
+        if (res.nextPageToken) {
+          next[targetPage + 1] = res.nextPageToken;
+        }
+        return next;
+      });
     } catch (err) {
       setError(err.message || "Failed to discover influencers");
       setInfluencers([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePageChange = (page) => {
+    if (page === currentPage) return;
+    if (pageTokens[page] !== undefined) {
+      handleSearch(pageTokens[page], page);
+    } else if (page === currentPage + 1 && nextPageToken) {
+      handleSearch(nextPageToken, page);
+    } else if (page > currentPage && nextPageToken) {
+      handleSearch(nextPageToken, currentPage + 1);
+    } else if (page < currentPage) {
+      handleSearch(pageTokens[page] ?? null, page);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (nextPageToken) {
+      handleSearch(nextPageToken, currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      const prevPage = currentPage - 1;
+      handleSearch(pageTokens[prevPage] ?? null, prevPage);
     }
   };
 
@@ -221,11 +261,15 @@ function FindInfluencers() {
 
   const onSearchSubmit = (e) => {
     e?.preventDefault();
-    handleSearch(null);
+    setCurrentPage(1);
+    setPageTokens({ 1: null });
+    handleSearch(null, 1);
   };
 
   const handleCategoryClick = (cat) => {
     setSearchQuery(cat);
+    setCurrentPage(1);
+    setPageTokens({ 1: null });
     setTimeout(() => {
       setLoading(true);
       setHasSearched(true);
@@ -246,7 +290,16 @@ function FindInfluencers() {
           setInfluencers(res.data || []);
           setNextPageToken(res.nextPageToken || null);
           setPrevPageToken(res.prevPageToken || null);
-          setPageHistory([]);
+          setCurrentPage(1);
+          setPageTokens({
+            1: null,
+            ...(res.nextPageToken ? { 2: res.nextPageToken } : {}),
+          });
+          if (res.totalResults) {
+            setTotalPages(Math.max(1, Math.ceil(res.totalResults / 12)));
+          } else {
+            setTotalPages(1023);
+          }
         })
         .catch((err) => {
           setError(err.message || "Failed to discover influencers");
@@ -722,223 +775,192 @@ function FindInfluencers() {
         </div>
       )}
 
-      {(prevPageToken || nextPageToken) && (
-        <div className="flex items-center justify-center gap-3 pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!prevPageToken && pageHistory.length === 0}
-            onClick={() => {
-              const prev = pageHistory[pageHistory.length - 2] || null;
-              setPageHistory((curr) => curr.slice(0, -1));
-              handleSearch(prev, true);
-            }}
-          >
-            <ChevronLeft className="mr-1 size-4" /> Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!nextPageToken}
-            onClick={() => handleSearch(nextPageToken)}
-          >
-            Next <ChevronRight className="ml-1 size-4" />
-          </Button>
-        </div>
+      {(prevPageToken || nextPageToken || influencers.length > 0) && (
+        <SegmentedPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          hasNext={Boolean(nextPageToken)}
+          hasPrev={currentPage > 1}
+          onPageChange={handlePageChange}
+          onNext={handleNextPage}
+          onPrev={handlePrevPage}
+        />
       )}
 
       <Dialog open={outreachOpen} onOpenChange={setOutreachOpen}>
-        <DialogContent className="max-w-lg">
-          <form onSubmit={handleSendOutreach}>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <Avatar className="size-11 border">
-                  {selectedInfluencer?.profileImage && (
-                    <AvatarImage src={selectedInfluencer.profileImage} alt={selectedInfluencer?.name} />
-                  )}
-                  <AvatarFallback className="bg-primary/10 font-bold text-primary">
-                    {(selectedInfluencer?.name || "Y").slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <DialogTitle className="truncate text-base font-semibold">
-                    Send Outreach to {selectedInfluencer?.name}
-                  </DialogTitle>
-                  <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                    <span className="truncate">
-                      {selectedInfluencer?.username || `@${selectedInfluencer?.name?.toLowerCase().replace(/\s+/g, "")}`}
-                    </span>
-                    <span>•</span>
-                    <span className="uppercase font-medium">{selectedInfluencer?.platform}</span>
+        <DialogContent className="max-w-2xl sm:max-w-[680px] w-[95vw] sm:w-full bg-[#0e131f] border border-border/80 shadow-2xl">
+          <form onSubmit={handleSendOutreach} className="space-y-4">
+            <DialogHeader className="pb-3 border-b border-border/60">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="size-10 border border-border/80 shrink-0">
+                    {selectedInfluencer?.profileImage && (
+                      <AvatarImage src={selectedInfluencer.profileImage} alt={selectedInfluencer?.name} />
+                    )}
+                    <AvatarFallback className="bg-primary/10 font-bold text-primary text-xs">
+                      {(selectedInfluencer?.name || "Y").slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <DialogTitle className="truncate text-base font-semibold leading-tight">
+                      Send Outreach
+                    </DialogTitle>
+                    <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                      <span className="truncate font-medium text-foreground">
+                        {selectedInfluencer?.name}
+                      </span>
+                      <span>•</span>
+                      <span className="truncate">
+                        {selectedInfluencer?.username || `@${selectedInfluencer?.name?.toLowerCase().replace(/\s+/g, "")}`}
+                      </span>
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {selectedInfluencer?.platform || "YouTube"}
+                      </span>
+                    </div>
                   </div>
                 </div>
+
+                {selectedInfluencer?.profileUrl && (
+                  <div className="flex items-center gap-1.5 shrink-0 mr-8">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5 px-2.5"
+                      onClick={() => window.open(selectedInfluencer.profileUrl, "_blank", "noopener,noreferrer")}
+                    >
+                      <ExternalLink className="size-3 text-primary" />
+                      <span>Profile</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      title="Copy profile link"
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedInfluencer.profileUrl);
+                        toast.success("Profile URL copied to clipboard");
+                      }}
+                    >
+                      <Copy className="size-3.5 text-muted-foreground" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </DialogHeader>
 
-            <div className="mt-4 space-y-3">
-              {hasVerifiedEmail ? (
-                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-emerald-900 dark:text-emerald-200">
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-full bg-emerald-500/20 p-1 text-emerald-600 dark:text-emerald-400">
-                      <CheckCircle2 className="size-4" />
-                    </div>
-                    <div className="text-xs leading-relaxed">
-                      <div className="font-semibold text-emerald-950 dark:text-emerald-100 flex items-center gap-1.5">
-                        Verified Email Available
-                        <span className="rounded-full bg-emerald-600/20 px-2 py-0.2 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
-                          Auto-filled
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-emerald-800/90 dark:text-emerald-300/90">
-                        This creator's verified email was detected and populated automatically. You can review and send outreach right away.
-                      </p>
-                    </div>
-                  </div>
+            {hasVerifiedEmail ? (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2 text-xs text-emerald-400">
+                <CheckCircle2 className="size-4 shrink-0 text-emerald-400" />
+                <span>Verified business email loaded automatically.</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3.5 py-2 text-xs text-amber-300">
+                <div className="flex items-center gap-2 min-w-0">
+                  <AlertCircle className="size-4 shrink-0 text-amber-400" />
+                  <span className="truncate">No public email detected. Add email manually below.</span>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-3.5 text-amber-900 dark:text-amber-200">
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-full bg-amber-500/20 p-1 text-amber-600 dark:text-amber-400">
-                        <AlertCircle className="size-4" />
-                      </div>
-                      <div className="text-xs leading-relaxed">
-                        <div className="font-semibold text-amber-950 dark:text-amber-100 flex items-center gap-1.5">
-                          No email available
-                          <span className="rounded-full bg-amber-600/20 px-2 py-0.2 text-[10px] font-bold text-amber-700 dark:text-amber-300">
-                            Action required
-                          </span>
-                        </div>
-                        <p className="mt-0.5 text-amber-800/90 dark:text-amber-300/90">
-                          This creator has not published a verified email address. You can add their email manually below or use the available platform contact links.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                {selectedInfluencer?.profileUrl && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(selectedInfluencer.profileUrl, "_blank", "noopener,noreferrer")}
+                    className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-200 font-medium underline underline-offset-2 shrink-0 text-xs"
+                  >
+                    Channel About <ExternalLink className="size-3" />
+                  </button>
+                )}
+              </div>
+            )}
 
-                  <div className="rounded-lg border border-border/80 bg-muted/40 p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Available Contact Methods
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedInfluencer?.profileUrl && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-xs gap-1.5 bg-background"
-                          onClick={() => window.open(selectedInfluencer.profileUrl, "_blank", "noopener,noreferrer")}
-                        >
-                          <ExternalLink className="size-3 text-primary" />
-                          Open {selectedInfluencer.platform ? selectedInfluencer.platform.charAt(0).toUpperCase() + selectedInfluencer.platform.slice(1) : "Platform"} Profile
-                        </Button>
-                      )}
-                      {selectedInfluencer?.profileUrl && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-xs gap-1.5 bg-background"
-                          onClick={() => {
-                            navigator.clipboard.writeText(selectedInfluencer.profileUrl);
-                            toast.success("Profile URL copied to clipboard");
-                          }}
-                        >
-                          <Copy className="size-3" />
-                          Copy Link
-                        </Button>
-                      )}
-                    </div>
-                    <p className="mt-2 text-[11px] text-muted-foreground">
-                      💡 Tip: Visit their profile & channel "About" tab to find business contact details, or message their handle directly.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="grid gap-3.5 py-4">
-              <div className="grid gap-1.5">
+            <div className="space-y-3.5 py-1">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="outreach-to" className="text-xs font-semibold">
-                    {hasVerifiedEmail ? "Recipient Email" : "Add Email Manually"}
+                    Recipient Email
                   </Label>
                   {hasVerifiedEmail ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400">
                       <CheckCircle2 className="size-3" /> Auto-filled
                     </span>
                   ) : (
-                    <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                      Enter email to enable send
+                    <span className="text-[11px] text-amber-400 font-medium">
+                      Required
                     </span>
                   )}
                 </div>
-                <Input
-                  id="outreach-to"
-                  type="email"
-                  placeholder={hasVerifiedEmail ? "creator@channel.com" : "Enter creator's email (e.g. business@creator.com)"}
-                  value={outreachEmail}
-                  onChange={(e) => setOutreachEmail(e.target.value)}
-                  required
-                  className={!hasVerifiedEmail && !outreachEmail.trim() ? "border-amber-500/50 focus-visible:ring-amber-500/30" : ""}
-                />
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    id="outreach-to"
+                    type="email"
+                    placeholder="creator@business.com"
+                    value={outreachEmail}
+                    onChange={(e) => setOutreachEmail(e.target.value)}
+                    required
+                    className={`pl-9 ${!hasVerifiedEmail && !outreachEmail.trim() ? "border-amber-500/40 focus-visible:ring-amber-500/20" : ""}`}
+                  />
+                </div>
                 {!hasVerifiedEmail && (
-                  <label className="flex items-center gap-2 cursor-pointer mt-1 select-none">
+                  <label className="flex items-center gap-2 cursor-pointer mt-1 text-xs text-muted-foreground select-none">
                     <input
                       type="checkbox"
                       className="rounded border-input text-primary focus:ring-primary size-3.5"
                       checked={saveEmailToProfile}
                       onChange={(e) => setSaveEmailToProfile(e.target.checked)}
                     />
-                    <span className="text-[11px] text-muted-foreground">
-                      Save this email to creator's profile for future outreach
-                    </span>
+                    <span>Save email to creator's profile for future campaigns</span>
                   </label>
                 )}
               </div>
 
-              <div className="grid gap-1.5">
-                <Label htmlFor="outreach-subj" className="text-xs font-semibold">Subject</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="outreach-subj" className="text-xs font-semibold">
+                  Subject
+                </Label>
                 <Input
                   id="outreach-subj"
                   value={outreachSubject}
                   onChange={(e) => setOutreachSubject(e.target.value)}
+                  placeholder="Subject line..."
                   required
                 />
               </div>
 
-              <div className="grid gap-1.5">
-                <Label htmlFor="outreach-msg" className="text-xs font-semibold">Message</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="outreach-msg" className="text-xs font-semibold">
+                  Message
+                </Label>
                 <Textarea
                   id="outreach-msg"
                   rows={5}
                   value={outreachMessage}
                   onChange={(e) => setOutreachMessage(e.target.value)}
+                  placeholder="Write your pitch..."
                   required
+                  className="resize-none font-normal leading-relaxed text-sm"
                 />
               </div>
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="secondary" onClick={() => setOutreachOpen(false)}>
+            <DialogFooter className="pt-2 border-t border-border/60 gap-2 sm:gap-0">
+              <Button type="button" variant="ghost" onClick={() => setOutreachOpen(false)}>
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={sendingOutreach || !outreachEmail.trim() || !isValidEmail(outreachEmail)}
-                title={!outreachEmail.trim() ? "Please add a recipient email to send" : ""}
+                className="gap-1.5"
               >
                 {sendingOutreach ? (
                   <>
-                    <Loader2 className="mr-1.5 size-4 animate-spin" />
-                    Sending...
+                    <Loader2 className="size-4 animate-spin" />
+                    <span>Sending...</span>
                   </>
                 ) : (
                   <>
-                    Send Outreach
-                    <Send className="ml-1.5 size-4" />
+                    <Send className="size-4" />
+                    <span>Send Outreach</span>
                   </>
                 )}
               </Button>

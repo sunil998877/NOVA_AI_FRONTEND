@@ -89,16 +89,32 @@
     margin: 0 !important;
   }
 
+  :root {
+    --removed-body-scroll-bar-size: 0px !important;
+  }
+
   html {
-    scrollbar-gutter: stable;
-    overflow-y: scroll;
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     font-family: Inter, ui-sans-serif, system-ui, sans-serif;
     min-height: 100vh;
-    overflow-x: hidden;
+    overflow-x: hidden !important;
+    margin-right: 0px !important;
+    padding-right: 0px !important;
+  }
+
+  body[data-scroll-locked],
+  body[style*="pointer-events"],
+  body[style*="margin-right"],
+  body[style*="padding-right"],
+  [data-radix-scroll-lock] {
+    margin-right: 0px !important;
+    padding-right: 0px !important;
+    overflow-x: hidden !important;
   }
 
   select option {
