@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Mail, Trash2, ExternalLink, Users, Send, Search, CheckCircle2, AlertCircle, Copy, Loader2, UserPlus, Pencil, Check, Tag } from "lucide-react";
+import { Mail, Trash2, ExternalLink, Users, Send, Search, CheckCircle2, AlertCircle, Copy, Loader2, UserPlus, Pencil, Check, Tag, Sparkles, Wand2, ChevronDown, ChevronUp, MessageSquare, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent } from "../components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
+import { generateEmail } from "../lib/novaChat";
+import { parseDraft } from "../lib/draft";
 import {
   Table,
   TableBody,
@@ -16,6 +18,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -68,6 +71,18 @@ function MyInfluencers() {
   const [isEditingMessage, setIsEditingMessage] = useState(false);
   const subjectInputRef = useRef(null);
   const messageInputRef = useRef(null);
+
+  const [whatsappNumber, setWhatsappNumber] = useState(
+    () => localStorage.getItem("nova_whatsapp_number") || ""
+  );
+
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiTone, setAiTone] = useState("Friendly");
+  const [aiGoal, setAiGoal] = useState("Sponsorship Offer");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState("");
+
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newInfluencer, setNewInfluencer] = useState({
@@ -255,7 +270,58 @@ function MyInfluencers() {
     );
     setIsEditingSubject(false);
     setIsEditingMessage(false);
+    setAiOpen(false);
+    setAiPrompt("");
+    setAiError("");
     setOutreachOpen(true);
+  };
+
+  const handleGenerateWithAi = async () => {
+    if (!selectedInfluencer) return;
+    setAiGenerating(true);
+    setAiError("");
+    try {
+      const prompt = [
+        `Write a complete, highly persuasive cold outreach email to collaborate with an influencer.`,
+        `Influencer Name: ${selectedInfluencer.name || "Creator"}`,
+        selectedInfluencer.username ? `Handle / Channel: ${selectedInfluencer.username}` : "",
+        `Platform: ${selectedInfluencer.platform || "YouTube"}`,
+        selectedInfluencer.category ? `Niche / Category: ${selectedInfluencer.category}` : "",
+        selectedInfluencer.subscribers ? `Followers / Subscribers: ${formatNumber(selectedInfluencer.subscribers)}` : "",
+        `Goal: ${aiGoal}`,
+        `Tone: ${aiTone}`,
+        aiPrompt.trim() ? `Specific details / Offer: ${aiPrompt.trim()}` : "",
+        'Important formatting: Start the first line with "Subject: " followed by the email subject line. Then provide the full email body.',
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const res = await generateEmail({
+        prompt,
+        context: false,
+        conversationTitle: `Outreach to ${selectedInfluencer.name || "Creator"}`,
+      });
+
+      const raw = typeof res?.data === "string" ? res.data : JSON.stringify(res?.data, null, 2);
+      const parsed = parseDraft(raw);
+
+      if (parsed.subject) {
+        setOutreachSubject(parsed.subject);
+      }
+      if (parsed.body) {
+        setOutreachMessage(parsed.body);
+      } else if (raw) {
+        setOutreachMessage(raw);
+      }
+      setIsEditingSubject(false);
+      setIsEditingMessage(false);
+      setAiOpen(false);
+      toast.success("AI Outreach Draft Generated!", "Subject and message updated.");
+    } catch (err) {
+      setAiError(err.message || "Failed to generate AI email. Please try again.");
+    } finally {
+      setAiGenerating(false);
+    }
   };
 
   const handleSendOutreach = async (e) => {
@@ -278,6 +344,12 @@ function MyInfluencers() {
         } catch (_) { }
       }
 
+      if (whatsappNumber.trim()) {
+        try {
+          localStorage.setItem("nova_whatsapp_number", whatsappNumber.trim());
+        } catch (_) {}
+      }
+
       await influencerApi.outreach({
         influencerId: selectedInfluencer?.id,
         name: selectedInfluencer?.name,
@@ -288,6 +360,7 @@ function MyInfluencers() {
         email: cleanEmail,
         subject: outreachSubject,
         message: outreachMessage,
+        whatsappNumber: whatsappNumber.trim() || undefined,
       });
 
       toast.success("Outreach email sent successfully", `Delivered to ${cleanEmail}`);
@@ -299,6 +372,8 @@ function MyInfluencers() {
       setSendingOutreach(false);
     }
   };
+
+
 
   const stats = [
     { label: "Total Saved", value: influencers.length },
@@ -343,7 +418,7 @@ function MyInfluencers() {
         ))}
       </div>
 
-      {/* Category Filter Buttons right down below the stat cards */}
+
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:max-w-xs">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -367,9 +442,8 @@ function MyInfluencers() {
                 type="button"
                 size="sm"
                 variant={isActive ? "default" : "outline"}
-                className={`h-8 text-xs transition-all ${
-                  isActive ? "" : "hover:border-primary/50 hover:text-primary"
-                }`}
+                className={`h-8 text-xs transition-all ${isActive ? "" : "hover:border-primary/50 hover:text-primary"
+                  }`}
                 onClick={() => setSelectedCategory(isAll ? "all" : cat)}
               >
                 {cat}
@@ -406,7 +480,19 @@ function MyInfluencers() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <div className="font-semibold truncate max-w-[180px] sm:max-w-xs">{inf.name}</div>
+                      {inf.profile_url ? (
+                        <a
+                          href={inf.profile_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold truncate block max-w-[180px] sm:max-w-xs hover:text-primary hover:underline"
+                          title="Open channel / profile"
+                        >
+                          {inf.name}
+                        </a>
+                      ) : (
+                        <div className="font-semibold truncate max-w-[180px] sm:max-w-xs">{inf.name}</div>
+                      )}
                       <div className="text-xs text-muted-foreground truncate max-w-[180px]">
                         {inf.username || "No handle"}
                       </div>
@@ -462,14 +548,15 @@ function MyInfluencers() {
                       <Mail className="size-3.5" />
                       <span>{inf.email ? "Outreach" : "Contact"}</span>
                     </Button>
-                    {inf.profile_url && (
+                    {(inf.whatsapp_number || inf.whatsappNumber) && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => window.open(inf.profile_url, "_blank", "noopener,noreferrer")}
-                        title="View Channel"
+                        onClick={() => window.open(`https://wa.me/${String(inf.whatsapp_number || inf.whatsappNumber).replace(/[^0-9]/g, "")}`, "_blank", "noopener,noreferrer")}
+                        title="Open WhatsApp"
+                        className="text-[#25D366] hover:text-[#20bd5a] hover:bg-[#25D366]/10"
                       >
-                        <ExternalLink className="size-4" />
+                        <Phone className="size-4" />
                       </Button>
                     )}
                     <Button
@@ -640,9 +727,86 @@ function MyInfluencers() {
                 )}
               </div>
 
+              {/* WhatsApp Contact Number */}
               <div className="space-y-1.5">
-                <Label htmlFor="my-outreach-subj" className="text-xs font-semibold">
-                  Subject
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="my-outreach-wa" className="text-xs font-semibold flex items-center gap-1.5">
+                    <span className="text-[#25D366] font-bold">💬</span>
+                    <span>Your WhatsApp Number (Optional)</span>
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground">
+                    Adds a 1-click WhatsApp button to email
+                  </span>
+                </div>
+                <Input
+                  id="my-outreach-wa"
+                  placeholder="e.g. +1 555 123 4567 or +91 98765 43210"
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Label className="mb-0 text-sm font-semibold">Email content</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto h-7 gap-1 text-xs"
+                  onClick={() => setAiOpen((prev) => !prev)}
+                >
+                  <Sparkles className="size-3.5" />
+                  Write with NOVA
+                  {aiOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                </Button>
+              </div>
+
+              {aiOpen ? (
+                <div className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 p-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="my-craft-prompt" className="text-xs">What should this email say?</Label>
+                    <Textarea
+                      id="my-craft-prompt"
+                      rows={3}
+                      placeholder={`e.g., Pitch a collaboration for ${selectedInfluencer?.name || "creator"} with free product and sponsorship fee`}
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["Professional", "Friendly", "Urgent", "Casual", "Promotional"].map((item) => (
+                      <Button
+                        key={item}
+                        type="button"
+                        size="sm"
+                        variant={aiTone === item ? "default" : "outline"}
+                        className="h-7 px-2.5 text-xs"
+                        onClick={() => setAiTone(item)}
+                      >
+                        {item}
+                      </Button>
+                    ))}
+                  </div>
+                  {aiError ? <p className="text-sm text-destructive">{aiError}</p> : null}
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleGenerateWithAi}
+                      disabled={aiGenerating}
+                      className="gap-1.5"
+                    >
+                      {aiGenerating ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+                      {aiGenerating ? "Writing…" : "Generate subject & body"}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="my-outreach-subj" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Email Subject
                 </Label>
                 {isEditingSubject ? (
                   <div className="flex items-center gap-2 rounded-xl border border-primary/60 bg-slate-900/40 p-2.5 ring-1 ring-primary/40">
@@ -681,9 +845,9 @@ function MyInfluencers() {
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="my-outreach-msg" className="text-xs font-semibold">
-                  Message
+              <div className="grid gap-1.5">
+                <Label htmlFor="my-outreach-msg" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Email Body
                 </Label>
                 {isEditingMessage ? (
                   <div className="space-y-2 rounded-xl border border-primary/60 bg-slate-900/40 p-3 ring-1 ring-primary/40">

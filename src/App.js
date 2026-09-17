@@ -13,6 +13,7 @@ const MessageCrafting = lazy(() => import("./pages/MessageCrafting"));
 const FindInfluencers = lazy(() => import("./pages/FindInfluencers"));
 const MyInfluencers = lazy(() => import("./pages/MyInfluencers"));
 const CollaborationHistory = lazy(() => import("./pages/CollaborationHistory"));
+const Chat = lazy(() => import("./pages/Chat"));
 const EmailManagement = lazy(() => import("./pages/EmailManagement"));
 const EmailTracking = lazy(() => import("./pages/EmailTracking"));
 const NewsletterTracking = lazy(() => import("./pages/NewsletterTracking"));
@@ -20,10 +21,12 @@ const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
+const CreatorCollabPortal = lazy(() => import("./pages/CreatorCollabPortal"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 import { useAuth } from "./lib/AuthContext";
 import { applyTheme, getTheme } from "./lib/theme";
 import LoadingScreen from "./components/LoadingScreen";
+import TopProgressBar from "./components/TopProgressBar";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -55,6 +58,14 @@ function RequireAuth() {
   return <AppShell />;
 }
 
+function RequireAuthBare() {
+  const { authed } = useAuth();
+  if (!authed) {
+    return <Navigate to="/login" replace />;
+  }
+  return <Outlet />;
+}
+
 function App() {
   const [initialLoading, setInitialLoading] = useState(true);
 
@@ -72,28 +83,34 @@ function App() {
 
   return (
     <Suspense fallback={null}>
+      <TopProgressBar />
       <ScrollToTop />
       <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/update-password" element={<UpdatePassword />} />
-      <Route element={<RequireAuth />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/dashboard-view" element={<DashboardView />} />
-        <Route path="/campaigns" element={<Campaigns />} />
-        <Route path="/campaign-analytics" element={<CampaignAnalytics />} />
-        <Route path="/message-crafter" element={<MessageCrafter />} />
-        <Route path="/message-crafting" element={<MessageCrafting />} />
-        <Route path="/email-management" element={<EmailManagement />} />
-        <Route path="/email-tracking" element={<EmailTracking />} />
-        <Route path="/newsletter-tracking" element={<NewsletterTracking />} />
-        <Route path="/find-influencers" element={<FindInfluencers />} />
-        <Route path="/my-influencers" element={<MyInfluencers />} />
-        <Route path="/collaboration-history" element={<CollaborationHistory />} />
-      </Route>
-      <Route path="*" element={<NotFound />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/update-password" element={<UpdatePassword />} />
+        <Route path="/collab/:token" element={<CreatorCollabPortal />} />
+        <Route element={<RequireAuthBare />}>
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/chat/:id" element={<Chat />} />
+        </Route>
+        <Route element={<RequireAuth />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard-view" element={<DashboardView />} />
+          <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/campaign-analytics" element={<CampaignAnalytics />} />
+          <Route path="/message-crafter" element={<MessageCrafter />} />
+          <Route path="/message-crafting" element={<MessageCrafting />} />
+          <Route path="/email-management" element={<EmailManagement />} />
+          <Route path="/email-tracking" element={<EmailTracking />} />
+          <Route path="/newsletter-tracking" element={<NewsletterTracking />} />
+          <Route path="/find-influencers" element={<FindInfluencers />} />
+          <Route path="/my-influencers" element={<MyInfluencers />} />
+          <Route path="/collaboration-history" element={<CollaborationHistory />} />
+        </Route>
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
   );

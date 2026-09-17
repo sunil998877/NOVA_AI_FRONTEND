@@ -284,11 +284,10 @@ function Campaigns() {
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <div
-                      className={`flex size-10 items-center justify-center rounded-lg shrink-0 ${
-                        campaign.isOutreach
-                          ? "bg-purple-500/15 text-purple-400 border border-purple-500/30"
-                          : "bg-primary/15 text-primary"
-                      }`}
+                      className={`flex size-10 items-center justify-center rounded-lg shrink-0 ${campaign.isOutreach
+                        ? "bg-purple-500/15 text-purple-400 border border-purple-500/30"
+                        : "bg-primary/15 text-primary"
+                        }`}
                     >
                       {campaign.isOutreach ? (
                         <Send className="size-4" />
@@ -299,14 +298,7 @@ function Campaigns() {
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-foreground">{campaign.name}</span>
-                        {campaign.isOutreach && (
-                          <Badge
-                            variant="outline"
-                            className="border-purple-500/40 bg-purple-500/10 text-purple-400 text-[10px] px-1.5 py-0 font-medium"
-                          >
-                            Outreach
-                          </Badge>
-                        )}
+
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
                         {campaign.subject}
@@ -447,9 +439,11 @@ function Campaigns() {
                         <DropdownMenuItem onClick={() => openViewRecipients(campaign)}>
                           <Eye /> View recipients & opens
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openAddRecipients(campaign)}>
-                          <UserPlus /> Add recipients
-                        </DropdownMenuItem>
+                        {!campaign.isOutreach && (
+                          <DropdownMenuItem onClick={() => openAddRecipients(campaign)}>
+                            <UserPlus /> Add recipients
+                          </DropdownMenuItem>
+                        )}
                         {campaign.recipients > 0 ? (
                           <DropdownMenuItem onClick={() => handleStart(campaign)}>
                             <Send /> {campaign.status === "completed" ? "Resend campaign" : "Send campaign"}

@@ -40,6 +40,7 @@ const pageMeta = {
   "/find-influencers": { title: "Find Influencers", section: "Network" },
   "/my-influencers": { title: "My Influencers", section: "Network" },
   "/collaboration-history": { title: "Collaboration History", section: "Network" },
+  "/chat": { title: "Chat", section: "Network" },
 };
 
 function SiteHeader() {

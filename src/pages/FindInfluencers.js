@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Search, Star, ExternalLink, Mail, Check, AlertCircle, ChevronLeft, ChevronRight, SlidersHorizontal, Send, Loader2, CheckCircle2, Copy, UserPlus, Pencil } from "lucide-react";
+import { Search, Star, ExternalLink, Mail, Check, AlertCircle, ChevronLeft, ChevronRight, SlidersHorizontal, Send, Loader2, CheckCircle2, Copy, UserPlus, Pencil, Sparkles, Wand2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -15,6 +15,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
+import { generateEmail } from "../lib/novaChat";
+import { parseDraft } from "../lib/draft";
 import { influencerApi } from "../lib/api";
 import { useToast } from "../components/ui/toast";
 import { SegmentedPagination } from "../components/ui/pagination";
@@ -80,6 +82,20 @@ function FindInfluencers() {
   const [isEditingMessage, setIsEditingMessage] = useState(false);
   const subjectInputRef = useRef(null);
   const messageInputRef = useRef(null);
+
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiTone, setAiTone] = useState("Friendly");
+  const [aiGoal, setAiGoal] = useState("Sponsorship Offer");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState(() => {
+    try {
+      return localStorage.getItem("nova_whatsapp_number") || "";
+    } catch (_) {
+      return "";
+    }
+  });
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newInfluencer, setNewInfluencer] = useState({
@@ -376,7 +392,58 @@ function FindInfluencers() {
     );
     setIsEditingSubject(false);
     setIsEditingMessage(false);
+    setAiOpen(false);
+    setAiPrompt("");
+    setAiError("");
     setOutreachOpen(true);
+  };
+
+  const handleGenerateWithAi = async () => {
+    if (!selectedInfluencer) return;
+    setAiGenerating(true);
+    setAiError("");
+    try {
+      const prompt = [
+        `Write a complete, highly persuasive cold outreach email to collaborate with an influencer.`,
+        `Influencer Name: ${selectedInfluencer.name || "Creator"}`,
+        selectedInfluencer.username ? `Handle / Channel: ${selectedInfluencer.username}` : "",
+        `Platform: ${selectedInfluencer.platform || "YouTube"}`,
+        selectedInfluencer.category ? `Niche / Category: ${selectedInfluencer.category}` : "",
+        selectedInfluencer.subscribers ? `Followers / Subscribers: ${formatNumber(selectedInfluencer.subscribers)}` : "",
+        `Goal: ${aiGoal}`,
+        `Tone: ${aiTone}`,
+        aiPrompt.trim() ? `Specific details / Offer: ${aiPrompt.trim()}` : "",
+        'Important formatting: Start the first line with "Subject: " followed by the email subject line. Then provide the full email body.',
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const res = await generateEmail({
+        prompt,
+        context: false,
+        conversationTitle: `Outreach to ${selectedInfluencer.name || "Creator"}`,
+      });
+
+      const raw = typeof res?.data === "string" ? res.data : JSON.stringify(res?.data, null, 2);
+      const parsed = parseDraft(raw);
+
+      if (parsed.subject) {
+        setOutreachSubject(parsed.subject);
+      }
+      if (parsed.body) {
+        setOutreachMessage(parsed.body);
+      } else if (raw) {
+        setOutreachMessage(raw);
+      }
+      setIsEditingSubject(false);
+      setIsEditingMessage(false);
+      setAiOpen(false);
+      toast.success("AI Outreach Draft Generated!", "Subject and message updated.");
+    } catch (err) {
+      setAiError(err.message || "Failed to generate AI email. Please try again.");
+    } finally {
+      setAiGenerating(false);
+    }
   };
 
   const handleSendOutreach = async (e) => {
@@ -427,6 +494,12 @@ function FindInfluencers() {
         }
       }
 
+      if (whatsappNumber.trim()) {
+        try {
+          localStorage.setItem("nova_whatsapp_number", whatsappNumber.trim());
+        } catch (_) {}
+      }
+
       await influencerApi.outreach({
         influencerId: savedId || undefined,
         name: selectedInfluencer?.name,
@@ -437,6 +510,7 @@ function FindInfluencers() {
         email: cleanEmail,
         subject: outreachSubject,
         message: outreachMessage,
+        whatsappNumber: whatsappNumber.trim() || undefined,
       });
 
       toast.success("Outreach email sent successfully", `Delivered to ${cleanEmail}`);
@@ -922,9 +996,86 @@ function FindInfluencers() {
                 )}
               </div>
 
+              {/* WhatsApp Contact Number */}
               <div className="space-y-1.5">
-                <Label htmlFor="outreach-subj" className="text-xs font-semibold">
-                  Subject
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="find-outreach-wa" className="text-xs font-semibold flex items-center gap-1.5">
+                    <span className="text-[#25D366] font-bold">💬</span>
+                    <span>Your WhatsApp Number (Optional)</span>
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground">
+                    Adds a 1-click WhatsApp button to email
+                  </span>
+                </div>
+                <Input
+                  id="find-outreach-wa"
+                  placeholder="e.g. +1 555 123 4567 or +91 98765 43210"
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Label className="mb-0 text-sm font-semibold">Email content</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto h-7 gap-1 text-xs"
+                  onClick={() => setAiOpen((prev) => !prev)}
+                >
+                  <Sparkles className="size-3.5" />
+                  Write with NOVA
+                  {aiOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                </Button>
+              </div>
+
+              {aiOpen ? (
+                <div className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 p-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="find-craft-prompt" className="text-xs">What should this email say?</Label>
+                    <Textarea
+                      id="find-craft-prompt"
+                      rows={3}
+                      placeholder={`e.g., Pitch a collaboration for ${selectedInfluencer?.name || "creator"} with free product and sponsorship fee`}
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["Professional", "Friendly", "Urgent", "Casual", "Promotional"].map((item) => (
+                      <Button
+                        key={item}
+                        type="button"
+                        size="sm"
+                        variant={aiTone === item ? "default" : "outline"}
+                        className="h-7 px-2.5 text-xs"
+                        onClick={() => setAiTone(item)}
+                      >
+                        {item}
+                      </Button>
+                    ))}
+                  </div>
+                  {aiError ? <p className="text-sm text-destructive">{aiError}</p> : null}
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleGenerateWithAi}
+                      disabled={aiGenerating}
+                      className="gap-1.5"
+                    >
+                      {aiGenerating ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+                      {aiGenerating ? "Writing…" : "Generate subject & body"}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="outreach-subj" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Email Subject
                 </Label>
                 {isEditingSubject ? (
                   <div className="flex items-center gap-2 rounded-xl border border-primary/60 bg-slate-900/40 p-2.5 ring-1 ring-primary/40">
@@ -963,9 +1114,9 @@ function FindInfluencers() {
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="outreach-msg" className="text-xs font-semibold">
-                  Message
+              <div className="grid gap-1.5">
+                <Label htmlFor="outreach-msg" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Email Body
                 </Label>
                 {isEditingMessage ? (
                   <div className="space-y-2 rounded-xl border border-primary/60 bg-slate-900/40 p-3 ring-1 ring-primary/40">

@@ -160,6 +160,17 @@ export const influencerApi = {
   deleteCollaboration: (id) => api(`/api/influencers/collaborations/${id}`, { method: "DELETE" }),
 };
 
+export const collabApi = {
+  getConversations: () => api("/api/collab/conversations"),
+  getPortal: (token) => api(`/api/collab/portal/${token}`),
+  sendPortalMessage: (token, content) =>
+    api(`/api/collab/portal/${token}/message`, { method: "POST", body: { content } }),
+  getMessages: (id, influencerId) =>
+    api(`/api/collab/${id || "latest"}/messages${influencerId ? `?influencerId=${influencerId}` : ""}`),
+  sendMessage: (id, content) =>
+    api(`/api/collab/${id}/messages`, { method: "POST", body: { content } }),
+};
+
 export const webhookApi = {
   send: (body) => api("/api/webhook", { method: "POST", body }),
 };

@@ -4,7 +4,6 @@ import {
   History,
   Search,
   Mail,
-  ExternalLink,
   Trash2,
   Send,
   Eye,
@@ -399,7 +398,19 @@ function CollaborationHistory() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <div className="font-semibold truncate max-w-[160px] sm:max-w-xs">{name}</div>
+                        {profileUrl ? (
+                          <a
+                            href={profileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-semibold truncate block max-w-[160px] sm:max-w-xs hover:text-primary hover:underline"
+                            title="Open channel / profile"
+                          >
+                            {name}
+                          </a>
+                        ) : (
+                          <div className="font-semibold truncate max-w-[160px] sm:max-w-xs">{name}</div>
+                        )}
                         <div className="text-xs text-muted-foreground truncate max-w-[160px]">
                           {username || `@${name.toLowerCase().replace(/\s+/g, "")}`}
                         </div>
@@ -445,16 +456,6 @@ function CollaborationHistory() {
                       >
                         <Send className="size-4" />
                       </Button>
-                      {profileUrl && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => window.open(profileUrl, "_blank", "noopener,noreferrer")}
-                          title="Open Channel / Profile"
-                        >
-                          <ExternalLink className="size-4" />
-                        </Button>
-                      )}
                       <Button
                         variant="ghost"
                         size="icon"

@@ -27,7 +27,9 @@ export function campaignMetrics(campaign, mails = []) {
       ? related.length
       : Number(campaign.total_recipients) > 0
         ? Number(campaign.total_recipients)
-        : 0;
+        : Number(campaign.sent_count) > 0
+          ? Number(campaign.sent_count)
+          : 0;
   const sentFromMails = related.filter(
     (mail) => mail.delivery_status === "sent" || mail.delivery_status === "opened" || mail.status || mail.sent_at
   ).length;

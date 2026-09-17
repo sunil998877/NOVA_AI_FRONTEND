@@ -72,6 +72,7 @@ const navGroups = [
       { path: "/find-influencers", label: "Find Influencers", icon: Users },
       { path: "/my-influencers", label: "My Influencers", icon: Star },
       { path: "/collaboration-history", label: "Collaboration History", icon: History },
+      { path: "/chat", label: "Chat", icon: MessageSquare },
     ],
   },
 ];
@@ -115,6 +116,7 @@ function AppSidebar(props) {
                 {group.items.map((item) => {
                   const isActive =
                     location.pathname === item.path ||
+                    (item.path === "/chat" && location.pathname.startsWith("/chat")) ||
                     (item.path === "/dashboard" && location.pathname === "/") ||
                     (item.path === "/message-crafting" && location.pathname === "/message-crafter");
 
