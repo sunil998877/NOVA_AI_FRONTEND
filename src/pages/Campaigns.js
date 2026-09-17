@@ -84,10 +84,19 @@ function Campaigns() {
   }, [hasProcessing, reload]);
 
   const filtered = rows.filter((c) => {
+    const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.subject.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filterStatus === "all" || c.status === filterStatus;
+      !q ||
+      c.name.toLowerCase().includes(q) ||
+      c.subject.toLowerCase().includes(q) ||
+      (c.sender_name && c.sender_name.toLowerCase().includes(q)) ||
+      (c.sender_email && c.sender_email.toLowerCase().includes(q));
+
+    let matchesFilter = true;
+    if (filterStatus === "all") matchesFilter = true;
+    else if (filterStatus === "outreach") matchesFilter = c.isOutreach;
+    else matchesFilter = c.status === filterStatus;
+
     return matchesSearch && matchesFilter;
   });
 
@@ -240,7 +249,7 @@ function Campaigns() {
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          {["all", "draft", "processing", "completed", "failed", "scheduled"].map((status) => (
+          {["all", "outreach", "draft", "processing", "completed", "failed", "scheduled"].map((status) => (
             <Button
               key={status}
               size="sm"
@@ -274,11 +283,34 @@ function Campaigns() {
               <TableRow key={campaign.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                      <Mail className="size-4" />
+                    <div
+                      className={`flex size-10 items-center justify-center rounded-lg shrink-0 ${
+                        campaign.isOutreach
+                          ? "bg-purple-500/15 text-purple-400 border border-purple-500/30"
+                          : "bg-primary/15 text-primary"
+                      }`}
+                    >
+                      {campaign.isOutreach ? (
+                        <Send className="size-4" />
+                      ) : (
+                        <Mail className="size-4" />
+                      )}
                     </div>
                     <div>
-                      <div className="font-medium text-foreground">{campaign.name}</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-foreground">{campaign.name}</span>
+                        {campaign.isOutreach && (
+                          <Badge
+                            variant="outline"
+                            className="border-purple-500/40 bg-purple-500/10 text-purple-400 text-[10px] px-1.5 py-0 font-medium"
+                          >
+                            Outreach
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+                        {campaign.subject}
+                      </p>
                     </div>
                   </div>
                 </TableCell>
@@ -320,9 +352,14 @@ function Campaigns() {
                 </TableCell>
                 <TableCell className="text-muted-foreground">{campaign.date}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="border-primary/30 text-primary">
-                    {campaign.list}
-                  </Badge>
+                  <div className="text-sm font-medium text-foreground">
+                    {campaign.sender_name || campaign.sender_email || (campaign.isOutreach ? "Influencer Outreach" : "NOVA")}
+                  </div>
+                  {campaign.sender_email && campaign.sender_name && (
+                    <div className="text-xs text-muted-foreground line-clamp-1">
+                      {campaign.sender_email}
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center justify-end gap-1.5">

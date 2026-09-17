@@ -68,8 +68,24 @@ export function campaignMetrics(campaign, mails = []) {
   };
 }
 
+export function isOutreachCampaign(campaign) {
+  const rawType = String(campaign?.type || campaign?.campaign_type || "").toLowerCase();
+  if (rawType === "influencer" || rawType === "outreach" || rawType === "creator") return true;
+  const title = String(campaign?.title || campaign?.name || "").trim().toLowerCase();
+  return (
+    title.startsWith("outreach to") ||
+    title.startsWith("outreach:") ||
+    title.startsWith("outreach for") ||
+    title.startsWith("outreach -") ||
+    title === "outreach" ||
+    title.includes("influencer outreach")
+  );
+}
+
 export function toCampaignRow(campaign, mails = []) {
   const metrics = campaignMetrics(campaign, mails);
+  const isOutreach = isOutreachCampaign(campaign);
+
   return {
     id: campaign.id,
     name: campaign.title,
@@ -78,6 +94,8 @@ export function toCampaignRow(campaign, mails = []) {
     subject: campaign.subject || "No subject yet",
     body: campaign.body || "",
     status: normalizeCampaignStatus(campaign),
+    isOutreach,
+    type: isOutreach ? "outreach" : "own",
     recipients: metrics.recipients,
     sent: metrics.sent,
     failed: metrics.failed,

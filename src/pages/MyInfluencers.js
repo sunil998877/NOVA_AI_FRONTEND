@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Mail, Trash2, ExternalLink, Users, Send, Search, CheckCircle2, AlertCircle, Copy, Loader2, UserPlus, Pencil, Check } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Mail, Trash2, ExternalLink, Users, Send, Search, CheckCircle2, AlertCircle, Copy, Loader2, UserPlus, Pencil, Check, Tag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -37,10 +37,24 @@ function formatNumber(num) {
   return n.toLocaleString();
 }
 
+const STANDARD_CATEGORIES = [
+  "All",
+  "Fitness",
+  "Technology",
+  "Travel",
+  "Food",
+  "Fashion",
+  "Gaming",
+  "Business",
+  "AI & SaaS",
+];
+
 function MyInfluencers() {
   const [influencers, setInfluencers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [outreachOpen, setOutreachOpen] = useState(false);
   const [selectedInfluencer, setSelectedInfluencer] = useState(null);
@@ -65,6 +79,7 @@ function MyInfluencers() {
     subscribers: "",
     videoCount: "",
     status: "saved",
+    category: "General",
     notes: "",
   });
   const [addingInfluencer, setAddingInfluencer] = useState(false);
@@ -96,6 +111,7 @@ function MyInfluencers() {
         subscribers: newInfluencer.subscribers ? Number(newInfluencer.subscribers) : 0,
         videoCount: newInfluencer.videoCount ? Number(newInfluencer.videoCount) : 0,
         status: newInfluencer.status || "saved",
+        category: newInfluencer.category || "General",
         notes: newInfluencer.notes.trim() || null,
       };
 
@@ -114,15 +130,46 @@ function MyInfluencers() {
         subscribers: "",
         videoCount: "",
         status: "saved",
+        category: "General",
         notes: "",
       });
-      load();
+      await load();
     } catch (err) {
       toast.error("Could not add influencer", err.message);
     } finally {
       setAddingInfluencer(false);
     }
   };
+
+  const availableCategories = useMemo(() => {
+    const list = [...STANDARD_CATEGORIES];
+    influencers.forEach((inf) => {
+      const cat = inf.category?.trim();
+      if (cat && !list.some((c) => c.toLowerCase() === cat.toLowerCase())) {
+        list.push(cat);
+      }
+    });
+    return list;
+  }, [influencers]);
+
+  const filteredInfluencers = useMemo(() => {
+    return influencers.filter((inf) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        (inf.name && inf.name.toLowerCase().includes(q)) ||
+        (inf.username && inf.username.toLowerCase().includes(q)) ||
+        (inf.email && inf.email.toLowerCase().includes(q)) ||
+        (inf.category && inf.category.toLowerCase().includes(q));
+
+      const infCat = String(inf.category || "General").toLowerCase();
+      const matchesCategory =
+        selectedCategory === "all" ||
+        infCat === selectedCategory.toLowerCase();
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [influencers, searchQuery, selectedCategory]);
 
   const load = async () => {
     setLoading(true);
@@ -228,7 +275,7 @@ function MyInfluencers() {
       if (selectedInfluencer?.id && (saveEmailToProfile || !selectedInfluencer.email)) {
         try {
           await influencerApi.update(selectedInfluencer.id, { email: cleanEmail });
-        } catch (_) {}
+        } catch (_) { }
       }
 
       await influencerApi.outreach({
@@ -296,11 +343,48 @@ function MyInfluencers() {
         ))}
       </div>
 
+      {/* Category Filter Buttons right down below the stat cards */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="relative w-full md:max-w-xs">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search saved creators..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {availableCategories.map((cat) => {
+            const isAll = cat.toLowerCase() === "all";
+            const isActive = isAll
+              ? selectedCategory === "all"
+              : selectedCategory.toLowerCase() === cat.toLowerCase();
+
+            return (
+              <Button
+                key={cat}
+                type="button"
+                size="sm"
+                variant={isActive ? "default" : "outline"}
+                className={`h-8 text-xs transition-all ${
+                  isActive ? "" : "hover:border-primary/50 hover:text-primary"
+                }`}
+                onClick={() => setSelectedCategory(isAll ? "all" : cat)}
+              >
+                {cat}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
       <Card className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Influencer</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead>Platform</TableHead>
               <TableHead>Email Status</TableHead>
               <TableHead>Subscribers</TableHead>
@@ -311,7 +395,7 @@ function MyInfluencers() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {influencers.map((inf) => (
+            {filteredInfluencers.map((inf) => (
               <TableRow key={inf.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
@@ -328,6 +412,11 @@ function MyInfluencers() {
                       </div>
                     </div>
                   </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary font-medium text-xs">
+                    {inf.category || "General"}
+                  </Badge>
                 </TableCell>
                 <TableCell>{getPlatformBadge(inf.platform)}</TableCell>
                 <TableCell>
@@ -735,6 +824,30 @@ function MyInfluencers() {
                 </div>
 
                 <div className="grid gap-1.5">
+                  <Label htmlFor="manual-category" className="text-xs font-semibold">Category</Label>
+                  <select
+                    id="manual-category"
+                    value={newInfluencer.category || "General"}
+                    onChange={(e) => setNewInfluencer((prev) => ({ ...prev, category: e.target.value }))}
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring capitalize"
+                  >
+                    <option value="General">General</option>
+                    <option value="Fitness">Fitness</option>
+                    <option value="Technology">Technology</option>
+                    <option value="Travel">Travel</option>
+                    <option value="Food">Food</option>
+                    <option value="Fashion">Fashion</option>
+                    <option value="Gaming">Gaming</option>
+                    <option value="Business">Business</option>
+                    <option value="AI & SaaS">AI & SaaS</option>
+                    <option value="Lifestyle">Lifestyle</option>
+                    <option value="Entertainment">Entertainment</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
                   <Label htmlFor="manual-status" className="text-xs font-semibold">Initial Status</Label>
                   <select
                     id="manual-status"
@@ -748,9 +861,7 @@ function MyInfluencers() {
                     <option value="collaborating">Collaborating</option>
                   </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
                   <Label htmlFor="manual-subs" className="text-xs font-semibold">Followers / Subscribers</Label>
                   <Input
@@ -761,17 +872,17 @@ function MyInfluencers() {
                     onChange={(e) => setNewInfluencer((prev) => ({ ...prev, subscribers: e.target.value }))}
                   />
                 </div>
+              </div>
 
-                <div className="grid gap-1.5">
-                  <Label htmlFor="manual-videos" className="text-xs font-semibold">Video / Post Count</Label>
-                  <Input
-                    id="manual-videos"
-                    type="number"
-                    placeholder="e.g. 150"
-                    value={newInfluencer.videoCount}
-                    onChange={(e) => setNewInfluencer((prev) => ({ ...prev, videoCount: e.target.value }))}
-                  />
-                </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="manual-videos" className="text-xs font-semibold">Video / Post Count</Label>
+                <Input
+                  id="manual-videos"
+                  type="number"
+                  placeholder="e.g. 150"
+                  value={newInfluencer.videoCount}
+                  onChange={(e) => setNewInfluencer((prev) => ({ ...prev, videoCount: e.target.value }))}
+                />
               </div>
 
               <div className="grid gap-1.5">

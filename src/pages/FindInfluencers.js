@@ -91,6 +91,7 @@ function FindInfluencers() {
     subscribers: "",
     videoCount: "",
     status: "saved",
+    category: "General",
     notes: "",
   });
   const [addingInfluencer, setAddingInfluencer] = useState(false);
@@ -112,7 +113,7 @@ function FindInfluencers() {
       });
       setSavedIds(idSet);
       setSavedMap(map);
-    } catch (_) {}
+    } catch (_) { }
   };
 
   useEffect(() => {
@@ -216,6 +217,7 @@ function FindInfluencers() {
         subscribers: newInfluencer.subscribers ? Number(newInfluencer.subscribers) : 0,
         videoCount: newInfluencer.videoCount ? Number(newInfluencer.videoCount) : 0,
         status: newInfluencer.status || "saved",
+        category: newInfluencer.category || "General",
         notes: newInfluencer.notes.trim() || null,
       };
 
@@ -349,6 +351,7 @@ function FindInfluencers() {
           viewCount: inf.viewCount,
           location: inf.location,
           status: "saved",
+          category: inf.category || (searchQuery && searchQuery.trim()) || "General",
         });
         setSavedIds((prev) => new Set(prev).add(key));
         if (res?.id) {
@@ -416,11 +419,11 @@ function FindInfluencers() {
               setSavedIds((prev) => new Set(prev).add(key));
               setSavedMap((prev) => new Map(prev).set(key, res.id));
             }
-          } catch (_) {}
+          } catch (_) { }
         } else {
           try {
             await influencerApi.update(savedId, { email: cleanEmail });
-          } catch (_) {}
+          } catch (_) { }
         }
       }
 
@@ -542,7 +545,6 @@ function FindInfluencers() {
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground mr-1">Categories:</span>
             {categories.map((cat) => (
               <Button
                 key={cat}
@@ -1104,6 +1106,30 @@ function FindInfluencers() {
                 </div>
 
                 <div className="grid gap-1.5">
+                  <Label htmlFor="find-manual-category" className="text-xs font-semibold">Category</Label>
+                  <select
+                    id="find-manual-category"
+                    value={newInfluencer.category || "General"}
+                    onChange={(e) => setNewInfluencer((prev) => ({ ...prev, category: e.target.value }))}
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="General">General</option>
+                    <option value="Fitness">Fitness</option>
+                    <option value="Technology">Technology</option>
+                    <option value="Travel">Travel</option>
+                    <option value="Food">Food</option>
+                    <option value="Fashion">Fashion</option>
+                    <option value="Gaming">Gaming</option>
+                    <option value="Business">Business</option>
+                    <option value="AI & SaaS">AI & SaaS</option>
+                    <option value="Lifestyle">Lifestyle</option>
+                    <option value="Entertainment">Entertainment</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
                   <Label htmlFor="find-manual-status" className="text-xs font-semibold">Initial Status</Label>
                   <select
                     id="find-manual-status"
@@ -1117,9 +1143,7 @@ function FindInfluencers() {
                     <option value="collaborating">Collaborating</option>
                   </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
                   <Label htmlFor="find-manual-subs" className="text-xs font-semibold">Followers / Subscribers</Label>
                   <Input
@@ -1130,17 +1154,17 @@ function FindInfluencers() {
                     onChange={(e) => setNewInfluencer((prev) => ({ ...prev, subscribers: e.target.value }))}
                   />
                 </div>
+              </div>
 
-                <div className="grid gap-1.5">
-                  <Label htmlFor="find-manual-videos" className="text-xs font-semibold">Video / Post Count</Label>
-                  <Input
-                    id="find-manual-videos"
-                    type="number"
-                    placeholder="e.g. 150"
-                    value={newInfluencer.videoCount}
-                    onChange={(e) => setNewInfluencer((prev) => ({ ...prev, videoCount: e.target.value }))}
-                  />
-                </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="find-manual-videos" className="text-xs font-semibold">Video / Post Count</Label>
+                <Input
+                  id="find-manual-videos"
+                  type="number"
+                  placeholder="e.g. 150"
+                  value={newInfluencer.videoCount}
+                  onChange={(e) => setNewInfluencer((prev) => ({ ...prev, videoCount: e.target.value }))}
+                />
               </div>
 
               <div className="grid gap-1.5">
