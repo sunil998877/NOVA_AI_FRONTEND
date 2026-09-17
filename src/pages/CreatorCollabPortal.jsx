@@ -23,12 +23,18 @@ import {
   Tag,
   Globe,
   Radio,
+  Bell,
+  BellRing,
+  BellOff,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { collabApi } from "../lib/api";
+import { useSocket } from "../context/SocketContext";
 
 function formatNumber(num) {
   if (num === null || num === undefined || num === "") return null;
@@ -84,6 +90,39 @@ function formatDate(dateStr) {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+function playMessageChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(523.25, now);
+    osc1.frequency.exponentialRampToValueAtTime(783.99, now + 0.1);
+
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(783.99, now + 0.1);
+    osc2.frequency.exponentialRampToValueAtTime(1046.50, now + 0.22);
+
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start(now);
+    osc2.start(now + 0.1);
+    osc1.stop(now + 0.1);
+    osc2.stop(now + 0.35);
+  } catch (_) {}
+}
+
 export default function CreatorCollabPortal() {
   const { token } = useParams();
   const [loading, setLoading] = useState(true);
@@ -94,10 +133,85 @@ export default function CreatorCollabPortal() {
   const [sending, setSending] = useState(false);
   const [showFullPitch, setShowFullPitch] = useState(false);
   const [infoDrawerOpen, setInfoDrawerOpen] = useState(false);
+
+  // Notification & sound alert states
+  const [notifPermission, setNotifPermission] = useState(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default"
+  );
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    return localStorage.getItem("nova_portal_sound") !== "false";
+  });
+
+  const { socket, isConnected, connectWithToken } = useSocket();
+  const [isBrandTyping, setIsBrandTyping] = useState(false);
+  const brandTypingTimerRef = useRef(null);
+  const localTypingTimeoutRef = useRef(null);
+  const isTypingLocalRef = useRef(false);
+
+  const lastMessageIdRef = useRef(null);
+  const prevMessagesCountRef = useRef(0);
+  const originalTitleRef = useRef(typeof document !== "undefined" ? document.title : "");
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = (behavior = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem("nova_portal_notif_dismissed");
+    if (
+      typeof window !== "undefined" &&
+      "Notification" in window &&
+      Notification.permission === "default" &&
+      !dismissed
+    ) {
+      setShowNotifPrompt(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const onFocus = () => {
+      if (originalTitleRef.current) {
+        document.title = originalTitleRef.current;
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
+  const requestNotificationPermission = async () => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      try {
+        const perm = await Notification.requestPermission();
+        setNotifPermission(perm);
+        setShowNotifPrompt(false);
+        if (perm === "granted") {
+          localStorage.setItem("nova_portal_notifications", "granted");
+          playMessageChime();
+          try {
+            new Notification("NOVA Creator Portal", {
+              body: "Real-time alerts active! You will hear a chime and receive notifications when the brand messages you.",
+              icon: "/favicon.ico",
+            });
+          } catch (_) {}
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  const dismissNotificationPrompt = () => {
+    setShowNotifPrompt(false);
+    localStorage.setItem("nova_portal_notif_dismissed", "true");
+  };
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    localStorage.setItem("nova_portal_sound", String(next));
+    if (next) playMessageChime();
   };
 
   const loadPortalData = async (quiet = false) => {
@@ -108,7 +222,44 @@ export default function CreatorCollabPortal() {
         setError(res.error);
       } else {
         setCollab(res.collaboration);
-        setMessages(res.messages || []);
+        const incoming = res.messages || [];
+        setMessages(incoming);
+
+        if (incoming.length > 0) {
+          const latestMsg = incoming[incoming.length - 1];
+          const isFromBrand = latestMsg.sender_type === "marketer" || latestMsg.senderType === "marketer";
+
+          if (
+            lastMessageIdRef.current &&
+            String(latestMsg.id) !== String(lastMessageIdRef.current) &&
+            incoming.length > prevMessagesCountRef.current &&
+            isFromBrand
+          ) {
+            if (soundEnabled) {
+              playMessageChime();
+            }
+
+            if (
+              typeof window !== "undefined" &&
+              "Notification" in window &&
+              Notification.permission === "granted"
+            ) {
+              try {
+                new Notification("New message from Brand", {
+                  body: latestMsg.content,
+                  icon: "/favicon.ico",
+                  tag: `portal-${latestMsg.id}`,
+                });
+              } catch (_) {}
+            }
+
+            document.title = `💬 (1) New message from Brand`;
+          }
+
+          lastMessageIdRef.current = latestMsg.id;
+          prevMessagesCountRef.current = incoming.length;
+        }
+
         setError("");
       }
     } catch (err) {
@@ -123,17 +274,102 @@ export default function CreatorCollabPortal() {
   useEffect(() => {
     if (token) {
       loadPortalData();
+      connectWithToken(token);
     }
   }, [token]);
 
-  // Poll for new messages every 5 seconds
   useEffect(() => {
     if (!token || error) return;
     const interval = setInterval(() => {
       loadPortalData(true);
     }, 5000);
     return () => clearInterval(interval);
-  }, [token, error]);
+  }, [token, error, soundEnabled]);
+
+  useEffect(() => {
+    if (!socket || !collab?.id) return;
+
+    socket.emit("joinConversation", { conversationId: collab.id });
+    socket.emit("message:read", { conversationId: collab.id });
+
+    const handleNewMessage = (newMsg) => {
+      if (!newMsg) return;
+      const msgCollabId = String(newMsg.conversationId || newMsg.collaboration_id || "");
+      if (msgCollabId === String(collab.id)) {
+        setMessages((prev) => {
+          if (newMsg.tempId) {
+            const hasTemp = prev.some((m) => m.id === newMsg.tempId || m.tempId === newMsg.tempId);
+            if (hasTemp) {
+              return prev.map((m) =>
+                m.id === newMsg.tempId || m.tempId === newMsg.tempId ? newMsg : m
+              );
+            }
+          }
+          const exists = prev.some((m) => String(m.id) === String(newMsg.id));
+          if (exists) return prev;
+          return [...prev, newMsg];
+        });
+
+        const isFromBrand =
+          newMsg.sender_type === "marketer" ||
+          newMsg.senderType === "marketer" ||
+          newMsg.senderType === "user";
+
+        if (isFromBrand) {
+          if (soundEnabled) playMessageChime();
+          if (
+            typeof window !== "undefined" &&
+            "Notification" in window &&
+            Notification.permission === "granted"
+          ) {
+            try {
+              new Notification("New message from Brand", {
+                body: newMsg.message || newMsg.content,
+                icon: "/favicon.ico",
+                tag: `portal-${newMsg.id}`,
+              });
+            } catch (_) {}
+          }
+          document.title = "💬 (1) New message from Brand";
+          socket.emit("message:read", { conversationId: collab.id });
+        }
+        setTimeout(() => scrollToBottom("smooth"), 50);
+      }
+    };
+
+    const handleTypingStart = (data) => {
+      if (String(data.conversationId) === String(collab.id)) {
+        setIsBrandTyping(true);
+        if (brandTypingTimerRef.current) clearTimeout(brandTypingTimerRef.current);
+        brandTypingTimerRef.current = setTimeout(() => setIsBrandTyping(false), 3500);
+      }
+    };
+
+    const handleTypingStop = (data) => {
+      if (String(data.conversationId) === String(collab.id)) {
+        setIsBrandTyping(false);
+        if (brandTypingTimerRef.current) clearTimeout(brandTypingTimerRef.current);
+      }
+    };
+
+    const onReconnect = () => {
+      socket.emit("joinConversation", { conversationId: collab.id });
+      loadPortalData(true);
+    };
+
+    socket.on("newMessage", handleNewMessage);
+    socket.on("typing:start", handleTypingStart);
+    socket.on("typing:stop", handleTypingStop);
+    socket.on("connect", onReconnect);
+
+    return () => {
+      socket.off("newMessage", handleNewMessage);
+      socket.off("typing:start", handleTypingStart);
+      socket.off("typing:stop", handleTypingStop);
+      socket.off("connect", onReconnect);
+      if (brandTypingTimerRef.current) clearTimeout(brandTypingTimerRef.current);
+    };
+  }, [socket, collab?.id, soundEnabled]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -141,17 +377,34 @@ export default function CreatorCollabPortal() {
     }
   }, [messages.length]);
 
+  const handleLocalTyping = () => {
+    if (!socket || !collab?.id) return;
+    if (!isTypingLocalRef.current) {
+      isTypingLocalRef.current = true;
+      socket.emit("typing:start", { conversationId: collab.id });
+    }
+    if (localTypingTimeoutRef.current) clearTimeout(localTypingTimeoutRef.current);
+    localTypingTimeoutRef.current = setTimeout(() => {
+      isTypingLocalRef.current = false;
+      socket.emit("typing:stop", { conversationId: collab.id });
+    }, 2000);
+  };
+
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
     const cleanContent = newMessage.trim();
     if (!cleanContent || sending) return;
 
-    // Optimistic message update
+    const tempId = `temp-${Date.now()}`;
     const optimisticMsg = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
+      tempId,
       sender_type: "influencer",
+      senderType: "influencer",
       sender_name: collab?.influencerName || "You",
+      senderName: collab?.influencerName || "You",
       content: cleanContent,
+      message: cleanContent,
       createdAt: new Date().toISOString(),
     };
 
@@ -159,22 +412,47 @@ export default function CreatorCollabPortal() {
     setNewMessage("");
     setSending(true);
 
-    try {
-      const res = await collabApi.sendPortalMessage(token, cleanContent);
-      if (res?.message) {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === optimisticMsg.id ? res.message : m))
-        );
+    if (collab && (collab.status === "sent" || collab.status === "contacted")) {
+      setCollab((prev) => ({ ...prev, status: "negotiating" }));
+    }
+
+    if (socket && socket.connected && collab?.id) {
+      socket.emit(
+        "sendMessage",
+        {
+          conversationId: collab.id,
+          message: cleanContent,
+          messageType: "text",
+          tempId,
+        },
+        async (err, res) => {
+          setSending(false);
+          if (err || res?.error) {
+            try {
+              const restRes = await collabApi.sendPortalMessage(token, cleanContent);
+              if (restRes?.message) {
+                setMessages((prev) => prev.map((m) => (m.id === tempId ? restRes.message : m)));
+              }
+            } catch (_) {}
+          } else if (res?.message) {
+            setMessages((prev) => prev.map((m) => (m.id === tempId ? res.message : m)));
+          }
+          scrollToBottom();
+        }
+      );
+    } else {
+      try {
+        const res = await collabApi.sendPortalMessage(token, cleanContent);
+        if (res?.message) {
+          setMessages((prev) => prev.map((m) => (m.id === tempId ? res.message : m)));
+        }
+      } catch (err) {
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        alert("Failed to send message: " + (err.message || "Network error"));
+      } finally {
+        setSending(false);
+        scrollToBottom();
       }
-      if (collab && (collab.status === "sent" || collab.status === "contacted")) {
-        setCollab((prev) => ({ ...prev, status: "negotiating" }));
-      }
-    } catch (err) {
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
-      alert("Failed to send message: " + (err.message || "Network error"));
-    } finally {
-      setSending(false);
-      scrollToBottom();
     }
   };
 
@@ -382,6 +660,12 @@ export default function CreatorCollabPortal() {
                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border shrink-0 ${getPlatformBadge(collab.platform).badgeClass}`}>
                   {getPlatformBadge(collab.platform).label}
                 </span>
+                {isConnected && (
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 font-bold">
+                    <span className="size-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    LIVE
+                  </span>
+                )}
               </div>
 
             </div>
@@ -412,6 +696,51 @@ export default function CreatorCollabPortal() {
                 <span>WhatsApp</span>
               </a>
             )}
+            {/* Real-time Notification & Sound Alert Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                if (notifPermission !== "granted") {
+                  requestNotificationPermission();
+                } else {
+                  toggleSound();
+                }
+              }}
+              className={`h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+                notifPermission === "granted"
+                  ? soundEnabled
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+                    : "bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
+                  : "bg-[#2a3942] border-[#374248] text-slate-300 hover:text-white"
+              }`}
+              title={
+                notifPermission === "granted"
+                  ? soundEnabled
+                    ? "Real-time alerts active (Click to mute sound)"
+                    : "Sound muted (Click to unmute sound)"
+                  : "Click to allow real-time message alerts"
+              }
+            >
+              {notifPermission === "granted" ? (
+                soundEnabled ? (
+                  <>
+                    <BellRing className="size-3.5 text-[#25D366]" />
+                    <span className="hidden sm:inline text-[11px]">Alerts ON</span>
+                  </>
+                ) : (
+                  <>
+                    <VolumeX className="size-3.5 text-amber-400" />
+                    <span className="hidden sm:inline text-[11px]">Muted</span>
+                  </>
+                )
+              ) : (
+                <>
+                  <Bell className="size-3.5 text-slate-400" />
+                  <span className="hidden sm:inline text-[11px]">Enable Alerts</span>
+                </>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={() => setInfoDrawerOpen(true)}
@@ -422,6 +751,39 @@ export default function CreatorCollabPortal() {
             </button>
           </div>
         </div>
+
+        {/* Real-time Message Notification Permission Request Banner */}
+        {showNotifPrompt && (
+          <div className="bg-[#182229] border-b border-[#2a3942] px-4 py-2.5 flex items-center justify-between gap-3 text-xs z-20 animate-in slide-in-from-top-1 duration-200">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="size-8 rounded-full bg-[#00a884]/20 border border-[#00a884]/40 flex items-center justify-center text-[#25D366] shrink-0">
+                <BellRing className="size-4 animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-white truncate">Allow real-time message alerts?</p>
+                <p className="text-[11px] text-slate-400 truncate">
+                  Hear an audio chime and get desktop notifications when the brand replies.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                onClick={requestNotificationPermission}
+                className="h-7 px-3 bg-[#00a884] hover:bg-[#029072] text-white font-semibold text-xs rounded-lg cursor-pointer transition-all shadow-xs"
+              >
+                Allow
+              </Button>
+              <button
+                type="button"
+                onClick={dismissNotificationPrompt}
+                className="text-slate-400 hover:text-white text-xs px-2 py-1 transition-colors cursor-pointer"
+              >
+                Later
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Messages Feed */}
         <div
@@ -465,11 +827,15 @@ export default function CreatorCollabPortal() {
                         {m.sender_name || "Brand Team"}
                       </p>
                     )}
-                    <p className="whitespace-pre-wrap">{m.content}</p>
+                    <p className="whitespace-pre-wrap">{m.content || m.message}</p>
                     <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-300/80">
                       <span>{formatTime(m.createdAt || m.created_at)}</span>
                       {isCreator && (
-                        <CheckCheck className="size-3.5 text-[#53bdeb]" />
+                        <CheckCheck
+                          className={`size-3.5 ${
+                            m.isRead || m.is_read ? "text-[#53bdeb]" : "text-slate-400"
+                          }`}
+                        />
                       )}
                     </div>
                   </div>
@@ -477,10 +843,24 @@ export default function CreatorCollabPortal() {
               );
             })
           )}
+
+          {isBrandTyping && (
+            <div className="flex flex-col items-start animate-in fade-in duration-200">
+              <div className="bg-[#202c33] text-slate-300 rounded-2xl px-3.5 py-2 text-xs rounded-tl-xs border border-[#2a3942]/60 flex items-center gap-1.5">
+                <span className="text-[11px] font-medium text-emerald-400">
+                  Brand team is typing
+                </span>
+                <span className="flex items-center gap-0.5 ml-1">
+                  <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce" />
+                  <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce [animation-delay:150ms]" />
+                  <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce [animation-delay:300ms]" />
+                </span>
+              </div>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Quick Creator Reply Chips */}
         <div
           className="px-3 py-2 bg-[#111b21] border-t border-[#202c33] flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none text-xs shrink-0"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
@@ -502,7 +882,6 @@ export default function CreatorCollabPortal() {
           ))}
         </div>
 
-        {/* WhatsApp Bottom Input Bar */}
         <form
           onSubmit={handleSendMessage}
           className="p-2.5 sm:p-3 bg-[#202c33] border-t border-[#2a3942] flex items-center gap-2 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
@@ -510,7 +889,10 @@ export default function CreatorCollabPortal() {
           <Input
             placeholder="Type a message or rate proposal..."
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={(e) => {
+              setNewMessage(e.target.value);
+              handleLocalTyping();
+            }}
             disabled={sending}
             className="h-10 bg-[#2a3942] border-0 text-white placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-emerald-500 rounded-lg flex-1 min-w-0"
           />

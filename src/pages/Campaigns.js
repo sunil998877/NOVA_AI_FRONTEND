@@ -68,6 +68,11 @@ function Campaigns() {
     setViewRecipientsOpen(true);
   };
 
+  const openPreview = (campaign) => {
+    setPreviewCampaign(campaign);
+    setPreviewOpen(true);
+  };
+
   const rows = useMemo(
     () => campaigns.map((campaign) => toCampaignRow(campaign, mails)),
     [campaigns, mails]
@@ -282,9 +287,13 @@ function Campaigns() {
             {filtered.map((campaign) => (
               <TableRow key={campaign.id}>
                 <TableCell>
-                  <div className="flex items-center gap-3">
+                  <div
+                    className="flex items-center gap-3 cursor-pointer group select-none"
+                    onClick={() => openPreview(campaign)}
+                    title="Click to preview email"
+                  >
                     <div
-                      className={`flex size-10 items-center justify-center rounded-lg shrink-0 ${campaign.isOutreach
+                      className={`flex size-10 items-center justify-center rounded-lg shrink-0 transition-transform group-hover:scale-105 ${campaign.isOutreach
                         ? "bg-purple-500/15 text-purple-400 border border-purple-500/30"
                         : "bg-primary/15 text-primary"
                         }`}
@@ -297,10 +306,11 @@ function Campaigns() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-foreground">{campaign.name}</span>
-
+                        <span className="font-medium text-foreground group-hover:text-primary transition underline-offset-2 group-hover:underline">
+                          {campaign.name}
+                        </span>
                       </div>
-                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1 group-hover:text-muted-foreground/80">
                         {campaign.subject}
                       </p>
                     </div>
@@ -355,6 +365,18 @@ function Campaigns() {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center justify-end gap-1.5">
+                    {/* Direct Preview Button */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 gap-1.5 border-border/80 hover:bg-accent hover:text-foreground text-xs font-medium"
+                      onClick={() => openPreview(campaign)}
+                      title="Preview email layout"
+                    >
+                      <Eye className="size-3.5 text-primary" />
+                      Preview
+                    </Button>
+
                     {campaign.recipients === 0 &&
                       (campaign.status === "draft" ||
                         campaign.status === "scheduled" ||
@@ -436,8 +458,16 @@ function Campaigns() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            openPreview(campaign);
+                          }}
+                        >
+                          <Eye /> Preview email
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openViewRecipients(campaign)}>
-                          <Eye /> View recipients & opens
+                          <Users /> View recipients & opens
                         </DropdownMenuItem>
                         {!campaign.isOutreach && (
                           <DropdownMenuItem onClick={() => openAddRecipients(campaign)}>
@@ -456,14 +486,6 @@ function Campaigns() {
                         ) : null}
                         <DropdownMenuItem onClick={() => navigate("/email-management")}>
                           <Mail /> Email management
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setPreviewCampaign(campaign);
-                            setPreviewOpen(true);
-                          }}
-                        >
-                          <Eye /> Preview
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => navigate("/campaign-analytics")}>
                           <ChartBar /> Analytics

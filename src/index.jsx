@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import AppErrorBoundary from './components/AppErrorBoundary';
 import { AuthProvider } from './lib/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 import { ToastProvider } from './components/ui/toast';
 import './styles/global.css';
 
@@ -12,11 +13,13 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <ToastProvider>
-          <AppErrorBoundary>
-            <App />
-          </AppErrorBoundary>
-        </ToastProvider>
+        <SocketProvider>
+          <ToastProvider>
+            <AppErrorBoundary>
+              <App />
+            </AppErrorBoundary>
+          </ToastProvider>
+        </SocketProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

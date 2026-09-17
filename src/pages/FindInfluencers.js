@@ -712,16 +712,45 @@ function FindInfluencers() {
                 <CardContent className="p-5 flex-1 flex flex-col justify-between space-y-4">
                   <div>
                     <div className="flex items-start gap-3">
-                      <Avatar className="size-12 border">
-                        {inf.profileImage && <AvatarImage src={inf.profileImage} alt={inf.name} />}
-                        <AvatarFallback className="bg-primary/10 font-bold text-primary">
-                          {(inf.name || "Y").slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      {inf.profileUrl ? (
+                        <a
+                          href={inf.profileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 transition-opacity hover:opacity-85"
+                          title="View channel"
+                        >
+                          <Avatar className="size-12 border">
+                            {inf.profileImage && <AvatarImage src={inf.profileImage} alt={inf.name} />}
+                            <AvatarFallback className="bg-primary/10 font-bold text-primary">
+                              {(inf.name || "Y").slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        </a>
+                      ) : (
+                        <Avatar className="size-12 border">
+                          {inf.profileImage && <AvatarImage src={inf.profileImage} alt={inf.name} />}
+                          <AvatarFallback className="bg-primary/10 font-bold text-primary">
+                            {(inf.name || "Y").slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
                       <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-base font-semibold" title={inf.name}>
-                          {inf.name}
-                        </h3>
+                        {inf.profileUrl ? (
+                          <a
+                            href={inf.profileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="truncate block text-base font-semibold hover:text-primary hover:underline"
+                            title={inf.name}
+                          >
+                            {inf.name}
+                          </a>
+                        ) : (
+                          <h3 className="truncate text-base font-semibold" title={inf.name}>
+                            {inf.name}
+                          </h3>
+                        )}
                         <p className="truncate text-xs text-muted-foreground">
                           {inf.username || `@${inf.name.toLowerCase().replace(/\s+/g, "")}`}
                         </p>
@@ -807,17 +836,6 @@ function FindInfluencers() {
                         <span className="text-xs">{inf.email ? "Outreach" : "Contact"}</span>
                       </Button>
                     </div>
-
-                    {inf.profileUrl && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full text-xs text-muted-foreground hover:text-foreground"
-                        onClick={() => window.open(inf.profileUrl, "_blank", "noopener,noreferrer")}
-                      >
-                        <ExternalLink className="mr-1.5 size-3" /> View Channel
-                      </Button>
-                    )}
                   </div>
                 </CardContent>
               </Card>

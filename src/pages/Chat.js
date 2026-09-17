@@ -20,6 +20,11 @@ import {
   Tag,
   SquarePen,
   ChevronDown,
+  Bell,
+  BellRing,
+  BellOff,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
@@ -27,6 +32,8 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { collabApi, influencerApi } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
+import { useToast } from "../components/ui/toast";
+import { useSocket } from "../context/SocketContext";
 
 function formatNumber(num) {
   if (num === null || num === undefined || num === "") return null;
@@ -101,10 +108,44 @@ function formatTime(dateStr) {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+function playMessageChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(523.25, now);
+    osc1.frequency.exponentialRampToValueAtTime(783.99, now + 0.1);
+
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(783.99, now + 0.1);
+    osc2.frequency.exponentialRampToValueAtTime(1046.50, now + 0.22);
+
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start(now);
+    osc2.start(now + 0.1);
+    osc1.stop(now + 0.1);
+    osc2.stop(now + 0.35);
+  } catch (_) {}
+}
+
 export default function Chat() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const toast = useToast();
   const userInitials = user?.fullName ? user.fullName[0].toUpperCase() : "M";
 
   const [conversations, setConversations] = useState([]);
@@ -124,10 +165,96 @@ export default function Chat() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [mobileChatView, setMobileChatView] = useState(false);
 
+  // Real-time notification & sound alert states
+  const [notifPermission, setNotifPermission] = useState(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default"
+  );
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    return localStorage.getItem("nova_chat_sound") !== "false";
+  });
+
+  const { socket, isConnected, isUserOnline } = useSocket();
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
+  const typingTimerRef = useRef(null);
+  const localTypingTimeoutRef = useRef(null);
+  const isTypingLocalRef = useRef(false);
+
+  const lastMessageIdRef = useRef(null);
+  const prevMessagesCountRef = useRef(0);
+  const originalTitleRef = useRef(typeof document !== "undefined" ? document.title : "");
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = (behavior = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem("nova_notif_prompt_dismissed");
+    if (
+      typeof window !== "undefined" &&
+      "Notification" in window &&
+      Notification.permission === "default" &&
+      !dismissed
+    ) {
+      setShowNotifPrompt(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const onFocus = () => {
+      if (originalTitleRef.current) {
+        document.title = originalTitleRef.current;
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
+  const requestNotificationPermission = async () => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      try {
+        const perm = await Notification.requestPermission();
+        setNotifPermission(perm);
+        setShowNotifPrompt(false);
+        if (perm === "granted") {
+          localStorage.setItem("nova_chat_notifications", "granted");
+          playMessageChime();
+          toast.success(
+            "Real-Time Notifications Allowed!",
+            "You will receive sound chimes and desktop alerts for new messages."
+          );
+          try {
+            new Notification("NOVA Real-Time Messaging", {
+              body: "Real-time alerts active! You will be notified instantly when creators reply.",
+              icon: "/favicon.ico",
+            });
+          } catch (_) {}
+        } else {
+          localStorage.setItem("nova_chat_notifications", "denied");
+          toast.info("Notifications muted", "You can re-enable alerts from the bell icon anytime.");
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  const dismissNotificationPrompt = () => {
+    setShowNotifPrompt(false);
+    localStorage.setItem("nova_notif_prompt_dismissed", "true");
+  };
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    localStorage.setItem("nova_chat_sound", String(next));
+    if (next) {
+      playMessageChime();
+      toast.success("Sound enabled", "Chime will play when new messages arrive.");
+    } else {
+      toast.info("Sound muted", "Incoming message sound chime is now muted.");
+    }
   };
 
   // 1. Fetch conversations list
@@ -171,7 +298,50 @@ export default function Chat() {
       if (res?.collaboration) {
         setActiveCollab(res.collaboration);
       }
-      setMessages(res?.messages || []);
+      const incomingList = res?.messages || [];
+      setMessages(incomingList);
+
+      if (incomingList.length > 0) {
+        const latestMsg = incomingList[incomingList.length - 1];
+        const isIncoming = latestMsg.sender_type === "influencer" || latestMsg.senderType === "influencer";
+
+        // Alert if there is a new incoming message
+        if (
+          lastMessageIdRef.current &&
+          String(latestMsg.id) !== String(lastMessageIdRef.current) &&
+          incomingList.length > prevMessagesCountRef.current &&
+          isIncoming
+        ) {
+          if (soundEnabled) {
+            playMessageChime();
+          }
+
+          if (
+            typeof window !== "undefined" &&
+            "Notification" in window &&
+            Notification.permission === "granted"
+          ) {
+            try {
+              new Notification(`${latestMsg.sender_name || "Creator"} sent a message`, {
+                body: latestMsg.content,
+                icon: res?.collaboration?.profile_image || "/favicon.ico",
+                tag: `msg-${latestMsg.id}`,
+              });
+            } catch (_) {}
+          }
+
+          toast.info(
+            `New message from ${latestMsg.sender_name || "Creator"}`,
+            latestMsg.content?.slice(0, 80)
+          );
+
+          document.title = `💬 (1) New message • ${latestMsg.sender_name || "Creator"}`;
+        }
+
+        lastMessageIdRef.current = latestMsg.id;
+        prevMessagesCountRef.current = incomingList.length;
+      }
+
       if (!quiet) {
         setTimeout(() => scrollToBottom("auto"), 60);
       }
@@ -195,59 +365,233 @@ export default function Chat() {
     }
   }, [selectedCollabId]);
 
-  // 3. WhatsApp-like Polling every 3.5s
+  // 3. Socket.IO Real-Time Room Subscription & Event Handlers
   useEffect(() => {
-    if (!selectedCollabId) return;
-    const interval = setInterval(() => {
-      loadActiveMessages(selectedCollabId, true);
-    }, 3500);
-    return () => clearInterval(interval);
-  }, [selectedCollabId]);
+    if (!socket || !selectedCollabId) return;
 
-  // 4. Send Message Handler
+    // Join the conversation room and mark read
+    socket.emit("joinConversation", { conversationId: selectedCollabId });
+    socket.emit("message:read", { conversationId: selectedCollabId });
+
+    const handleNewMessage = (newMsg) => {
+      if (!newMsg) return;
+      const msgCollabId = String(newMsg.conversationId || newMsg.collaboration_id || "");
+      const currentId = String(selectedCollabId);
+
+      if (msgCollabId === currentId) {
+        setMessages((prev) => {
+          if (newMsg.tempId) {
+            const hasTemp = prev.some((m) => m.id === newMsg.tempId || m.tempId === newMsg.tempId);
+            if (hasTemp) {
+              return prev.map((m) =>
+                m.id === newMsg.tempId || m.tempId === newMsg.tempId ? newMsg : m
+              );
+            }
+          }
+          const exists = prev.some((m) => String(m.id) === String(newMsg.id));
+          if (exists) return prev;
+          return [...prev, newMsg];
+        });
+
+        const isIncoming =
+          newMsg.senderType === "influencer" || newMsg.sender_type === "influencer";
+        if (isIncoming) {
+          if (soundEnabled) playMessageChime();
+          if (
+            typeof window !== "undefined" &&
+            "Notification" in window &&
+            Notification.permission === "granted"
+          ) {
+            try {
+              new Notification(`${newMsg.sender_name || newMsg.senderName || "Creator"} sent a message`, {
+                body: newMsg.message || newMsg.content,
+                icon: activeCollab?.profile_image || "/favicon.ico",
+                tag: `msg-${newMsg.id}`,
+              });
+            } catch (_) {}
+          }
+          toast.info(
+            `New message from ${newMsg.sender_name || newMsg.senderName || "Creator"}`,
+            (newMsg.message || newMsg.content)?.slice(0, 80)
+          );
+          document.title = `💬 (1) New message • ${newMsg.sender_name || newMsg.senderName || "Creator"}`;
+          socket.emit("message:read", { conversationId: selectedCollabId });
+        }
+
+        setTimeout(() => scrollToBottom("smooth"), 50);
+      }
+
+      // Update conversation list preview
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (String(c.id) === msgCollabId) {
+            return {
+              ...c,
+              lastMessage: newMsg.message || newMsg.content || c.lastMessage,
+              lastMessageAt: newMsg.createdAt || new Date().toISOString(),
+              lastSender: newMsg.senderType || newMsg.sender_type,
+              unreadCount: msgCollabId === currentId ? 0 : (c.unreadCount || 0) + 1,
+            };
+          }
+          return c;
+        })
+      );
+    };
+
+    const handleTypingStart = (data) => {
+      if (String(data.conversationId) === String(selectedCollabId)) {
+        setIsOtherTyping(true);
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = setTimeout(() => setIsOtherTyping(false), 3500);
+      }
+    };
+
+    const handleTypingStop = (data) => {
+      if (String(data.conversationId) === String(selectedCollabId)) {
+        setIsOtherTyping(false);
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      }
+    };
+
+    const handleMessagesRead = (data) => {
+      if (String(data.conversationId) === String(selectedCollabId)) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.sender_type === "marketer" || m.senderType === "user" ? { ...m, isRead: true } : m
+          )
+        );
+      }
+    };
+
+    const handleConversationUpdated = (data) => {
+      if (!data?.conversationId) return;
+      setConversations((prev) =>
+        prev.map((c) =>
+          String(c.id) === String(data.conversationId)
+            ? { ...c, lastMessage: data.lastMessage, lastMessageAt: data.lastMessageAt }
+            : c
+        )
+      );
+    };
+
+    socket.on("newMessage", handleNewMessage);
+    socket.on("typing:start", handleTypingStart);
+    socket.on("typing:stop", handleTypingStop);
+    socket.on("messages:read", handleMessagesRead);
+    socket.on("conversation:updated", handleConversationUpdated);
+
+    // Reconnection listener
+    const onReconnect = () => {
+      socket.emit("joinConversation", { conversationId: selectedCollabId });
+      loadActiveMessages(selectedCollabId, true);
+    };
+    socket.on("connect", onReconnect);
+
+    return () => {
+      socket.off("newMessage", handleNewMessage);
+      socket.off("typing:start", handleTypingStart);
+      socket.off("typing:stop", handleTypingStop);
+      socket.off("messages:read", handleMessagesRead);
+      socket.off("conversation:updated", handleConversationUpdated);
+      socket.off("connect", onReconnect);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    };
+  }, [socket, selectedCollabId, soundEnabled, activeCollab]);
+
+  // Handle user typing into input box
+  const handleLocalTyping = () => {
+    if (!socket || !selectedCollabId) return;
+    if (!isTypingLocalRef.current) {
+      isTypingLocalRef.current = true;
+      socket.emit("typing:start", { conversationId: selectedCollabId });
+    }
+    if (localTypingTimeoutRef.current) clearTimeout(localTypingTimeoutRef.current);
+    localTypingTimeoutRef.current = setTimeout(() => {
+      isTypingLocalRef.current = false;
+      socket.emit("typing:stop", { conversationId: selectedCollabId });
+    }, 2000);
+  };
+
   const handleSendMessage = async (e) => {
     e?.preventDefault();
     if (!selectedCollabId || !newMessage.trim() || sending) return;
 
+    if (notifPermission === "default") {
+      setShowNotifPrompt(true);
+    }
+
     const content = newMessage.trim();
     setSending(true);
 
+    const tempId = `temp-${Date.now()}`;
     const optimisticMsg = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
+      tempId,
+      conversationId: Number(selectedCollabId),
       sender_type: "marketer",
-      senderType: "marketer",
-      sender_name: "You",
-      senderName: "You",
+      senderType: "user",
+      sender_name: user?.fullName || "You",
+      senderName: user?.fullName || "You",
       content,
+      message: content,
       createdAt: new Date().toISOString(),
+      isRead: false,
     };
     setMessages((prev) => [...prev, optimisticMsg]);
     setNewMessage("");
     setTimeout(() => scrollToBottom("smooth"), 40);
 
-    try {
-      const res = await collabApi.sendMessage(selectedCollabId, content);
-      if (res?.message) {
-        setMessages((prev) => prev.map((m) => (m.id === optimisticMsg.id ? res.message : m)));
-      }
-      setConversations((prev) =>
-        prev.map((c) =>
-          String(c.id) === String(selectedCollabId)
-            ? {
-                ...c,
-                lastMessage: content,
-                lastMessageAt: new Date().toISOString(),
-                lastSender: "marketer",
-              }
-            : c
-        )
-      );
-    } catch (err) {
-      console.error("Failed to send message", err);
-    } finally {
-      setSending(false);
-      setTimeout(() => scrollToBottom("smooth"), 80);
+    // Stop typing indicator
+    if (socket && selectedCollabId) {
+      socket.emit("typing:stop", { conversationId: selectedCollabId });
+      isTypingLocalRef.current = false;
     }
+
+    // 1. Send via WebSocket if connected
+    let socketHandled = false;
+    if (socket && socket.connected) {
+      socket.emit(
+        "sendMessage",
+        {
+          conversationId: selectedCollabId,
+          message: content,
+          tempId,
+        },
+        (err, res) => {
+          if (!err && res?.message) {
+            setMessages((prev) => prev.map((m) => (m.id === tempId ? res.message : m)));
+          }
+        }
+      );
+      socketHandled = true;
+    }
+
+    // 2. REST delivery fallback if socket is disconnected
+    if (!socketHandled) {
+      try {
+        const res = await collabApi.sendMessage(selectedCollabId, content);
+        if (res?.message) {
+          setMessages((prev) => prev.map((m) => (m.id === tempId ? res.message : m)));
+        }
+      } catch (err) {
+        console.error("Failed to send message via REST fallback", err);
+      }
+    }
+
+    setConversations((prev) =>
+      prev.map((c) =>
+        String(c.id) === String(selectedCollabId)
+          ? {
+              ...c,
+              lastMessage: content,
+              lastMessageAt: new Date().toISOString(),
+              lastSender: "marketer",
+            }
+          : c
+      )
+    );
+    setSending(false);
+    setTimeout(() => scrollToBottom("smooth"), 80);
   };
 
   const handleCopyCreatorLink = () => {
@@ -537,7 +881,15 @@ export default function Chat() {
                       {activeInfluencerName[0]}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-400 ring-2 ring-[#202c33] animate-pulse" />
+                  <span
+                    className={`absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-[#202c33] ${
+                      isUserOnline(activeCollab?.influencer_id) ||
+                      isUserOnline(activeCollab?.id) ||
+                      isUserOnline(`inf-${activeCollab?.id}`)
+                        ? "bg-emerald-400 animate-pulse"
+                        : "bg-slate-500"
+                    }`}
+                  />
                 </div>
 
                 <div className="min-w-0">
@@ -553,6 +905,12 @@ export default function Chat() {
                     >
                       {getPlatformBadge(activePlatform).label}
                     </span>
+                    {isConnected && (
+                      <span className="hidden sm:inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 font-bold">
+                        <span className="size-1.5 rounded-full bg-emerald-400 animate-ping" />
+                        LIVE
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-[11px] text-slate-400">
                     <span className="truncate">@{activeInfluencerUsername}</span>
@@ -563,6 +921,31 @@ export default function Chat() {
                       }`}
                     >
                       {getStatusBadge(activeCollab.status).label}
+                    </span>
+                    <span>•</span>
+                    <span
+                      className={`text-[10px] flex items-center gap-1 font-medium ${
+                        isUserOnline(activeCollab?.influencer_id) ||
+                        isUserOnline(activeCollab?.id) ||
+                        isUserOnline(`inf-${activeCollab?.id}`)
+                          ? "text-emerald-400"
+                          : "text-slate-400"
+                      }`}
+                    >
+                      <span
+                        className={`size-1.5 rounded-full ${
+                          isUserOnline(activeCollab?.influencer_id) ||
+                          isUserOnline(activeCollab?.id) ||
+                          isUserOnline(`inf-${activeCollab?.id}`)
+                            ? "bg-emerald-400"
+                            : "bg-slate-500"
+                        }`}
+                      />
+                      {isUserOnline(activeCollab?.influencer_id) ||
+                      isUserOnline(activeCollab?.id) ||
+                      isUserOnline(`inf-${activeCollab?.id}`)
+                        ? "Online"
+                        : "Offline"}
                     </span>
                   </div>
                 </div>
@@ -608,6 +991,51 @@ export default function Chat() {
                   </a>
                 )}
 
+                {/* Real-time Notification & Sound Alert Toggle */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (notifPermission !== "granted") {
+                      requestNotificationPermission();
+                    } else {
+                      toggleSound();
+                    }
+                  }}
+                  className={`h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+                    notifPermission === "granted"
+                      ? soundEnabled
+                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+                        : "bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
+                      : "bg-[#2a3942] border-[#374248] text-slate-300 hover:text-white"
+                  }`}
+                  title={
+                    notifPermission === "granted"
+                      ? soundEnabled
+                        ? "Real-time alerts active (Click to mute sound)"
+                        : "Sound muted (Click to unmute sound)"
+                      : "Click to allow real-time message alerts"
+                  }
+                >
+                  {notifPermission === "granted" ? (
+                    soundEnabled ? (
+                      <>
+                        <BellRing className="size-3.5 text-[#25D366]" />
+                        <span className="hidden xl:inline text-[11px]">Alerts ON</span>
+                      </>
+                    ) : (
+                      <>
+                        <VolumeX className="size-3.5 text-amber-400" />
+                        <span className="hidden xl:inline text-[11px]">Muted</span>
+                      </>
+                    )
+                  ) : (
+                    <>
+                      <Bell className="size-3.5 text-slate-400" />
+                      <span className="hidden xl:inline text-[11px]">Enable Alerts</span>
+                    </>
+                  )}
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setDealInfoOpen(!dealInfoOpen)}
@@ -618,6 +1046,39 @@ export default function Chat() {
                 </button>
               </div>
             </div>
+
+            {/* Real-Time Message Notification Permission Request Banner */}
+            {showNotifPrompt && (
+              <div className="bg-[#182229] border-b border-[#2a3942] px-4 py-2.5 flex items-center justify-between gap-3 text-xs z-20 animate-in slide-in-from-top-1 duration-200">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="size-8 rounded-full bg-[#00a884]/20 border border-[#00a884]/40 flex items-center justify-center text-[#25D366] shrink-0">
+                    <BellRing className="size-4 animate-pulse" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white truncate">Allow real-time message notifications?</p>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      Receive instant audio chimes and desktop alerts when creators reply to your messages.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    onClick={requestNotificationPermission}
+                    className="h-7 px-3 bg-[#00a884] hover:bg-[#029072] text-white font-semibold text-xs rounded-lg cursor-pointer transition-all shadow-xs"
+                  >
+                    Allow
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={dismissNotificationPrompt}
+                    className="text-slate-400 hover:text-white text-xs px-2 py-1 transition-colors cursor-pointer"
+                  >
+                    Later
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Collapsible Deal Proposal Header Drawer */}
             {dealInfoOpen && (
@@ -720,7 +1181,7 @@ export default function Chat() {
                 </div>
               ) : (
                 messages.map((m) => {
-                  const isMarketer = m.sender_type === "marketer" || m.senderType === "marketer";
+                  const isMarketer = m.sender_type === "marketer" || m.senderType === "marketer" || m.senderType === "user";
                   return (
                     <div
                       key={m.id}
@@ -738,20 +1199,40 @@ export default function Chat() {
                             {m.sender_name || m.senderName || activeInfluencerName}
                           </p>
                         )}
-                        <p className="whitespace-pre-wrap">{m.content}</p>
+                        <p className="whitespace-pre-wrap">{m.content || m.message}</p>
                         <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-300/80">
                           <span>{formatTime(m.createdAt || m.created_at)}</span>
-                          {isMarketer && <CheckCheck className="size-3.5 text-[#53bdeb]" />}
+                          {isMarketer && (
+                            <CheckCheck
+                              className={`size-3.5 ${
+                                m.isRead || m.is_read ? "text-[#53bdeb]" : "text-slate-400"
+                              }`}
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
                   );
                 })
               )}
+
+              {isOtherTyping && (
+                <div className="flex flex-col items-start animate-in fade-in duration-200">
+                  <div className="bg-[#202c33] text-slate-300 rounded-2xl px-3.5 py-2 text-xs rounded-tl-xs border border-[#2a3942]/60 flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium text-emerald-400">
+                      {activeInfluencerName} is typing
+                    </span>
+                    <span className="flex items-center gap-0.5 ml-1">
+                      <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce" />
+                      <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce [animation-delay:150ms]" />
+                      <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce [animation-delay:300ms]" />
+                    </span>
+                  </div>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* WhatsApp Fixed Bottom Input Bar */}
             <form
               onSubmit={handleSendMessage}
               className="p-2.5 sm:p-3 bg-[#202c33] border-t border-[#2a3942] flex items-center gap-2 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
@@ -759,7 +1240,10 @@ export default function Chat() {
               <Input
                 placeholder="Type a message or rate proposal... (Press Enter to send)"
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={(e) => {
+                  setNewMessage(e.target.value);
+                  handleLocalTyping();
+                }}
                 disabled={sending}
                 className="h-10 bg-[#2a3942] border-0 text-white placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-[#00a884] rounded-lg flex-1 min-w-0"
               />
