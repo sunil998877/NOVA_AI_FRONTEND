@@ -14,6 +14,8 @@ import {
   ChevronUp,
   FileText,
   CheckCheck,
+  Check,
+  Share2,
   Info,
   X,
   ShieldCheck,
@@ -28,6 +30,8 @@ import {
   BellOff,
   Volume2,
   VolumeX,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -51,27 +55,27 @@ function getPlatformBadge(platform) {
   if (p === "youtube") {
     return {
       label: "YouTube",
-      badgeClass: "bg-red-500/15 text-red-400 border-red-500/30",
+      badgeClass: "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30",
       dotClass: "bg-red-500",
     };
   }
   if (p === "instagram") {
     return {
       label: "Instagram",
-      badgeClass: "bg-pink-500/15 text-pink-400 border-pink-500/30",
+      badgeClass: "bg-pink-500/15 text-pink-600 dark:text-pink-400 border-pink-500/30",
       dotClass: "bg-pink-500",
     };
   }
   if (p === "twitter" || p === "x") {
     return {
       label: "X",
-      badgeClass: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+      badgeClass: "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30",
       dotClass: "bg-sky-500",
     };
   }
   return {
     label: platform ? platform.toUpperCase() : "CREATOR",
-    badgeClass: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+    badgeClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
     dotClass: "bg-emerald-500",
   };
 }
@@ -133,8 +137,7 @@ export default function CreatorCollabPortal() {
   const [sending, setSending] = useState(false);
   const [showFullPitch, setShowFullPitch] = useState(false);
   const [infoDrawerOpen, setInfoDrawerOpen] = useState(false);
-
-  // Notification & sound alert states
+  const [copiedLink, setCopiedLink] = useState(false);
   const [notifPermission, setNotifPermission] = useState(
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default"
   );
@@ -142,6 +145,48 @@ export default function CreatorCollabPortal() {
   const [soundEnabled, setSoundEnabled] = useState(() => {
     return localStorage.getItem("nova_portal_sound") !== "false";
   });
+  const [themeState, setThemeState] = useState(() => {
+    try {
+      return document.documentElement.classList.contains("dark") ||
+        window.localStorage.getItem("nova-theme") !== "light"
+        ? "dark"
+        : "light";
+    } catch {
+      return "dark";
+    }
+  });
+  const isDark = themeState === "dark";
+
+  const handleToggleTheme = () => {
+    const next = isDark ? "light" : "dark";
+    try {
+      window.localStorage.setItem("nova-theme", next);
+    } catch {}
+    if (next === "light") {
+      document.documentElement.classList.remove("dark");
+    } else {
+      document.documentElement.classList.add("dark");
+    }
+    setThemeState(next);
+  };
+
+  useEffect(() => {
+    if (themeState === "light") {
+      document.documentElement.classList.remove("dark");
+    } else {
+      document.documentElement.classList.add("dark");
+    }
+    const sync = () => {
+      setThemeState(document.documentElement.classList.contains("dark") ? "dark" : "light");
+    };
+    const observer = new MutationObserver(sync);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    window.addEventListener("storage", sync);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("storage", sync);
+    };
+  }, [themeState]);
 
   const { socket, isConnected, connectWithToken } = useSocket();
   const [isBrandTyping, setIsBrandTyping] = useState(false);
@@ -212,6 +257,14 @@ export default function CreatorCollabPortal() {
     setSoundEnabled(next);
     localStorage.setItem("nova_portal_sound", String(next));
     if (next) playMessageChime();
+  };
+
+  const handleCopyLink = () => {
+    try {
+      navigator.clipboard.writeText(window.location.href);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch (_) {}
   };
 
   const loadPortalData = async (quiet = false) => {
@@ -458,11 +511,11 @@ export default function CreatorCollabPortal() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-4 text-slate-100">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-400 mb-4 animate-pulse">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background dark:bg-slate-950 px-4 text-foreground dark:text-slate-100">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 mb-4 animate-pulse">
           <Sparkles className="size-7" />
         </div>
-        <p className="text-sm font-medium text-slate-300">Loading partnership portal...</p>
+        <p className="text-sm font-medium text-muted-foreground dark:text-slate-300">Loading partnership portal...</p>
         <Loader2 className="mt-3 size-5 animate-spin text-teal-500" />
       </div>
     );
@@ -470,100 +523,100 @@ export default function CreatorCollabPortal() {
 
   if (error || !collab) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-4 text-slate-100">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 mb-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background dark:bg-slate-950 px-4 text-foreground dark:text-slate-100">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 mb-4">
           <AlertCircle className="size-7" />
         </div>
-        <h2 className="text-xl font-bold tracking-tight text-white mb-1">Deal Link Not Found</h2>
-        <p className="text-sm text-slate-400 max-w-sm text-center mb-6">
+        <h2 className="text-xl font-bold tracking-tight text-foreground dark:text-white mb-1">Deal Link Not Found</h2>
+        <p className="text-sm text-muted-foreground dark:text-slate-400 max-w-sm text-center mb-6">
           {error || "This collaboration link may have expired or is invalid. Please check the link from your invitation email."}
         </p>
       </div>
     );
   }
 
+  const cleanUsername = (raw) => {
+    if (!raw) return "";
+    return String(raw).replace(/^@+/, "");
+  };
+  const portalUsername = cleanUsername(collab.influencerUsername || collab.handle) || (collab.influencerName ? collab.influencerName.toLowerCase().replace(/\s+/g, "") : "creator");
+  const targetChannelUrl = collab.profileUrl || (collab.handle ? `https://youtube.com/@${collab.handle.replace(/^@/, "")}` : (collab.influencerUsername ? `https://youtube.com/@${collab.influencerUsername.replace(/^@/, "")}` : (collab.influencerName ? `https://youtube.com/results?search_query=${encodeURIComponent(collab.influencerName)}` : "#")));
   const cleanWhatsapp = collab.whatsappNumber ? collab.whatsappNumber.replace(/[^\d+]/g, "").replace(/^\+/, "") : null;
   const whatsappUrl = cleanWhatsapp
     ? `https://wa.me/${cleanWhatsapp}?text=${encodeURIComponent(
-      `Hi! I received your collaboration proposal regarding my channel ${collab.influencerUsername || collab.influencerName}. Let's chat!`
+      `Hi! I received your collaboration proposal regarding my channel ${portalUsername}. Let's chat!`
     )}`
-    : null;
+    : (collab.whatsappNumber ? `https://wa.me/${collab.whatsappNumber.replace(/[^0-9]/g, "")}` : "https://web.whatsapp.com");
 
   return (
-    <div className="h-screen h-[100dvh] w-screen overflow-hidden bg-[#0c1317] text-slate-100 flex font-sans selection:bg-emerald-500 selection:text-black">
-      {/* ─── LEFT SIDEBAR: CREATOR & DEAL PROPOSAL (Desktop / Tablet) ─── */}
-      <aside className="hidden lg:flex w-[380px] xl:w-[420px] bg-[#111b21] border-r border-[#202c33] flex-col shrink-0 h-full overflow-hidden">
-
-        {/* Scrollable Creator Profile & Deal Details */}
+    <div className="h-screen h-[100dvh] w-screen overflow-hidden bg-background dark:bg-[#0c1317] text-foreground dark:text-slate-100 flex font-sans selection:bg-emerald-500 selection:text-black">
+      <aside className="hidden lg:flex w-[380px] xl:w-[420px] bg-card dark:bg-[#111b21] border-r border-border dark:border-[#202c33] flex-col shrink-0 h-full overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
-          {/* Influencer Profile Card */}
-          <div className="flex flex-col items-center text-center p-4 bg-[#182229] rounded-2xl border border-[#202c33] shadow-inner">
+          <div className="flex flex-col items-center text-center p-4 bg-muted/40 dark:bg-[#182229] rounded-2xl border border-border dark:border-[#202c33] shadow-xs">
             <div className="relative mb-3">
-              <Avatar className="size-20 rounded-full border-3 border-emerald-500 bg-slate-900 ring-4 ring-emerald-500/20 shadow-lg">
+              <Avatar className="size-20 rounded-full border-3 border-emerald-500 bg-muted dark:bg-slate-900 ring-4 ring-emerald-500/20 shadow-lg">
                 <AvatarImage src={collab.profileImage} alt={collab.influencerName} />
-                <AvatarFallback className="text-2xl font-black bg-emerald-950 text-emerald-300">
+                <AvatarFallback className="text-2xl font-black bg-emerald-500/10 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                   {collab.influencerName?.[0] || "C"}
                 </AvatarFallback>
               </Avatar>
-              <span className="absolute bottom-0 right-0 size-5 rounded-full bg-emerald-500 ring-3 ring-[#182229] flex items-center justify-center shadow-xs">
+              <span className="absolute bottom-0 right-0 size-5 rounded-full bg-emerald-500 ring-3 ring-card dark:ring-[#182229] flex items-center justify-center shadow-xs">
                 <CheckCircle2 className="size-3.5 text-slate-950" />
               </span>
             </div>
 
-            <h3 className="font-bold text-base sm:text-lg text-white truncate max-w-full flex items-center justify-center gap-1.5">
+            <h3 className="font-bold text-base sm:text-lg text-foreground dark:text-white truncate max-w-full flex items-center justify-center gap-1.5">
               <span>{collab.influencerName}</span>
-              <CheckCircle2 className="size-4 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             </h3>
 
             <div className="flex items-center justify-center gap-2 mt-1 text-xs">
-              <span className="text-slate-400 font-medium">{collab.influencerUsername || "@creator"}</span>
+              <span className="text-muted-foreground dark:text-slate-400 font-medium">@{portalUsername}</span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getPlatformBadge(collab.platform).badgeClass}`}>
                 {getPlatformBadge(collab.platform).label}
               </span>
             </div>
 
-            {/* Stats Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full mt-4 text-left">
-              <div className="bg-[#111b21] p-2.5 rounded-xl border border-[#202c33]">
-                <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-slate-400">
-                  <Users className="size-3 text-emerald-400" />
+              <div className="bg-card dark:bg-[#111b21] p-2.5 rounded-xl border border-border dark:border-[#202c33]">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-muted-foreground dark:text-slate-400">
+                  <Users className="size-3 text-emerald-600 dark:text-emerald-400" />
                   <span>{collab.platform?.toLowerCase() === "youtube" ? "Subscribers" : "Followers"}</span>
                 </div>
-                <p className="text-sm font-black text-white mt-1">
+                <p className="text-sm font-black text-foreground dark:text-white mt-1">
                   {formatNumber(collab.subscribers) || "Audience"}
                 </p>
               </div>
 
-              <div className="bg-[#111b21] p-2.5 rounded-xl border border-[#202c33]">
-                <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-slate-400">
-                  <Tag className="size-3 text-sky-400" />
+              <div className="bg-card dark:bg-[#111b21] p-2.5 rounded-xl border border-border dark:border-[#202c33]">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-muted-foreground dark:text-slate-400">
+                  <Tag className="size-3 text-sky-600 dark:text-sky-400" />
                   <span>Category</span>
                 </div>
-                <p className="text-sm font-semibold text-white mt-1 truncate">
+                <p className="text-sm font-semibold text-foreground dark:text-white mt-1 truncate">
                   {collab.category || "General"}
                 </p>
               </div>
 
-              <div className="col-span-2 sm:col-span-1 bg-[#111b21] p-2.5 rounded-xl border border-[#202c33]">
-                <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-slate-400">
-                  <MapPin className="size-3 text-amber-400" />
+              <div className="col-span-2 sm:col-span-1 bg-card dark:bg-[#111b21] p-2.5 rounded-xl border border-border dark:border-[#202c33]">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-muted-foreground dark:text-slate-400">
+                  <MapPin className="size-3 text-amber-600 dark:text-amber-400" />
                   <span>Location</span>
                 </div>
-                <p className="text-sm font-semibold text-white mt-1 truncate">
+                <p className="text-sm font-semibold text-foreground dark:text-white mt-1 truncate">
                   {collab.location || "Global"}
                 </p>
               </div>
             </div>
 
-            {/* Channel Profile Link & Email */}
             <div className="w-full mt-3 space-y-1.5 text-xs">
               {collab.recipientEmail && (
-                <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-[#111b21] border border-[#202c33] text-slate-300">
-                  <span className="flex items-center gap-1.5 text-slate-400 text-[11px] shrink-0">
-                    <Mail className="size-3.5 text-emerald-400" />
+                <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-card dark:bg-[#111b21] border border-border dark:border-[#202c33] text-foreground dark:text-slate-300">
+                  <span className="flex items-center gap-1.5 text-muted-foreground dark:text-slate-400 text-[11px] shrink-0">
+                    <Mail className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Contact</span>
                   </span>
-                  <span className="truncate font-mono text-[11px] text-slate-200">
+                  <span className="truncate font-mono text-[11px] text-foreground dark:text-slate-200">
                     {collab.recipientEmail}
                   </span>
                 </div>
@@ -574,7 +627,7 @@ export default function CreatorCollabPortal() {
                   href={collab.profileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition-colors cursor-pointer"
                 >
                   <Globe className="size-3.5" />
                   <span>Visit Channel Profile</span>
@@ -584,20 +637,19 @@ export default function CreatorCollabPortal() {
             </div>
           </div>
 
-
-          <div className="rounded-xl border border-[#202c33] bg-[#182229] p-4 space-y-3">
+          <div className="rounded-xl border border-border dark:border-[#202c33] bg-muted/40 dark:bg-[#182229] p-4 space-y-3 shadow-xs">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Campaign Pitch</span>
-              <p className="text-sm font-semibold text-white mt-0.5">{collab.subject}</p>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground dark:text-slate-400">Campaign Pitch</span>
+              <p className="text-sm font-semibold text-foreground dark:text-white mt-0.5">{collab.subject}</p>
             </div>
 
-            <div className="pt-2 border-t border-[#202c33]">
+            <div className="pt-2 border-t border-border dark:border-[#202c33]">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Initial Proposal</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground dark:text-slate-400">Initial Proposal</span>
                 <button
                   type="button"
                   onClick={() => setShowFullPitch((prev) => !prev)}
-                  className="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium inline-flex items-center gap-1 cursor-pointer"
+                  className="text-[11px] text-emerald-700 dark:text-emerald-400 hover:opacity-80 font-medium inline-flex items-center gap-1 cursor-pointer"
                 >
                   {showFullPitch ? (
                     <>
@@ -613,90 +665,94 @@ export default function CreatorCollabPortal() {
                 </button>
               </div>
               <div
-                className={`text-xs text-slate-300 leading-relaxed rounded-lg bg-[#111b21] p-3 border border-[#202c33] whitespace-pre-wrap select-text ${showFullPitch ? "" : "max-h-48 overflow-hidden relative"
+                className={`text-xs text-foreground dark:text-slate-300 leading-relaxed rounded-lg bg-card dark:bg-[#111b21] p-3 border border-border dark:border-[#202c33] whitespace-pre-wrap select-text ${showFullPitch ? "" : "max-h-48 overflow-hidden relative"
                   }`}
               >
                 {collab.message}
                 {!showFullPitch && (
-                  <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#111b21] to-transparent pointer-events-none" />
+                  <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-card dark:from-[#111b21] to-transparent pointer-events-none" />
                 )}
               </div>
             </div>
           </div>
 
-          {/* Verified Safe Deal Indicator */}
-          <div className="rounded-xl border border-[#202c33] bg-[#182229]/60 p-3 flex items-center gap-2.5 text-xs text-slate-400">
-            <ShieldCheck className="size-5 text-emerald-400 shrink-0" />
+          <div className="rounded-xl border border-border dark:border-[#202c33] bg-muted/40 dark:bg-[#182229]/60 p-3 flex items-center gap-2.5 text-xs text-muted-foreground dark:text-slate-400 shadow-xs">
+            <ShieldCheck className="size-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>Direct brand negotiations. Messages update deal status in real time.</span>
           </div>
         </div>
       </aside>
 
       {/* ─── RIGHT CHAT MESSENGER (Full Screen Like WhatsApp) ───── */}
-      <section className="flex-1 flex flex-col h-full bg-[#0b141a] relative overflow-hidden">
-        {/* WhatsApp Chat Top Header - Influencer Focus */}
+      <section className="flex-1 flex flex-col h-full bg-background dark:bg-[#0b141a] relative overflow-hidden">
         <div
           onClick={() => setInfoDrawerOpen(true)}
-          className="h-14 bg-[#202c33] px-3 sm:px-4 flex items-center justify-between border-b border-[#2a3942] shrink-0 z-10 cursor-pointer hover:bg-[#233138] transition-colors"
+          className="h-14 bg-card dark:bg-[#202c33] px-3 sm:px-4 flex items-center justify-between border-b border-border dark:border-[#2a3942] shrink-0 z-10 cursor-pointer hover:bg-muted/50 dark:hover:bg-[#233138] transition-colors"
           title="Click to view creator profile & deal proposal"
         >
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
-              <Avatar className="size-10 rounded-full border-2 border-emerald-500/60 bg-slate-800 ring-2 ring-emerald-500/20">
+              <Avatar className="size-10 rounded-full border-2 border-emerald-500/60 bg-muted dark:bg-slate-800 ring-2 ring-emerald-500/20">
                 <AvatarImage src={collab.profileImage} alt={collab.influencerName} />
-                <AvatarFallback className="font-bold bg-emerald-950 text-emerald-300 text-sm">
+                <AvatarFallback className="font-bold bg-emerald-500/10 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-sm">
                   {collab.influencerName?.[0] || "C"}
                 </AvatarFallback>
               </Avatar>
-              <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-400 ring-2 ring-[#202c33] animate-pulse" />
+              <span
+                className={`absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-card dark:ring-[#202c33] ${
+                  isConnected ? "bg-emerald-500 animate-pulse" : "bg-slate-400 dark:bg-slate-500"
+                }`}
+              />
             </div>
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h4 className="text-xs sm:text-sm font-bold text-white truncate flex items-center gap-1.5">
+                <h4 className="text-xs sm:text-sm font-bold text-foreground dark:text-white truncate flex items-center gap-1.5">
                   <span>{collab.influencerName || "Creator"}</span>
-                  <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 </h4>
                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border shrink-0 ${getPlatformBadge(collab.platform).badgeClass}`}>
                   {getPlatformBadge(collab.platform).label}
                 </span>
-                {isConnected && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 font-bold">
-                    <span className="size-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    LIVE
-                  </span>
-                )}
               </div>
-
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground dark:text-slate-400">
+                <span className="truncate">@{portalUsername}</span>
+                <span
+                  className={`text-[10px] flex items-center gap-1 font-medium ${
+                    isConnected ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground dark:text-slate-400"
+                  }`}
+                >
+                  <span
+                    className={`size-1.5 rounded-full ${
+                      isConnected ? "bg-emerald-500" : "bg-slate-400 dark:bg-slate-500"
+                    }`}
+                  />
+                  {isConnected ? "Online" : "Offline"}
+                </span>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-            {collab.profileUrl && (
-              <a
-                href={collab.profileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hidden sm:flex items-center gap-1.5 text-[11px] font-medium text-slate-300 hover:text-white bg-[#2a3942] hover:bg-[#374248] px-3 py-1.5 rounded-lg transition-colors"
-                title="Visit creator channel"
-              >
-                <ExternalLink className="size-3 text-emerald-400" />
-                <span>Visit Channel</span>
-              </a>
-            )}
-            {whatsappUrl && (
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-[11px] font-bold bg-[#25D366] hover:bg-[#20bd5a] text-white px-3 py-1.5 rounded-lg shadow-xs transition-all"
-                title="WhatsApp"
-              >
-                <ExternalLink className="size-3" />
-                <span>WhatsApp</span>
-              </a>
-            )}
-            {/* Real-time Notification & Sound Alert Toggle */}
+            <a
+              href={targetChannelUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="size-8 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-[#202c33] dark:hover:bg-[#2a3942] transition-colors"
+              title="Visit channel"
+            >
+              <ExternalLink className="size-4" />
+            </a>
+
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="size-8 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-[#202c33] dark:hover:bg-[#2a3942] transition-colors cursor-pointer"
+              title={copiedLink ? "Link copied!" : "Share deal link"}
+            >
+              {copiedLink ? <Check className="size-4 text-emerald-500" /> : <Share2 className="size-4" />}
+            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -706,62 +762,59 @@ export default function CreatorCollabPortal() {
                   toggleSound();
                 }
               }}
-              className={`h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
-                notifPermission === "granted"
-                  ? soundEnabled
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
-                    : "bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
-                  : "bg-[#2a3942] border-[#374248] text-slate-300 hover:text-white"
+              className={`size-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+                notifPermission === "granted" && !soundEnabled
+                  ? "text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
+                  : "text-emerald-600 dark:text-[#25D366] bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25"
               }`}
               title={
                 notifPermission === "granted"
                   ? soundEnabled
-                    ? "Real-time alerts active (Click to mute sound)"
-                    : "Sound muted (Click to unmute sound)"
-                  : "Click to allow real-time message alerts"
+                    ? "Sound alerts active (Click to mute)"
+                    : "Sound muted (Click to unmute)"
+                  : "Enable notifications"
               }
             >
-              {notifPermission === "granted" ? (
-                soundEnabled ? (
-                  <>
-                    <BellRing className="size-3.5 text-[#25D366]" />
-                    <span className="hidden sm:inline text-[11px]">Alerts ON</span>
-                  </>
-                ) : (
-                  <>
-                    <VolumeX className="size-3.5 text-amber-400" />
-                    <span className="hidden sm:inline text-[11px]">Muted</span>
-                  </>
-                )
+              {notifPermission === "granted" && !soundEnabled ? (
+                <VolumeX className="size-4" />
+              ) : notifPermission === "granted" && soundEnabled ? (
+                <BellRing className="size-4" />
               ) : (
-                <>
-                  <Bell className="size-3.5 text-slate-400" />
-                  <span className="hidden sm:inline text-[11px]">Enable Alerts</span>
-                </>
+                <Bell className="size-4" />
               )}
             </button>
 
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-8 px-3.5 rounded-full flex items-center gap-1.5 text-xs font-bold bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-xs transition-all cursor-pointer"
+              title="Open WhatsApp chat"
+            >
+              <ExternalLink className="size-3.5 text-white" />
+              <span>WhatsApp</span>
+            </a>
+
             <button
               type="button"
-              onClick={() => setInfoDrawerOpen(true)}
-              className="text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors font-medium"
+              onClick={handleToggleTheme}
+              className="size-8 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-[#202c33] dark:hover:bg-[#2a3942] transition-colors cursor-pointer"
+              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
             >
-              <Info className="size-3.5" />
-              <span>Profile & Deal</span>
+              {isDark ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4" />}
             </button>
           </div>
         </div>
 
-        {/* Real-time Message Notification Permission Request Banner */}
         {showNotifPrompt && (
-          <div className="bg-[#182229] border-b border-[#2a3942] px-4 py-2.5 flex items-center justify-between gap-3 text-xs z-20 animate-in slide-in-from-top-1 duration-200">
+          <div className="bg-card dark:bg-[#182229] border-b border-border dark:border-[#2a3942] px-4 py-2.5 flex items-center justify-between gap-3 text-xs z-20 animate-in slide-in-from-top-1 duration-200">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="size-8 rounded-full bg-[#00a884]/20 border border-[#00a884]/40 flex items-center justify-center text-[#25D366] shrink-0">
+              <div className="size-8 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-600 dark:text-[#25D366] shrink-0">
                 <BellRing className="size-4 animate-pulse" />
               </div>
               <div className="min-w-0">
-                <p className="font-semibold text-white truncate">Allow real-time message alerts?</p>
-                <p className="text-[11px] text-slate-400 truncate">
+                <p className="font-semibold text-foreground dark:text-white truncate">Allow real-time message alerts?</p>
+                <p className="text-[11px] text-muted-foreground dark:text-slate-400 truncate">
                   Hear an audio chime and get desktop notifications when the brand replies.
                 </p>
               </div>
@@ -770,14 +823,14 @@ export default function CreatorCollabPortal() {
               <Button
                 size="sm"
                 onClick={requestNotificationPermission}
-                className="h-7 px-3 bg-[#00a884] hover:bg-[#029072] text-white font-semibold text-xs rounded-lg cursor-pointer transition-all shadow-xs"
+                className="h-7 px-3 bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-[#00a884] dark:hover:bg-[#029072] font-semibold text-xs rounded-lg cursor-pointer transition-all shadow-xs"
               >
                 Allow
               </Button>
               <button
                 type="button"
                 onClick={dismissNotificationPrompt}
-                className="text-slate-400 hover:text-white text-xs px-2 py-1 transition-colors cursor-pointer"
+                className="text-muted-foreground hover:text-foreground dark:text-slate-400 dark:hover:text-white text-xs px-2 py-1 transition-colors cursor-pointer"
               >
                 Later
               </button>
@@ -785,26 +838,26 @@ export default function CreatorCollabPortal() {
           </div>
         )}
 
-        {/* Messages Feed */}
         <div
-          className="flex-1 p-3 sm:p-5 overflow-y-auto overflow-x-hidden space-y-3 bg-[#0b141a]"
+          className="flex-1 p-3 sm:p-5 overflow-y-auto overflow-x-hidden space-y-3 bg-muted/20 dark:bg-[#0b141a] select-text"
           style={{
-            backgroundImage: "radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)",
+            backgroundImage: isDark
+              ? "radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)"
+              : "radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px)",
             backgroundSize: "20px 20px"
           }}
         >
-          {/* Encryption & Notice Banner */}
           <div className="flex justify-center my-1">
-            <span className="rounded-lg bg-[#182229] border border-[#202c33] px-3 py-1 text-[11px] text-[#ffd279] shadow-xs text-center max-w-md">
+            <span className="rounded-lg bg-card dark:bg-[#182229] border border-border dark:border-[#202c33] px-3 py-1 text-[11px] text-amber-800 dark:text-[#ffd279] shadow-xs text-center max-w-md">
               🔒 Direct creator negotiation room. All messages are synced live with the brand.
             </span>
           </div>
 
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
-              <MessageSquare className="size-10 text-slate-600 mb-2" />
-              <p className="text-sm font-medium text-slate-300">No messages yet</p>
-              <p className="text-xs text-slate-500 max-w-xs mt-1">
+            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground dark:text-slate-400">
+              <MessageSquare className="size-10 text-muted-foreground/60 dark:text-slate-600 mb-2" />
+              <p className="text-sm font-medium text-foreground dark:text-slate-300">No messages yet</p>
+              <p className="text-xs text-muted-foreground dark:text-slate-500 max-w-xs mt-1">
                 Send a message below to accept the proposal, discuss deliverables, or request your rate card.
               </p>
             </div>
@@ -817,23 +870,25 @@ export default function CreatorCollabPortal() {
                   className={`flex flex-col ${isCreator ? "items-end" : "items-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed shadow-sm relative select-text ${isCreator
-                        ? "bg-[#005c4b] text-white rounded-tr-xs"
-                        : "bg-[#202c33] text-slate-100 rounded-tl-xs border border-[#2a3942]/60"
+                    className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed shadow-xs relative select-text ${isCreator
+                        ? "bg-emerald-600 text-white dark:bg-[#005c4b] dark:text-white rounded-tr-xs"
+                        : "bg-card text-foreground border border-border/80 dark:bg-[#202c33] dark:text-slate-100 rounded-tl-xs dark:border-[#2a3942]/60"
                       }`}
                   >
                     {!isCreator && (
-                      <p className="text-[11px] font-bold text-emerald-400 mb-1">
+                      <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mb-1">
                         {m.sender_name || "Brand Team"}
                       </p>
                     )}
                     <p className="whitespace-pre-wrap">{m.content || m.message}</p>
-                    <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-300/80">
+                    <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
+                      isCreator ? "text-white/80 dark:text-slate-300/80" : "text-muted-foreground dark:text-slate-400"
+                    }`}>
                       <span>{formatTime(m.createdAt || m.created_at)}</span>
                       {isCreator && (
                         <CheckCheck
                           className={`size-3.5 ${
-                            m.isRead || m.is_read ? "text-[#53bdeb]" : "text-slate-400"
+                            m.isRead || m.is_read ? "text-sky-200 dark:text-[#53bdeb]" : "text-white/70 dark:text-slate-400"
                           }`}
                         />
                       )}
@@ -846,14 +901,14 @@ export default function CreatorCollabPortal() {
 
           {isBrandTyping && (
             <div className="flex flex-col items-start animate-in fade-in duration-200">
-              <div className="bg-[#202c33] text-slate-300 rounded-2xl px-3.5 py-2 text-xs rounded-tl-xs border border-[#2a3942]/60 flex items-center gap-1.5">
-                <span className="text-[11px] font-medium text-emerald-400">
+              <div className="bg-card dark:bg-[#202c33] text-muted-foreground dark:text-slate-300 rounded-2xl px-3.5 py-2 text-xs rounded-tl-xs border border-border dark:border-[#2a3942]/60 flex items-center gap-1.5 shadow-xs">
+                <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
                   Brand team is typing
                 </span>
                 <span className="flex items-center gap-0.5 ml-1">
-                  <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce" />
-                  <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce [animation-delay:150ms]" />
-                  <span className="size-1.5 rounded-full bg-emerald-400 animate-bounce [animation-delay:300ms]" />
+                  <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-bounce" />
+                  <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-bounce [animation-delay:150ms]" />
+                  <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-bounce [animation-delay:300ms]" />
                 </span>
               </div>
             </div>
@@ -862,10 +917,10 @@ export default function CreatorCollabPortal() {
         </div>
 
         <div
-          className="px-3 py-2 bg-[#111b21] border-t border-[#202c33] flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none text-xs shrink-0"
+          className="px-3 py-2 bg-card dark:bg-[#111b21] border-t border-border dark:border-[#202c33] flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none text-xs shrink-0"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Quick reply:</span>
+          <span className="text-[10px] uppercase font-bold text-muted-foreground dark:text-slate-400 shrink-0">Quick reply:</span>
           {[
             "Interested! Here is my media kit & rates",
             "What is your target campaign budget?",
@@ -875,7 +930,7 @@ export default function CreatorCollabPortal() {
               key={chip}
               type="button"
               onClick={() => setNewMessage(chip)}
-              className="shrink-0 rounded-full border border-[#2a3942] bg-[#202c33] hover:bg-[#2a3942] hover:border-emerald-500/50 px-3 py-1 text-[11px] text-slate-200 transition-all cursor-pointer"
+              className="shrink-0 rounded-full border border-border dark:border-[#2a3942] bg-muted/60 dark:bg-[#202c33] hover:bg-muted dark:hover:bg-[#2a3942] hover:border-emerald-500/50 px-3 py-1 text-[11px] text-foreground dark:text-slate-200 transition-all cursor-pointer"
             >
               {chip}
             </button>
@@ -884,7 +939,7 @@ export default function CreatorCollabPortal() {
 
         <form
           onSubmit={handleSendMessage}
-          className="p-2.5 sm:p-3 bg-[#202c33] border-t border-[#2a3942] flex items-center gap-2 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="p-2.5 sm:p-3 bg-card dark:bg-[#202c33] border-t border-border dark:border-[#2a3942] flex items-center gap-2 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         >
           <Input
             placeholder="Type a message or rate proposal..."
@@ -894,12 +949,12 @@ export default function CreatorCollabPortal() {
               handleLocalTyping();
             }}
             disabled={sending}
-            className="h-10 bg-[#2a3942] border-0 text-white placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-emerald-500 rounded-lg flex-1 min-w-0"
+            className="h-10 bg-muted/60 dark:bg-[#2a3942] border border-border/60 dark:border-0 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-emerald-500 rounded-lg flex-1 min-w-0"
           />
           <Button
             type="submit"
             disabled={sending || !newMessage.trim()}
-            className="size-10 rounded-full bg-[#00a884] hover:bg-[#029072] text-white font-bold p-0 flex items-center justify-center shrink-0 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+            className="size-10 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-[#00a884] dark:hover:bg-[#029072] font-bold p-0 flex items-center justify-center shrink-0 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
           >
             {sending ? (
               <Loader2 className="size-4 animate-spin" />
@@ -910,95 +965,89 @@ export default function CreatorCollabPortal() {
         </form>
       </section>
 
-      {/* ─── MOBILE SLIDE-OVER DEAL INFO DRAWER ──────────────────── */}
       {infoDrawerOpen && (
         <div className="lg:hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex justify-end animate-in fade-in-0 duration-200">
-          <div className="w-[88vw] max-w-sm h-full bg-[#111b21] border-l border-[#202c33] p-4 flex flex-col overflow-y-auto">
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#202c33]">
-              <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                <Info className="size-4 text-emerald-400" />
+          <div className="w-[88vw] max-w-sm h-full bg-card dark:bg-[#111b21] border-l border-border dark:border-[#202c33] p-4 flex flex-col overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-border dark:border-[#202c33]">
+              <h3 className="font-bold text-sm text-foreground dark:text-white flex items-center gap-2">
+                <Info className="size-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Deal Details</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setInfoDrawerOpen(false)}
-                className="size-8 rounded-full bg-[#202c33] flex items-center justify-center text-slate-300 hover:text-white"
+                className="size-8 rounded-full bg-muted hover:bg-muted/80 dark:bg-[#202c33] flex items-center justify-center text-muted-foreground hover:text-foreground dark:text-slate-300 dark:hover:text-white"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            {/* Drawer Content */}
             <div className="py-3 space-y-4 flex-1">
-              {/* Full Influencer Profile Card */}
-              <div className="flex flex-col items-center text-center p-4 bg-[#182229] rounded-2xl border border-[#202c33] shadow-inner">
+              <div className="flex flex-col items-center text-center p-4 bg-muted/40 dark:bg-[#182229] rounded-2xl border border-border dark:border-[#202c33] shadow-xs">
                 <div className="relative mb-3">
-                  <Avatar className="size-18 rounded-full border-3 border-emerald-500 bg-slate-900 ring-4 ring-emerald-500/20 shadow-lg">
+                  <Avatar className="size-18 rounded-full border-3 border-emerald-500 bg-muted dark:bg-slate-900 ring-4 ring-emerald-500/20 shadow-lg">
                     <AvatarImage src={collab.profileImage} alt={collab.influencerName} />
-                    <AvatarFallback className="text-xl font-black bg-emerald-950 text-emerald-300">
+                    <AvatarFallback className="text-xl font-black bg-emerald-500/10 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                       {collab.influencerName?.[0] || "C"}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="absolute bottom-0 right-0 size-4.5 rounded-full bg-emerald-500 ring-2 ring-[#182229] flex items-center justify-center shadow-xs">
+                  <span className="absolute bottom-0 right-0 size-4.5 rounded-full bg-emerald-500 ring-2 ring-card dark:ring-[#182229] flex items-center justify-center shadow-xs">
                     <CheckCircle2 className="size-3 text-slate-950" />
                   </span>
                 </div>
 
-                <h3 className="font-bold text-base text-white truncate max-w-full flex items-center justify-center gap-1.5">
+                <h3 className="font-bold text-base text-foreground dark:text-white truncate max-w-full flex items-center justify-center gap-1.5">
                   <span>{collab.influencerName}</span>
-                  <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 </h3>
 
                 <div className="flex items-center justify-center gap-2 mt-1 text-xs">
-                  <span className="text-slate-400 font-medium">{collab.influencerUsername || "@creator"}</span>
+                  <span className="text-muted-foreground dark:text-slate-400 font-medium">{collab.influencerUsername || "@creator"}</span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getPlatformBadge(collab.platform).badgeClass}`}>
                     {getPlatformBadge(collab.platform).label}
                   </span>
                 </div>
 
-                {/* Stats Grid */}
                 <div className="grid grid-cols-2 gap-2 w-full mt-3.5 text-left">
-                  <div className="bg-[#111b21] p-2 rounded-xl border border-[#202c33]">
-                    <div className="flex items-center gap-1 text-[9px] uppercase font-bold text-slate-400">
-                      <Users className="size-3 text-emerald-400" />
+                  <div className="bg-card dark:bg-[#111b21] p-2 rounded-xl border border-border dark:border-[#202c33]">
+                    <div className="flex items-center gap-1 text-[9px] uppercase font-bold text-muted-foreground dark:text-slate-400">
+                      <Users className="size-3 text-emerald-600 dark:text-emerald-400" />
                       <span>{collab.platform?.toLowerCase() === "youtube" ? "Subscribers" : "Followers"}</span>
                     </div>
-                    <p className="text-xs font-black text-white mt-0.5">
+                    <p className="text-xs font-black text-foreground dark:text-white mt-0.5">
                       {formatNumber(collab.subscribers) || "Audience"}
                     </p>
                   </div>
 
-                  <div className="bg-[#111b21] p-2 rounded-xl border border-[#202c33]">
-                    <div className="flex items-center gap-1 text-[9px] uppercase font-bold text-slate-400">
-                      <Tag className="size-3 text-sky-400" />
+                  <div className="bg-card dark:bg-[#111b21] p-2 rounded-xl border border-border dark:border-[#202c33]">
+                    <div className="flex items-center gap-1 text-[9px] uppercase font-bold text-muted-foreground dark:text-slate-400">
+                      <Tag className="size-3 text-sky-600 dark:text-sky-400" />
                       <span>Category</span>
                     </div>
-                    <p className="text-xs font-semibold text-white mt-0.5 truncate">
+                    <p className="text-xs font-semibold text-foreground dark:text-white mt-0.5 truncate">
                       {collab.category || "General"}
                     </p>
                   </div>
 
-                  <div className="col-span-2 bg-[#111b21] p-2 rounded-xl border border-[#202c33]">
-                    <div className="flex items-center gap-1 text-[9px] uppercase font-bold text-slate-400">
-                      <MapPin className="size-3 text-amber-400" />
+                  <div className="col-span-2 bg-card dark:bg-[#111b21] p-2 rounded-xl border border-border dark:border-[#202c33]">
+                    <div className="flex items-center gap-1 text-[9px] uppercase font-bold text-muted-foreground dark:text-slate-400">
+                      <MapPin className="size-3 text-amber-600 dark:text-amber-400" />
                       <span>Location</span>
                     </div>
-                    <p className="text-xs font-semibold text-white mt-0.5 truncate">
+                    <p className="text-xs font-semibold text-foreground dark:text-white mt-0.5 truncate">
                       {collab.location || "Global"}
                     </p>
                   </div>
                 </div>
 
-                {/* Email & Channel Link */}
                 <div className="w-full mt-3 space-y-1.5 text-xs">
                   {collab.recipientEmail && (
-                    <div className="flex items-center justify-between gap-1.5 p-2 rounded-lg bg-[#111b21] border border-[#202c33] text-slate-300">
-                      <span className="flex items-center gap-1 text-slate-400 text-[10px] shrink-0">
-                        <Mail className="size-3 text-emerald-400" />
+                    <div className="flex items-center justify-between gap-1.5 p-2 rounded-lg bg-card dark:bg-[#111b21] border border-border dark:border-[#202c33] text-foreground dark:text-slate-300">
+                      <span className="flex items-center gap-1 text-muted-foreground dark:text-slate-400 text-[10px] shrink-0">
+                        <Mail className="size-3 text-emerald-600 dark:text-emerald-400" />
                         <span>Contact</span>
                       </span>
-                      <span className="truncate font-mono text-[10px] text-slate-200">
+                      <span className="truncate font-mono text-[10px] text-foreground dark:text-slate-200">
                         {collab.recipientEmail}
                       </span>
                     </div>
@@ -1009,7 +1058,7 @@ export default function CreatorCollabPortal() {
                       href={collab.profileUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition-colors"
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition-colors"
                     >
                       <Globe className="size-3" />
                       <span>Visit Channel Profile</span>
@@ -1019,25 +1068,22 @@ export default function CreatorCollabPortal() {
                 </div>
               </div>
 
-
-              {/* Pitch */}
-              <div className="p-3.5 rounded-xl bg-[#182229] border border-[#202c33] space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Subject</span>
-                <p className="text-xs font-semibold text-white">{collab.subject}</p>
-                <div className="pt-2 border-t border-[#202c33]">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Original Pitch</span>
-                  <p className="text-xs text-slate-300 leading-relaxed mt-1 whitespace-pre-wrap select-text">
+              <div className="p-3.5 rounded-xl bg-muted/40 dark:bg-[#182229] border border-border dark:border-[#202c33] space-y-2 shadow-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground dark:text-slate-400">Subject</span>
+                <p className="text-xs font-semibold text-foreground dark:text-white">{collab.subject}</p>
+                <div className="pt-2 border-t border-border dark:border-[#202c33]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground dark:text-slate-400">Original Pitch</span>
+                  <p className="text-xs text-foreground dark:text-slate-300 leading-relaxed mt-1 whitespace-pre-wrap select-text">
                     {collab.message}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Close / Return to chat */}
             <Button
               type="button"
               onClick={() => setInfoDrawerOpen(false)}
-              className="w-full h-10 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs"
+              className="w-full h-10 bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-slate-950 font-bold text-xs cursor-pointer shadow-xs"
             >
               Back to Chat
             </Button>

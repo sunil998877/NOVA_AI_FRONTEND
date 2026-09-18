@@ -65,6 +65,9 @@ function CollaborationHistory() {
   const [followupEmail, setFollowupEmail] = useState("");
   const [followupSubject, setFollowupSubject] = useState("");
   const [followupMessage, setFollowupMessage] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState(
+    () => localStorage.getItem("nova_whatsapp_number") || ""
+  );
   const [sendingFollowup, setSendingFollowup] = useState(false);
 
   const loadData = async (isManual = false) => {
@@ -151,7 +154,15 @@ function CollaborationHistory() {
     const creatorEmail = item.recipient_email || item.recipientEmail || "";
     setFollowupInfluencer(item);
     setFollowupEmail(creatorEmail);
-    setFollowupSubject(`Following up: ${item.subject || "Our Collaboration"}`);
+    if (item.whatsapp_number) {
+      setWhatsappNumber(item.whatsapp_number);
+    } else {
+      setWhatsappNumber(localStorage.getItem("nova_whatsapp_number") || "");
+    }
+    const baseSubject = (item.subject || "Our Collaboration")
+      .replace(/^(?:(?:following\s*up|re|fwd):\s*)+/gi, "")
+      .trim();
+    setFollowupSubject(`Following up: ${baseSubject || "Our Collaboration"}`);
     setFollowupMessage(
       `Hi ${creatorName},\n\nI wanted to follow up on my previous note regarding partnering with NOVA. We're eager to collaborate and would love to hear your thoughts.\n\nBest regards,\nNOVA Partnerships Team`
     );
@@ -167,6 +178,12 @@ function CollaborationHistory() {
 
     setSendingFollowup(true);
     try {
+      if (whatsappNumber.trim()) {
+        try {
+          localStorage.setItem("nova_whatsapp_number", whatsappNumber.trim());
+        } catch (_) { }
+      }
+
       await influencerApi.outreach({
         influencerId: followupInfluencer?.influencer_id || followupInfluencer?.influencerId || undefined,
         name: followupInfluencer?.influencer_name || followupInfluencer?.influencerName,
@@ -177,6 +194,7 @@ function CollaborationHistory() {
         email: followupEmail.trim(),
         subject: followupSubject.trim(),
         message: followupMessage.trim(),
+        whatsappNumber: whatsappNumber.trim() || undefined,
       });
 
       toast.success("Follow-up outreach sent successfully", `Delivered to ${followupEmail}`);
@@ -336,11 +354,10 @@ function CollaborationHistory() {
                 key={plat}
                 type="button"
                 onClick={() => setSelectedPlatform(plat)}
-                className={`rounded-md px-2.5 py-1 font-medium capitalize transition-colors ${
-                  selectedPlatform === plat
+                className={`rounded-md px-2.5 py-1 font-medium capitalize transition-colors ${selectedPlatform === plat
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                  }`}
               >
                 {plat === "all" ? "All Platforms" : plat === "twitter" ? "Twitter/X" : plat}
               </button>
@@ -353,11 +370,10 @@ function CollaborationHistory() {
                 key={st}
                 type="button"
                 onClick={() => setSelectedStatus(st)}
-                className={`rounded-md px-2.5 py-1 font-medium capitalize transition-colors ${
-                  selectedStatus === st
+                className={`rounded-md px-2.5 py-1 font-medium capitalize transition-colors ${selectedStatus === st
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                  }`}
               >
                 {st === "all" ? "All Status" : st}
               </button>
@@ -496,10 +512,10 @@ function CollaborationHistory() {
       </Card>
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl sm:max-w-[700px] w-[95vw]">
           {detailItem && (
             <>
-              <DialogHeader>
+              <DialogHeader className="pr-8">
                 <div className="flex items-center gap-3">
                   <Avatar className="size-11 border">
                     {(detailItem.profile_image || detailItem.profileImage) && (
@@ -513,7 +529,7 @@ function CollaborationHistory() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <DialogTitle className="truncate text-base font-semibold">
+                    <DialogTitle className="text-base font-semibold leading-snug break-words">
                       Outreach to {detailItem.influencer_name || detailItem.influencerName}
                     </DialogTitle>
                     <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
@@ -564,11 +580,10 @@ function CollaborationHistory() {
                         key={st}
                         type="button"
                         onClick={() => handleUpdateStatus(detailItem.id, st)}
-                        className={`px-2 py-0.5 rounded text-[11px] font-medium capitalize transition-colors ${
-                          detailItem.status === st
+                        className={`px-2 py-0.5 rounded text-[11px] font-medium capitalize transition-colors ${detailItem.status === st
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted text-muted-foreground hover:text-foreground"
-                        }`}
+                          }`}
                       >
                         {st}
                       </button>
@@ -600,11 +615,11 @@ function CollaborationHistory() {
       </Dialog>
 
       <Dialog open={followupOpen} onOpenChange={setFollowupOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl sm:max-w-[620px] w-[95vw]">
           {followupInfluencer && (
             <form onSubmit={handleSendFollowup}>
-              <DialogHeader>
-                <DialogTitle>
+              <DialogHeader className="pr-8">
+                <DialogTitle className="leading-snug break-words">
                   Send Follow-up to {followupInfluencer.influencer_name || followupInfluencer.influencerName}
                 </DialogTitle>
               </DialogHeader>
@@ -617,6 +632,24 @@ function CollaborationHistory() {
                     value={followupEmail}
                     onChange={(e) => setFollowupEmail(e.target.value)}
                     required
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="followup-wa" className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+                      <span className="text-primary font-bold">💬</span>
+                      <span>Your WhatsApp Reply Number (Optional)</span>
+                    </Label>
+                    <span className="text-[10px] text-muted-foreground">
+                      Adds a 1-click WhatsApp button to email
+                    </span>
+                  </div>
+                  <Input
+                    id="followup-wa"
+                    placeholder="e.g. +1 555 123 4567 or +91 98765 43210"
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value)}
+                    className="h-9 text-xs bg-background dark:bg-muted/20 text-foreground border-input"
                   />
                 </div>
                 <div className="grid gap-1.5">
@@ -666,3 +699,4 @@ function CollaborationHistory() {
 }
 
 export default CollaborationHistory;
+

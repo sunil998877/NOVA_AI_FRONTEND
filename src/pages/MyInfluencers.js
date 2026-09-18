@@ -75,6 +75,7 @@ function MyInfluencers() {
   const [whatsappNumber, setWhatsappNumber] = useState(
     () => localStorage.getItem("nova_whatsapp_number") || ""
   );
+  const [influencerPhone, setInfluencerPhone] = useState("");
 
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -263,6 +264,7 @@ function MyInfluencers() {
     const hasVerified = Boolean(inf?.email && isValidEmail(inf.email));
     setHasVerifiedEmail(hasVerified);
     setOutreachEmail(hasVerified ? inf.email : "");
+    setInfluencerPhone(inf?.phone || "");
     setSaveEmailToProfile(true);
     setOutreachSubject(`Collaboration Opportunity: NOVA & ${inf.name}`);
     setOutreachMessage(
@@ -361,6 +363,7 @@ function MyInfluencers() {
         subject: outreachSubject,
         message: outreachMessage,
         whatsappNumber: whatsappNumber.trim() || undefined,
+        influencerPhone: influencerPhone.trim() || undefined,
       });
 
       toast.success("Outreach email sent successfully", `Delivered to ${cleanEmail}`);
@@ -601,12 +604,12 @@ function MyInfluencers() {
       </Card>
 
       <Dialog open={outreachOpen} onOpenChange={setOutreachOpen}>
-        <DialogContent className="max-w-2xl sm:max-w-[680px] w-[95vw] sm:w-full bg-[#0e131f] border border-border/80 shadow-2xl">
+        <DialogContent className="max-w-2xl sm:max-w-3xl lg:max-w-4xl w-[96vw] bg-card text-card-foreground border border-border shadow-2xl rounded-2xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
           <form onSubmit={handleSendOutreach} className="space-y-4">
-            <DialogHeader className="pb-3 border-b border-border/60">
+            <DialogHeader className="pb-3 border-b border-border/80">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Avatar className="size-10 border border-border/80 shrink-0">
+                  <Avatar className="size-10 border border-border shrink-0">
                     {selectedInfluencer?.profile_image && (
                       <AvatarImage src={selectedInfluencer.profile_image} alt={selectedInfluencer?.name} />
                     )}
@@ -615,7 +618,7 @@ function MyInfluencers() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <DialogTitle className="truncate text-base font-semibold leading-tight">
+                    <DialogTitle className="truncate text-base sm:text-lg font-semibold leading-tight text-foreground">
                       Send Outreach
                     </DialogTitle>
                     <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
@@ -626,7 +629,7 @@ function MyInfluencers() {
                       <span className="truncate">
                         {selectedInfluencer?.username || `@${selectedInfluencer?.name?.toLowerCase().replace(/\s+/g, "")}`}
                       </span>
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border border-border/60">
                         {selectedInfluencer?.platform || "Platform"}
                       </span>
                     </div>
@@ -639,7 +642,7 @@ function MyInfluencers() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8 text-xs gap-1.5 px-2.5"
+                      className="h-8 text-xs gap-1.5 px-2.5 border-border bg-background hover:bg-muted text-foreground"
                       onClick={() => window.open(selectedInfluencer.profile_url, "_blank", "noopener,noreferrer")}
                     >
                       <ExternalLink className="size-3 text-primary" />
@@ -649,14 +652,14 @@ function MyInfluencers() {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
                       title="Copy profile link"
                       onClick={() => {
                         navigator.clipboard.writeText(selectedInfluencer.profile_url);
                         toast.success("Profile URL copied to clipboard");
                       }}
                     >
-                      <Copy className="size-3.5 text-muted-foreground" />
+                      <Copy className="size-3.5" />
                     </Button>
                   </div>
                 )}
@@ -664,21 +667,21 @@ function MyInfluencers() {
             </DialogHeader>
 
             {hasVerifiedEmail ? (
-              <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2 text-xs text-emerald-400">
-                <CheckCircle2 className="size-4 shrink-0 text-emerald-400" />
+              <div className="flex items-center gap-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 px-4 py-2.5 text-xs font-medium text-emerald-800 dark:text-emerald-300">
+                <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                 <span>Verified business email loaded automatically.</span>
               </div>
             ) : (
-              <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3.5 py-2 text-xs text-amber-300">
+              <div className="flex items-center justify-between gap-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 px-4 py-2.5 text-xs font-medium text-amber-900 dark:text-amber-200">
                 <div className="flex items-center gap-2 min-w-0">
-                  <AlertCircle className="size-4 shrink-0 text-amber-400" />
+                  <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <span className="truncate">No public email detected. Add email manually below.</span>
                 </div>
                 {selectedInfluencer?.profile_url && (
                   <button
                     type="button"
                     onClick={() => window.open(selectedInfluencer.profile_url, "_blank", "noopener,noreferrer")}
-                    className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-200 font-medium underline underline-offset-2 shrink-0 text-xs"
+                    className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300 hover:underline font-semibold shrink-0 text-xs"
                   >
                     View Profile <ExternalLink className="size-3" />
                   </button>
@@ -686,18 +689,18 @@ function MyInfluencers() {
               </div>
             )}
 
-            <div className="space-y-3.5 py-1">
+            <div className="space-y-4 py-1">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="my-outreach-to" className="text-xs font-semibold">
+                  <Label htmlFor="my-outreach-to" className="text-xs font-semibold text-foreground">
                     Recipient Email
                   </Label>
                   {hasVerifiedEmail ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
                       <CheckCircle2 className="size-3" /> Auto-filled
                     </span>
                   ) : (
-                    <span className="text-[11px] text-amber-400 font-medium">
+                    <span className="text-[11px] text-amber-700 dark:text-amber-300 font-medium">
                       Required
                     </span>
                   )}
@@ -711,7 +714,7 @@ function MyInfluencers() {
                     value={outreachEmail}
                     onChange={(e) => setOutreachEmail(e.target.value)}
                     required
-                    className={`pl-9 ${!hasVerifiedEmail && !outreachEmail.trim() ? "border-amber-500/40 focus-visible:ring-amber-500/20" : ""}`}
+                    className={`pl-9 bg-background dark:bg-muted/20 text-foreground border-input ${!hasVerifiedEmail && !outreachEmail.trim() ? "border-amber-500/60 focus-visible:ring-amber-500/30" : ""}`}
                   />
                 </div>
                 {!hasVerifiedEmail && (
@@ -727,15 +730,15 @@ function MyInfluencers() {
                 )}
               </div>
 
-              {/* WhatsApp Contact Number */}
+
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="my-outreach-wa" className="text-xs font-semibold flex items-center gap-1.5">
-                    <span className="text-[#25D366] font-bold">💬</span>
-                    <span>Your WhatsApp Number (Optional)</span>
+                  <Label htmlFor="my-outreach-wa" className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+                    <span className="text-primary font-bold">💬</span>
+                    <span>Your WhatsApp Reply Number (Optional)</span>
                   </Label>
                   <span className="text-[10px] text-muted-foreground">
-                    Adds a 1-click WhatsApp button to email
+                    Adds a 1-click WhatsApp button for creator to reply
                   </span>
                 </div>
                 <Input
@@ -743,17 +746,17 @@ function MyInfluencers() {
                   placeholder="e.g. +1 555 123 4567 or +91 98765 43210"
                   value={whatsappNumber}
                   onChange={(e) => setWhatsappNumber(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-9 text-xs bg-background dark:bg-muted/20 text-foreground border-input"
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <Label className="mb-0 text-sm font-semibold">Email content</Label>
+              <div className="flex items-center gap-2 pt-1">
+                <Label className="mb-0 text-sm font-semibold text-foreground">Email content</Label>
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="ml-auto h-7 gap-1 text-xs"
+                  className="ml-auto h-7 gap-1.5 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10"
                   onClick={() => setAiOpen((prev) => !prev)}
                 >
                   <Sparkles className="size-3.5" />
@@ -763,41 +766,70 @@ function MyInfluencers() {
               </div>
 
               {aiOpen ? (
-                <div className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 p-3">
+                <div className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 p-3.5">
                   <div className="grid gap-2">
-                    <Label htmlFor="my-craft-prompt" className="text-xs">What should this email say?</Label>
+                    <Label htmlFor="my-craft-prompt" className="text-xs font-semibold text-foreground">What should this email say?</Label>
                     <Textarea
                       id="my-craft-prompt"
                       rows={3}
                       placeholder={`e.g., Pitch a collaboration for ${selectedInfluencer?.name || "creator"} with free product and sponsorship fee`}
                       value={aiPrompt}
                       onChange={(e) => setAiPrompt(e.target.value)}
+                      className="text-xs bg-background dark:bg-muted/20 text-foreground border-input"
                     />
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {["Professional", "Friendly", "Urgent", "Casual", "Promotional"].map((item) => (
-                      <Button
-                        key={item}
-                        type="button"
-                        size="sm"
-                        variant={aiTone === item ? "default" : "outline"}
-                        className="h-7 px-2.5 text-xs"
-                        onClick={() => setAiTone(item)}
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <Label htmlFor="my-tone-select" className="text-xs font-medium text-foreground">Tone</Label>
+                      <select
+                        id="my-tone-select"
+                        value={aiTone}
+                        onChange={(e) => setAiTone(e.target.value)}
+                        className="w-full h-8 text-xs rounded-md border border-input bg-background dark:bg-muted/30 px-2 text-foreground"
                       >
-                        {item}
-                      </Button>
-                    ))}
+                        <option value="Friendly">Friendly</option>
+                        <option value="Professional">Professional</option>
+                        <option value="Casual">Casual</option>
+                        <option value="Persuasive">Persuasive</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="my-goal-select" className="text-xs font-medium text-foreground">Goal</Label>
+                      <select
+                        id="my-goal-select"
+                        value={aiGoal}
+                        onChange={(e) => setAiGoal(e.target.value)}
+                        className="w-full h-8 text-xs rounded-md border border-input bg-background dark:bg-muted/30 px-2 text-foreground"
+                      >
+                        <option value="Sponsorship Offer">Sponsorship Offer</option>
+                        <option value="Product Review">Product Review</option>
+                        <option value="Affiliate Partnership">Affiliate Partnership</option>
+                        <option value="Brand Ambassador">Brand Ambassador</option>
+                      </select>
+                    </div>
                   </div>
-                  {aiError ? <p className="text-sm text-destructive">{aiError}</p> : null}
-                  <div className="flex justify-end">
+
+                  {aiError ? <p className="text-xs text-destructive">{aiError}</p> : null}
+                  <div className="flex justify-end gap-2 pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setAiOpen(false)}
+                      className="h-8 text-xs"
+                    >
+                      Cancel
+                    </Button>
                     <Button
                       type="button"
                       size="sm"
                       onClick={handleGenerateWithAi}
                       disabled={aiGenerating}
-                      className="gap-1.5"
+                      className="gap-1.5 h-8 text-xs"
                     >
-                      {aiGenerating ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+                      {aiGenerating ? <Loader2 className="size-3.5 animate-spin" /> : <Wand2 className="size-3.5" />}
                       {aiGenerating ? "Writing…" : "Generate subject & body"}
                     </Button>
                   </div>
@@ -809,14 +841,14 @@ function MyInfluencers() {
                   Email Subject
                 </Label>
                 {isEditingSubject ? (
-                  <div className="flex items-center gap-2 rounded-xl border border-primary/60 bg-slate-900/40 p-2.5 ring-1 ring-primary/40">
+                  <div className="flex items-center gap-2 rounded-xl border border-primary/60 bg-background dark:bg-muted/20 p-2.5 ring-1 ring-primary/40">
                     <Input
                       ref={subjectInputRef}
                       id="my-outreach-subj"
                       placeholder="Subject line..."
                       value={outreachSubject}
                       onChange={(e) => setOutreachSubject(e.target.value)}
-                      className="h-8 flex-1 border-0 bg-transparent p-0 text-sm font-medium text-slate-100 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
+                      className="h-8 flex-1 border-0 bg-transparent p-0 text-sm font-medium text-foreground shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
                       autoFocus
                     />
                     <Button
@@ -829,16 +861,16 @@ function MyInfluencers() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="group flex items-center gap-3 rounded-xl border border-slate-700/60 bg-slate-900/40 p-2.5 shadow-sm transition-all hover:border-slate-600/80">
+                  <div className="group flex items-center gap-3 rounded-xl border border-border bg-slate-100/70 dark:bg-slate-900/40 p-2.5 shadow-2xs transition-all hover:border-primary/40">
                     <button
                       type="button"
                       onClick={() => setIsEditingSubject(true)}
-                      className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-700/70 bg-slate-800/90 text-slate-300 hover:bg-slate-700 hover:text-white shadow-xs transition-all cursor-pointer"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background dark:bg-slate-800 text-muted-foreground hover:text-foreground hover:border-primary/50 shadow-2xs transition-all cursor-pointer"
                       title="Click to edit subject"
                     >
                       <Pencil className="size-3.5" />
                     </button>
-                    <p className="flex-1 text-sm font-semibold text-slate-100 select-text truncate">
+                    <p className="flex-1 text-sm font-semibold text-slate-900 dark:text-slate-100 select-text truncate">
                       {outreachSubject || <span className="text-muted-foreground italic font-normal">No subject</span>}
                     </p>
                   </div>
@@ -850,7 +882,7 @@ function MyInfluencers() {
                   Email Body
                 </Label>
                 {isEditingMessage ? (
-                  <div className="space-y-2 rounded-xl border border-primary/60 bg-slate-900/40 p-3 ring-1 ring-primary/40">
+                  <div className="space-y-2 rounded-xl border border-primary/60 bg-background dark:bg-muted/20 p-3 ring-1 ring-primary/40">
                     <Textarea
                       ref={messageInputRef}
                       id="my-outreach-msg"
@@ -858,10 +890,10 @@ function MyInfluencers() {
                       placeholder="Write your pitch..."
                       value={outreachMessage}
                       onChange={(e) => setOutreachMessage(e.target.value)}
-                      className="min-h-[120px] resize-y border-0 bg-transparent p-0 text-sm leading-relaxed text-slate-200 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
+                      className="min-h-[120px] resize-y border-0 bg-transparent p-0 text-sm leading-relaxed text-foreground shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
                       autoFocus
                     />
-                    <div className="flex justify-end pt-2 border-t border-slate-700/40">
+                    <div className="flex justify-end pt-2 border-t border-border">
                       <Button
                         type="button"
                         size="sm"
@@ -873,16 +905,16 @@ function MyInfluencers() {
                     </div>
                   </div>
                 ) : (
-                  <div className="group flex items-start gap-3 rounded-xl border border-slate-700/60 bg-slate-900/40 p-3.5 shadow-sm transition-all hover:border-slate-600/80">
+                  <div className="group flex items-start gap-3 rounded-xl border border-border bg-slate-100/70 dark:bg-slate-900/40 p-3.5 shadow-2xs transition-all hover:border-primary/40">
                     <button
                       type="button"
                       onClick={() => setIsEditingMessage(true)}
-                      className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-700/70 bg-slate-800/90 text-slate-300 hover:bg-slate-700 hover:text-white shadow-xs transition-all cursor-pointer"
+                      className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background dark:bg-slate-800 text-muted-foreground hover:text-foreground hover:border-primary/50 shadow-2xs transition-all cursor-pointer"
                       title="Click to edit message"
                     >
                       <Pencil className="size-3.5" />
                     </button>
-                    <div className="flex-1 text-sm leading-relaxed text-slate-200 whitespace-pre-wrap select-text max-h-[220px] overflow-y-auto">
+                    <div className="flex-1 text-sm leading-relaxed text-slate-900 dark:text-slate-100 whitespace-pre-wrap select-text max-h-[220px] overflow-y-auto">
                       {outreachMessage || <span className="text-muted-foreground italic">No message written</span>}
                     </div>
                   </div>
@@ -890,23 +922,23 @@ function MyInfluencers() {
               </div>
             </div>
 
-            <DialogFooter className="pt-2 border-t border-border/60 gap-2 sm:gap-0">
-              <Button type="button" variant="ghost" onClick={() => setOutreachOpen(false)}>
+            <DialogFooter className="pt-3 border-t border-border/80 flex items-center justify-end gap-2.5">
+              <Button type="button" variant="outline" className="h-9 px-4 text-xs font-medium border-border text-foreground hover:bg-muted" onClick={() => setOutreachOpen(false)}>
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={sendingOutreach || !outreachEmail.trim() || !isValidEmail(outreachEmail)}
-                className="gap-1.5"
+                className="h-9 px-5 text-xs font-semibold gap-2 shadow-xs"
               >
                 {sendingOutreach ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" />
+                    <Loader2 className="size-3.5 animate-spin" />
                     <span>Sending...</span>
                   </>
                 ) : (
                   <>
-                    <Send className="size-4" />
+                    <Send className="size-3.5" />
                     <span>Send Outreach</span>
                   </>
                 )}

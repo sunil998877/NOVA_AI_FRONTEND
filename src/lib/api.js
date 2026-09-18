@@ -162,6 +162,7 @@ export const influencerApi = {
 
 export const collabApi = {
   getConversations: () => api("/api/collab/conversations"),
+  getChatCount: () => api("/api/collab/chat-count"),
   getPortal: (token) => api(`/api/collab/portal/${token}`),
   sendPortalMessage: (token, content) =>
     api(`/api/collab/portal/${token}/message`, { method: "POST", body: { content } }),

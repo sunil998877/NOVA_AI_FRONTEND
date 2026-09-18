@@ -69,9 +69,8 @@ function StatCard({ stat }) {
           <Icon className="size-5" />
         </div>
         <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-            stat.trend === "up" ? "bg-primary/15 text-primary" : "bg-destructive/15 text-destructive"
-          }`}
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${stat.trend === "up" ? "bg-primary/15 text-primary" : "bg-destructive/15 text-destructive"
+            }`}
         >
           <TrendIcon className="size-3" />
           {stat.change}
@@ -139,13 +138,12 @@ function Calendar() {
             <button
               key={index}
               disabled={!day}
-              className={`aspect-square rounded-md text-sm font-medium transition-colors ${
-                day === today
+              className={`aspect-square rounded-md text-sm font-medium transition-colors ${day === today
                   ? "bg-primary text-primary-foreground"
                   : day
                     ? "text-foreground hover:bg-secondary"
                     : "invisible"
-              }`}
+                }`}
             >
               {day || ""}
             </button>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -26,6 +26,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
@@ -41,6 +42,8 @@ import {
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { getInitials } from "../lib/auth";
 import { useAuth } from "../lib/AuthContext";
+import { collabApi } from "../lib/api";
+import { useSocket } from "../context/SocketContext";
 
 const navGroups = [
   {
@@ -81,9 +84,54 @@ function AppSidebar(props) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { socket } = useSocket();
   const displayName = user?.fullName || "NOVA user";
   const displayEmail = user?.email || "signed in";
   const initials = getInitials(displayName, displayEmail);
+
+  const [chatStats, setChatStats] = useState({
+    unreadCount: 0,
+    totalMessages: 0,
+    influencersCount: 0,
+    count: 0,
+  });
+
+  const fetchChatCount = useCallback(async () => {
+    try {
+      const res = await collabApi.getChatCount();
+      if (res) {
+        setChatStats({
+          unreadCount: Number(res.unreadCount || 0),
+          totalMessages: Number(res.totalMessages || 0),
+          influencersCount: Number(res.influencersCount || 0),
+          count: Number(res.count ?? (res.unreadCount > 0 ? res.unreadCount : res.totalMessages) ?? 0),
+        });
+      }
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    fetchChatCount();
+    const interval = setInterval(fetchChatCount, 15000);
+    const onChatEvent = () => fetchChatCount();
+    window.addEventListener("nova-chat-updated", onChatEvent);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("nova-chat-updated", onChatEvent);
+    };
+  }, [fetchChatCount, location.pathname]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const onNewMsg = () => fetchChatCount();
+    const onUpdated = () => fetchChatCount();
+    socket.on("newMessage", onNewMsg);
+    socket.on("conversation:updated", onUpdated);
+    return () => {
+      socket.off("newMessage", onNewMsg);
+      socket.off("conversation:updated", onUpdated);
+    };
+  }, [socket, fetchChatCount]);
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -128,6 +176,18 @@ function AppSidebar(props) {
                           <span>{item.label}</span>
                         </NavLink>
                       </SidebarMenuButton>
+                      {item.path === "/chat" && (chatStats.unreadCount > 0 || chatStats.totalMessages > 0) && (
+                        <SidebarMenuBadge
+                          className={
+                            chatStats.unreadCount > 0
+                              ? "bg-emerald-500 text-white font-bold"
+                              : "bg-muted text-muted-foreground font-semibold"
+                          }
+                          title={`${chatStats.totalMessages} messages from ${chatStats.influencersCount} creator${chatStats.influencersCount === 1 ? "" : "s"}${chatStats.unreadCount > 0 ? ` (${chatStats.unreadCount} unread)` : ""}`}
+                        >
+                          {chatStats.unreadCount > 0 ? chatStats.unreadCount : chatStats.totalMessages}
+                        </SidebarMenuBadge>
+                      )}
                     </SidebarMenuItem>
                   );
                 })}

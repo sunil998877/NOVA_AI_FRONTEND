@@ -28,9 +28,9 @@ function buildFallbackHtml(campaign) {
   const senderName = campaign?.sender_name || campaign?.senderName || "Sunil Kumar";
   const senderEmail = campaign?.sender_email || campaign?.senderEmail || "skp66235@gmail.com";
   const recipientName = campaign?.isOutreach ? (campaign?.name?.replace(/^Outreach to\s*/i, "") || "Creator") : "Valued Customer";
-  
+
   let rawBody = campaign?.body || `Hello ${recipientName},\n\nWe would love to discuss an exciting collaboration opportunity with you.\n\nBest regards,\n${senderName}`;
-  
+
   // Format body paragraphs
   const formattedBody = rawBody
     .replace(/<br\s*\/?>/gi, "\n")
@@ -71,15 +71,14 @@ function buildFallbackHtml(campaign) {
       <div class="content">
         ${formattedBody}
       </div>
-      ${
-        campaign?.isOutreach
-          ? `<div class="cta-box">
+      ${campaign?.isOutreach
+      ? `<div class="cta-box">
               <div style="font-weight: 700; color: #0f766e; font-size: 15px; margin-bottom: 6px;">🤝 Creator Deal Portal</div>
               <p style="margin: 0 0 12px 0; font-size: 13px; color: #475569;">Collaborate directly with our marketing team, review deliverables, and chat in real-time.</p>
               <a href="#" class="btn">Open Deal Portal & Chat &rarr;</a>
             </div>`
-          : ""
-      }
+      : ""
+    }
       <div class="footer">
         <p style="margin: 0 0 4px 0;">Sent via NOVA AI Marketing Platform</p>
         <p style="margin: 0;">&copy; ${new Date().getFullYear()} NOVA AI. All rights reserved.</p>
@@ -258,9 +257,8 @@ export function CampaignPreviewDialog({ open, onOpenChange, campaign, onSend }) 
             </div>
           ) : (
             <div
-              className={`transition-all duration-300 bg-white rounded-xl shadow-xl border overflow-hidden flex flex-col ${
-                viewMode === "mobile" ? "w-[375px] max-w-full" : "w-full max-w-[680px]"
-              }`}
+              className={`transition-all duration-300 bg-white rounded-xl shadow-xl border overflow-hidden flex flex-col ${viewMode === "mobile" ? "w-[375px] max-w-full" : "w-full max-w-[680px]"
+                }`}
             >
               {/* Device Bezel / Header */}
               <div className="bg-slate-100 border-b px-3 py-2 flex items-center justify-between text-[11px] text-slate-500">
