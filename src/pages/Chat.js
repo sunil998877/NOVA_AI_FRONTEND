@@ -905,12 +905,6 @@ export default function Chat() {
                     >
                       {getPlatformBadge(activePlatform).label}
                     </span>
-                    {isConnected && (
-                      <span className="hidden sm:inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 font-bold">
-                        <span className="size-1.5 rounded-full bg-emerald-400 animate-ping" />
-                        LIVE
-                      </span>
-                    )}
                   </div>
                   <div className="flex items-center gap-2 text-[11px] text-slate-400">
                     <span className="truncate">@{activeInfluencerUsername}</span>
@@ -951,47 +945,30 @@ export default function Chat() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0">
                 {activeCollab.profile_url && (
                   <a
                     href={activeCollab.profile_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hidden sm:flex items-center gap-1.5 text-[11px] font-medium text-slate-300 hover:text-white bg-[#2a3942] hover:bg-[#374248] px-3 py-1.5 rounded-lg transition-colors"
-                    title="Visit creator channel"
+                    className="size-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white bg-[#2a3942]/60 hover:bg-[#2a3942] transition-colors"
+                    title="Visit channel"
                   >
-                    <ExternalLink className="size-3 text-emerald-400" />
-                    <span>Channel</span>
+                    <ExternalLink className="size-3.5" />
                   </a>
                 )}
 
                 {activePortalUrl && (
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
+                    type="button"
                     onClick={handleCopyCreatorLink}
-                    className="h-8 px-2.5 text-xs gap-1.5 bg-[#2a3942] hover:bg-[#374248] text-slate-200 border-[#2a3942] cursor-pointer hidden md:flex"
-                    title="Copy public link sent to creator"
+                    className="size-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white bg-[#2a3942]/60 hover:bg-[#2a3942] transition-colors cursor-pointer"
+                    title={copiedLink ? "Link copied!" : "Copy creator deal link"}
                   >
-                    {copiedLink ? <Check className="size-3 text-emerald-400" /> : <Share2 className="size-3" />}
-                    <span>{copiedLink ? "Copied Link" : "Creator Link"}</span>
-                  </Button>
+                    {copiedLink ? <Check className="size-3.5 text-emerald-400" /> : <Share2 className="size-3.5" />}
+                  </button>
                 )}
 
-                {whatsappUrl && (
-                  <a
-                    href={whatsappUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-[11px] font-bold bg-[#25D366] hover:bg-[#20bd5a] text-white px-3 py-1.5 rounded-lg shadow-xs transition-all"
-                    title="Open WhatsApp chat"
-                  >
-                    <ExternalLink className="size-3" />
-                    <span className="hidden sm:inline">WhatsApp</span>
-                  </a>
-                )}
-
-                {/* Real-time Notification & Sound Alert Toggle */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1001,45 +978,45 @@ export default function Chat() {
                       toggleSound();
                     }
                   }}
-                  className={`h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+                  className={`size-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
                     notifPermission === "granted"
                       ? soundEnabled
-                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
-                        : "bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
-                      : "bg-[#2a3942] border-[#374248] text-slate-300 hover:text-white"
+                        ? "text-[#25D366] bg-emerald-500/10 hover:bg-emerald-500/20"
+                        : "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
+                      : "text-slate-400 bg-[#2a3942]/60 hover:bg-[#2a3942]"
                   }`}
                   title={
                     notifPermission === "granted"
                       ? soundEnabled
-                        ? "Real-time alerts active (Click to mute sound)"
-                        : "Sound muted (Click to unmute sound)"
-                      : "Click to allow real-time message alerts"
+                        ? "Sound alerts active (Click to mute)"
+                        : "Sound muted (Click to unmute)"
+                      : "Enable notifications"
                   }
                 >
                   {notifPermission === "granted" ? (
-                    soundEnabled ? (
-                      <>
-                        <BellRing className="size-3.5 text-[#25D366]" />
-                        <span className="hidden xl:inline text-[11px]">Alerts ON</span>
-                      </>
-                    ) : (
-                      <>
-                        <VolumeX className="size-3.5 text-amber-400" />
-                        <span className="hidden xl:inline text-[11px]">Muted</span>
-                      </>
-                    )
+                    soundEnabled ? <BellRing className="size-3.5" /> : <VolumeX className="size-3.5" />
                   ) : (
-                    <>
-                      <Bell className="size-3.5 text-slate-400" />
-                      <span className="hidden xl:inline text-[11px]">Enable Alerts</span>
-                    </>
+                    <Bell className="size-3.5" />
                   )}
                 </button>
+
+                {whatsappUrl && (
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs font-bold bg-[#25D366] hover:bg-[#20bd5a] text-white px-2.5 py-1.5 rounded-lg shadow-xs transition-all"
+                    title="Open WhatsApp chat"
+                  >
+                    <ExternalLink className="size-3" />
+                    <span>WhatsApp</span>
+                  </a>
+                )}
 
                 <button
                   type="button"
                   onClick={() => setDealInfoOpen(!dealInfoOpen)}
-                  className="text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors font-medium"
+                  className="text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors font-medium"
                 >
                   <Info className="size-3.5" />
                   <span>Deal Info</span>

@@ -1,21 +1,35 @@
 import { conversationApi, openaiApi } from "./api";
 
 export async function ensureConversation(title) {
-  const { data } = await conversationApi.list();
-  const existing = (data || []).find((item) => item.title === title);
-  if (existing) return existing;
-  return conversationApi.create({ title });
+  try {
+    const res = await conversationApi.list();
+    const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+    const existing = list.find((item) => item.title === title);
+    if (existing) return existing;
+    const created = await conversationApi.create({ title });
+    return created?.data || created;
+  } catch (err) {
+    console.warn("[novaChat] ensureConversation fallback:", err.message);
+    return null;
+  }
 }
 
 export async function findConversation(title) {
-  const { data } = await conversationApi.list();
-  return (data || []).find((item) => item.title === title) || null;
+  try {
+    const res = await conversationApi.list();
+    const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+    return list.find((item) => item.title === title) || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function loadConversationMessages(title) {
   const conversation = await findConversation(title);
   if (!conversation) return { conversation: null, messages: [] };
-  const { data } = await conversationApi.messages(conversation.id);
+  const convId = conversation.id || conversation._id;
+  if (!convId) return { conversation, messages: [] };
+  const { data } = await conversationApi.messages(convId);
   return { conversation, messages: data || [] };
 }
 
@@ -24,13 +38,20 @@ export async function generateEmail({
   context = false,
   conversationTitle = "Message Crafter",
 }) {
-  const conversation = await ensureConversation(conversationTitle);
+  let conversation = null;
+  try {
+    conversation = await ensureConversation(conversationTitle);
+  } catch (err) {
+    console.warn("[novaChat] Could not load conversation:", err.message);
+  }
+
+  const convId = conversation?.id || conversation?._id || conversation?.data?.id || null;
   const result = await openaiApi.generateMessage({
-    conversationId: conversation.id,
+    conversationId: convId,
     prompt,
-    context,
+    context: Boolean(context && convId),
   });
-  return { data: result.data, conversation };
+  return { data: result?.data, conversation };
 }
 
 export async function craftEmail({

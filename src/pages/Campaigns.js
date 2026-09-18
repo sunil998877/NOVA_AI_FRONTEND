@@ -461,12 +461,10 @@ function Campaigns() {
                         <DropdownMenuItem
                           onSelect={(e) => {
                             e.preventDefault();
-                            openPreview(campaign);
+                            openViewRecipients(campaign);
                           }}
+                          onClick={() => openViewRecipients(campaign)}
                         >
-                          <Eye /> Preview email
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openViewRecipients(campaign)}>
                           <Users /> View recipients & opens
                         </DropdownMenuItem>
                         {!campaign.isOutreach && (
@@ -474,11 +472,6 @@ function Campaigns() {
                             <UserPlus /> Add recipients
                           </DropdownMenuItem>
                         )}
-                        {campaign.recipients > 0 ? (
-                          <DropdownMenuItem onClick={() => handleStart(campaign)}>
-                            <Send /> {campaign.status === "completed" ? "Resend campaign" : "Send campaign"}
-                          </DropdownMenuItem>
-                        ) : null}
                         {campaign.status === "processing" ? (
                           <DropdownMenuItem onClick={() => handleComplete(campaign)}>
                             <CheckCircle2 /> Mark completed
@@ -567,6 +560,10 @@ function Campaigns() {
         onOpenChange={setViewRecipientsOpen}
         campaign={viewRecipientsCampaign}
         mails={mails}
+        onAddRecipients={(c) => {
+          setViewRecipientsOpen(false);
+          openAddRecipients(c || viewRecipientsCampaign);
+        }}
       />
     </div>
   );

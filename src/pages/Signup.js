@@ -56,6 +56,9 @@ function Signup() {
       setError("Please tick I'm not a robot");
       return;
     }
+
+
+
     setBusy(true);
     try {
       const result = await authApi.signup({

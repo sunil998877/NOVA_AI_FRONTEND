@@ -347,7 +347,7 @@ function MyInfluencers() {
       if (whatsappNumber.trim()) {
         try {
           localStorage.setItem("nova_whatsapp_number", whatsappNumber.trim());
-        } catch (_) {}
+        } catch (_) { }
       }
 
       await influencerApi.outreach({
