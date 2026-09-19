@@ -160,10 +160,36 @@ export const influencerApi = {
   deleteCollaboration: (id) => api(`/api/influencers/collaborations/${id}`, { method: "DELETE" }),
 };
 
+const portalCache = new Map();
+
 export const collabApi = {
   getConversations: () => api("/api/collab/conversations"),
   getChatCount: () => api("/api/collab/chat-count"),
-  getPortal: (token) => api(`/api/collab/portal/${token}`),
+  getCachedPortal: (token) => {
+    if (!token) return null;
+    return portalCache.get(token) || null;
+  },
+  prefetchPortal: async (token) => {
+    if (!token) return null;
+    if (portalCache.has(token)) return portalCache.get(token);
+    try {
+      const res = await api(`/api/collab/portal/${token}`);
+      portalCache.set(token, res);
+      return res;
+    } catch (err) {
+      const errRes = { error: err.message || "Failed to load collaboration portal" };
+      portalCache.set(token, errRes);
+      return errRes;
+    }
+  },
+  getPortal: async (token, bypassCache = false) => {
+    if (!bypassCache && portalCache.has(token)) {
+      return portalCache.get(token);
+    }
+    const res = await api(`/api/collab/portal/${token}`);
+    portalCache.set(token, res);
+    return res;
+  },
   sendPortalMessage: (token, content) =>
     api(`/api/collab/portal/${token}/message`, { method: "POST", body: { content } }),
   getMessages: (id, influencerId) =>

@@ -27,6 +27,12 @@ import { useAuth } from "./lib/AuthContext";
 import { applyTheme, getTheme } from "./lib/theme";
 import LoadingScreen from "./components/LoadingScreen";
 import TopProgressBar from "./components/TopProgressBar";
+import { collabApi } from "./lib/api";
+
+// Eagerly preload CreatorCollabPortal bundle if opening a collab link
+if (typeof window !== "undefined" && window.location.pathname.startsWith("/collab/")) {
+  import("./pages/CreatorCollabPortal");
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -67,18 +73,42 @@ function RequireAuthBare() {
 }
 
 function App() {
+  const isCollab = typeof window !== "undefined" && window.location.pathname.startsWith("/collab/");
   const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
     applyTheme(getTheme());
+
+    if (isCollab) {
+      const parts = window.location.pathname.split("/collab/");
+      const token = parts[1]?.split("/")[0]?.split("?")[0];
+      const prefetchPromise = token ? collabApi.prefetchPortal(token) : Promise.resolve();
+      // Fast, smooth initial display (600ms) - no 3s stall
+      const minTimer = new Promise((resolve) => setTimeout(resolve, 600));
+      const maxTimer = new Promise((resolve) => setTimeout(resolve, 1200));
+
+      Promise.race([
+        Promise.all([prefetchPromise, minTimer]),
+        maxTimer,
+      ]).finally(() => {
+        setInitialLoading(false);
+      });
+      return;
+    }
+
     const timer = setTimeout(() => {
       setInitialLoading(false);
-    }, 3000);
+    }, 1200);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isCollab]);
 
   if (initialLoading) {
-    return <LoadingScreen duration={3000} />;
+    return (
+      <LoadingScreen
+        duration={isCollab ? 600 : 1200}
+        subtitle={isCollab ? "Connecting to collaboration portal..." : "Preparing your Nova workspace..."}
+      />
+    );
   }
 
   return (

@@ -39,6 +39,7 @@ import { Badge } from "../components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { collabApi } from "../lib/api";
 import { useSocket } from "../context/SocketContext";
+import LoadingScreen from "../components/LoadingScreen";
 
 function formatNumber(num) {
   if (num === null || num === undefined || num === "") return null;
@@ -129,10 +130,11 @@ function playMessageChime() {
 
 export default function CreatorCollabPortal() {
   const { token } = useParams();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [collab, setCollab] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const cached = collabApi.getCachedPortal ? collabApi.getCachedPortal(token) : null;
+  const [loading, setLoading] = useState(!cached);
+  const [error, setError] = useState(cached?.error || "");
+  const [collab, setCollab] = useState(cached?.collaboration || null);
+  const [messages, setMessages] = useState(cached?.messages || []);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [showFullPitch, setShowFullPitch] = useState(false);
@@ -268,9 +270,11 @@ export default function CreatorCollabPortal() {
   };
 
   const loadPortalData = async (quiet = false) => {
-    if (!quiet) setLoading(true);
+    if (!quiet && !collab && !collabApi.getCachedPortal?.(token)) {
+      setLoading(true);
+    }
     try {
-      const res = await collabApi.getPortal(token);
+      const res = await collabApi.getPortal(token, quiet);
       if (res?.error) {
         setError(res.error);
       } else {
@@ -511,13 +515,11 @@ export default function CreatorCollabPortal() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background dark:bg-slate-950 px-4 text-foreground dark:text-slate-100">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 mb-4 animate-pulse">
-          <Sparkles className="size-7" />
-        </div>
-        <p className="text-sm font-medium text-muted-foreground dark:text-slate-300">Loading partnership portal...</p>
-        <Loader2 className="mt-3 size-5 animate-spin text-teal-500" />
-      </div>
+      <LoadingScreen
+        fullScreen={true}
+        duration={600}
+        subtitle="Connecting to collaboration portal..."
+      />
     );
   }
 
