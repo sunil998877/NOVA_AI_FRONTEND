@@ -10,7 +10,7 @@ export function getSocketUrl() {
     (typeof process !== "undefined" &&
       process.env &&
       (process.env.REACT_APP_API_URL || process.env.VITE_BACKEND_URL)) ||
-    "";
+    "https://nova-ai-backend-wo7q.onrender.com";
 
   if (envTarget && typeof envTarget === "string" && envTarget.trim()) {
     return envTarget.trim().replace(/\/$/, "");
@@ -25,7 +25,7 @@ export function getSocketUrl() {
     }
     return window.location.origin;
   }
-  return "";
+  return "https://nova-ai-backend-wo7q.onrender.com";
 }
 
 /**

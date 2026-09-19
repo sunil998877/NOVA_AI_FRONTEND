@@ -3,7 +3,11 @@ import { clearSession, getToken } from "./auth";
 export const API_URL = (
   import.meta.env.DEV
     ? ""
-    : (process.env.REACT_APP_API_URL || "https://salmon-spoonbill-632915.hostingersite.com")
+    : (
+        (typeof import.meta !== "undefined" && import.meta.env && (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_API_URL)) ||
+        (typeof process !== "undefined" && process.env && (process.env.REACT_APP_API_URL || process.env.VITE_BACKEND_URL)) ||
+        "https://nova-ai-backend-wo7q.onrender.com"
+      )
 ).replace(/\/$/, "");
 
 export class ApiError extends Error {
