@@ -923,6 +923,19 @@ export default function Chat() {
                   {copiedLink ? <Check className="size-4 text-emerald-500" /> : <Share2 className="size-4" />}
                 </button>
 
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-8 px-2 sm:px-3.5 rounded-full flex items-center gap-1.5 text-xs font-bold bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-xs transition-all cursor-pointer shrink-0"
+                  title="Open WhatsApp chat"
+                >
+                  <svg className="size-3.5 fill-white shrink-0" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.301-.15-1.78-.878-2.056-.978-.275-.1-.476-.15-.677.15-.2.301-.777.979-.953 1.18-.176.2-.351.226-.652.076-.301-.15-1.272-.469-2.424-1.497-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.2-.301.301-.501.101-.2.05-.376-.025-.526-.075-.15-.677-1.63-.928-2.234-.244-.588-.493-.508-.677-.518-.175-.008-.376-.01-.577-.01s-.527.076-.803.376c-.276.301-1.053 1.028-1.053 2.508s1.079 2.909 1.229 3.109c.15.201 2.123 3.242 5.143 4.545.719.31 1.28.496 1.718.635.723.23 1.381.197 1.9.12.58-.087 1.78-.727 2.03-1.43.25-.702.25-1.304.176-1.43-.076-.126-.276-.201-.577-.351zM12.04 2C6.543 2 2.08 6.463 2.08 11.96c0 1.838.498 3.565 1.365 5.05L2 22l5.127-1.345a9.92 9.92 0 0 0 4.913 1.265c5.497 0 9.96-4.463 9.96-9.96C22 6.463 17.537 2 12.04 2z"/>
+                  </svg>
+                  <span className="hidden sm:inline">WhatsApp</span>
+                </a>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -932,7 +945,7 @@ export default function Chat() {
                       toggleSound();
                     }
                   }}
-                  className={`hidden sm:flex size-8 rounded-xl items-center justify-center transition-colors cursor-pointer ${notifPermission === "granted" && !soundEnabled
+                  className={`size-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer shrink-0 ${notifPermission === "granted" && !soundEnabled
                     ? "text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
                     : "text-emerald-600 dark:text-[#25D366] bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25"
                     }`}
@@ -952,19 +965,6 @@ export default function Chat() {
                     <Bell className="size-4" />
                   )}
                 </button>
-
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-8 px-2 sm:px-3.5 rounded-full flex items-center gap-1.5 text-xs font-bold bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-xs transition-all cursor-pointer shrink-0"
-                  title="Open WhatsApp chat"
-                >
-                  <svg className="size-3.5 fill-white shrink-0" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.301-.15-1.78-.878-2.056-.978-.275-.1-.476-.15-.677.15-.2.301-.777.979-.953 1.18-.176.2-.351.226-.652.076-.301-.15-1.272-.469-2.424-1.497-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.2-.301.301-.501.101-.2.05-.376-.025-.526-.075-.15-.677-1.63-.928-2.234-.244-.588-.493-.508-.677-.518-.175-.008-.376-.01-.577-.01s-.527.076-.803.376c-.276.301-1.053 1.028-1.053 2.508s1.079 2.909 1.229 3.109c.15.201 2.123 3.242 5.143 4.545.719.31 1.28.496 1.718.635.723.23 1.381.197 1.9.12.58-.087 1.78-.727 2.03-1.43.25-.702.25-1.304.176-1.43-.076-.126-.276-.201-.577-.351zM12.04 2C6.543 2 2.08 6.463 2.08 11.96c0 1.838.498 3.565 1.365 5.05L2 22l5.127-1.345a9.92 9.92 0 0 0 4.913 1.265c5.497 0 9.96-4.463 9.96-9.96C22 6.463 17.537 2 12.04 2z"/>
-                  </svg>
-                  <span className="hidden sm:inline">WhatsApp</span>
-                </a>
 
                 <button
                   type="button"
