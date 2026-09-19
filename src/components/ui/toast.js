@@ -146,21 +146,7 @@ export function ToastProvider({ children }) {
       {children}
       <style>{`@keyframes nova-toast-shrink { from { width: 100%; } to { width: 0%; } }`}</style>
       <div
-        style={{
-          position: "fixed",
-          top: 16,
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 99999,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 0,
-          pointerEvents: "none",
-          width: "100%",
-          maxWidth: "440px",
-          padding: "0 12px",
-        }}
+        className="fixed z-[99999] pointer-events-none flex flex-col gap-2 top-4 left-1/2 -translate-x-1/2 items-center w-[94vw] max-w-[420px] px-3 md:top-5 md:right-6 md:left-auto md:translate-x-0 md:items-end md:w-auto md:max-w-none md:p-0 transition-all duration-300"
       >
         {toasts.map((t) => (
           <ToastItem key={t.id} toast={t} onDismiss={dismiss} />
