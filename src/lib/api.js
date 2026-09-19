@@ -26,6 +26,9 @@ const emitUnauthorized = () => {
 
 export async function api(path, { method = "GET", body, auth = true, token } = {}) {
   const headers = {};
+  if (typeof window !== "undefined" && window.location?.origin) {
+    headers["X-Frontend-Url"] = window.location.origin;
+  }
   if (body !== undefined) {
     headers["Content-Type"] = "application/json";
   }

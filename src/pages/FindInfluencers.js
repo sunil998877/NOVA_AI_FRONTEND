@@ -511,6 +511,7 @@ function FindInfluencers() {
         subject: outreachSubject,
         message: outreachMessage,
         whatsappNumber: whatsappNumber.trim() || undefined,
+        portalBaseUrl: typeof window !== "undefined" ? window.location.origin : undefined,
       });
 
       toast.success("Outreach email sent successfully", `Delivered to ${cleanEmail}`);

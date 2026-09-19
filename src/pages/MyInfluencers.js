@@ -364,6 +364,7 @@ function MyInfluencers() {
         message: outreachMessage,
         whatsappNumber: whatsappNumber.trim() || undefined,
         influencerPhone: influencerPhone.trim() || undefined,
+        portalBaseUrl: typeof window !== "undefined" ? window.location.origin : undefined,
       });
 
       toast.success("Outreach email sent successfully", `Delivered to ${cleanEmail}`);
