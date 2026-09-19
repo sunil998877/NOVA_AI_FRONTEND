@@ -7,6 +7,17 @@ import { AuthProvider } from './lib/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { ToastProvider } from './components/ui/toast';
 import './styles/global.css';
+import { collabApi } from './lib/api';
+
+// Instant parallel prefetch and component preloading at the earliest entry point
+if (typeof window !== "undefined" && window.location.pathname.startsWith("/collab/")) {
+  const parts = window.location.pathname.split("/collab/");
+  const token = parts[1]?.split("/")[0]?.split("?")[0];
+  if (token) {
+    collabApi.prefetchPortal(token);
+    import("./pages/CreatorCollabPortal");
+  }
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

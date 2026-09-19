@@ -537,14 +537,13 @@ export default function Chat() {
 
   const handleSendMessage = async (e) => {
     e?.preventDefault();
-    if (!selectedCollabId || !newMessage.trim() || sending) return;
+    if (!selectedCollabId || !newMessage.trim()) return;
 
     if (notifPermission === "default") {
       setShowNotifPrompt(true);
     }
 
     const content = newMessage.trim();
-    setSending(true);
 
     const tempId = `temp-${Date.now()}`;
     const optimisticMsg = {
@@ -1154,7 +1153,13 @@ export default function Chat() {
                 </div>
               ) : (
                 messages.map((m) => {
-                  const isMarketer = m.sender_type === "marketer" || m.senderType === "marketer" || m.senderType === "user";
+                  const isMarketer =
+                    m.isMarketer === true ||
+                    Boolean(m.tempId) ||
+                    m.sender_type === "marketer" ||
+                    m.senderType === "marketer" ||
+                    m.senderType === "user" ||
+                    (m.sender_type !== "influencer" && m.senderType !== "influencer");
                   return (
                     <div
                       key={m.id}
@@ -1216,19 +1221,14 @@ export default function Chat() {
                   setNewMessage(e.target.value);
                   handleLocalTyping();
                 }}
-                disabled={sending}
                 className="h-10 bg-muted/60 dark:bg-[#2a3942] border border-border/60 dark:border-0 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-emerald-500 dark:focus-visible:ring-[#00a884] rounded-lg flex-1 min-w-0"
               />
               <Button
                 type="submit"
-                disabled={sending || !newMessage.trim()}
+                disabled={!newMessage.trim()}
                 className="size-10 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-[#00a884] dark:hover:bg-[#029072] font-bold p-0 flex items-center justify-center shrink-0 transition-all shadow-md shadow-emerald-600/20 cursor-pointer"
               >
-                {sending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Send className="size-4" />
-                )}
+                <Send className="size-4" />
               </Button>
             </form>
           </>

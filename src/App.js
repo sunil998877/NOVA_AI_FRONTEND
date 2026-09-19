@@ -29,11 +29,6 @@ import LoadingScreen from "./components/LoadingScreen";
 import TopProgressBar from "./components/TopProgressBar";
 import { collabApi } from "./lib/api";
 
-// Eagerly preload CreatorCollabPortal bundle if opening a collab link
-if (typeof window !== "undefined" && window.location.pathname.startsWith("/collab/")) {
-  import("./pages/CreatorCollabPortal");
-}
-
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -82,31 +77,22 @@ function App() {
     if (isCollab) {
       const parts = window.location.pathname.split("/collab/");
       const token = parts[1]?.split("/")[0]?.split("?")[0];
-      const prefetchPromise = token ? collabApi.prefetchPortal(token) : Promise.resolve();
-      // Fast, smooth initial display (600ms) - no 3s stall
-      const minTimer = new Promise((resolve) => setTimeout(resolve, 600));
-      const maxTimer = new Promise((resolve) => setTimeout(resolve, 1200));
-
-      Promise.race([
-        Promise.all([prefetchPromise, minTimer]),
-        maxTimer,
-      ]).finally(() => {
-        setInitialLoading(false);
-      });
-      return;
+      if (token) {
+        collabApi.prefetchPortal(token);
+      }
     }
 
     const timer = setTimeout(() => {
       setInitialLoading(false);
-    }, 1200);
+    }, 3000);
     return () => clearTimeout(timer);
   }, [isCollab]);
 
   if (initialLoading) {
     return (
       <LoadingScreen
-        duration={isCollab ? 600 : 1200}
-        subtitle={isCollab ? "Connecting to collaboration portal..." : "Preparing your Nova workspace..."}
+        duration={3000}
+        subtitle={isCollab ? "Opening collaboration portal..." : "Preparing your Nova workspace..."}
       />
     );
   }

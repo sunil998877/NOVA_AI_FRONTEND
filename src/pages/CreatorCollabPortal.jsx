@@ -125,7 +125,7 @@ function playMessageChime() {
     osc2.start(now + 0.1);
     osc1.stop(now + 0.1);
     osc2.stop(now + 0.35);
-  } catch (_) {}
+  } catch (_) { }
 }
 
 export default function CreatorCollabPortal() {
@@ -163,7 +163,7 @@ export default function CreatorCollabPortal() {
     const next = isDark ? "light" : "dark";
     try {
       window.localStorage.setItem("nova-theme", next);
-    } catch {}
+    } catch { }
     if (next === "light") {
       document.documentElement.classList.remove("dark");
     } else {
@@ -241,7 +241,7 @@ export default function CreatorCollabPortal() {
               body: "Real-time alerts active! You will hear a chime and receive notifications when the brand messages you.",
               icon: "/favicon.ico",
             });
-          } catch (_) {}
+          } catch (_) { }
         }
       } catch (err) {
         console.error(err);
@@ -266,7 +266,7 @@ export default function CreatorCollabPortal() {
       navigator.clipboard.writeText(window.location.href);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
-    } catch (_) {}
+    } catch (_) { }
   };
 
   const loadPortalData = async (quiet = false) => {
@@ -307,7 +307,7 @@ export default function CreatorCollabPortal() {
                   icon: "/favicon.ico",
                   tag: `portal-${latestMsg.id}`,
                 });
-              } catch (_) {}
+              } catch (_) { }
             }
 
             document.title = `💬 (1) New message from Brand`;
@@ -358,7 +358,9 @@ export default function CreatorCollabPortal() {
             const hasTemp = prev.some((m) => m.id === newMsg.tempId || m.tempId === newMsg.tempId);
             if (hasTemp) {
               return prev.map((m) =>
-                m.id === newMsg.tempId || m.tempId === newMsg.tempId ? newMsg : m
+                m.id === newMsg.tempId || m.tempId === newMsg.tempId
+                  ? { ...newMsg, isCreator: true, sender_type: "influencer", senderType: "influencer" }
+                  : m
               );
             }
           }
@@ -368,9 +370,10 @@ export default function CreatorCollabPortal() {
         });
 
         const isFromBrand =
-          newMsg.sender_type === "marketer" ||
-          newMsg.senderType === "marketer" ||
-          newMsg.senderType === "user";
+          !newMsg.tempId &&
+          newMsg.sender_type !== "influencer" &&
+          newMsg.senderType !== "influencer" &&
+          (newMsg.sender_type === "marketer" || newMsg.senderType === "marketer" || newMsg.senderType === "user");
 
         if (isFromBrand) {
           if (soundEnabled) playMessageChime();
@@ -385,7 +388,7 @@ export default function CreatorCollabPortal() {
                 icon: "/favicon.ico",
                 tag: `portal-${newMsg.id}`,
               });
-            } catch (_) {}
+            } catch (_) { }
           }
           document.title = "💬 (1) New message from Brand";
           socket.emit("message:read", { conversationId: collab.id });
@@ -450,12 +453,13 @@ export default function CreatorCollabPortal() {
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
     const cleanContent = newMessage.trim();
-    if (!cleanContent || sending) return;
+    if (!cleanContent) return;
 
     const tempId = `temp-${Date.now()}`;
     const optimisticMsg = {
       id: tempId,
       tempId,
+      isCreator: true,
       sender_type: "influencer",
       senderType: "influencer",
       sender_name: collab?.influencerName || "You",
@@ -467,7 +471,7 @@ export default function CreatorCollabPortal() {
 
     setMessages((prev) => [...prev, optimisticMsg]);
     setNewMessage("");
-    setSending(true);
+    scrollToBottom();
 
     if (collab && (collab.status === "sent" || collab.status === "contacted")) {
       setCollab((prev) => ({ ...prev, status: "negotiating" }));
@@ -481,6 +485,8 @@ export default function CreatorCollabPortal() {
           message: cleanContent,
           messageType: "text",
           tempId,
+          senderType: "influencer",
+          sender_type: "influencer",
         },
         async (err, res) => {
           setSending(false);
@@ -488,11 +494,23 @@ export default function CreatorCollabPortal() {
             try {
               const restRes = await collabApi.sendPortalMessage(token, cleanContent);
               if (restRes?.message) {
-                setMessages((prev) => prev.map((m) => (m.id === tempId ? restRes.message : m)));
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === tempId
+                      ? { ...restRes.message, isCreator: true, sender_type: "influencer", senderType: "influencer" }
+                      : m
+                  )
+                );
               }
-            } catch (_) {}
+            } catch (_) { }
           } else if (res?.message) {
-            setMessages((prev) => prev.map((m) => (m.id === tempId ? res.message : m)));
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === tempId
+                  ? { ...res.message, isCreator: true, sender_type: "influencer", senderType: "influencer" }
+                  : m
+              )
+            );
           }
           scrollToBottom();
         }
@@ -501,7 +519,13 @@ export default function CreatorCollabPortal() {
       try {
         const res = await collabApi.sendPortalMessage(token, cleanContent);
         if (res?.message) {
-          setMessages((prev) => prev.map((m) => (m.id === tempId ? res.message : m)));
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === tempId
+                ? { ...res.message, isCreator: true, sender_type: "influencer", senderType: "influencer" }
+                : m
+            )
+          );
         }
       } catch (err) {
         setMessages((prev) => prev.filter((m) => m.id !== tempId));
@@ -517,8 +541,8 @@ export default function CreatorCollabPortal() {
     return (
       <LoadingScreen
         fullScreen={true}
-        duration={600}
-        subtitle="Connecting to collaboration portal..."
+        duration={3000}
+        subtitle="Opening collaboration portal..."
       />
     );
   }
@@ -701,9 +725,8 @@ export default function CreatorCollabPortal() {
                 </AvatarFallback>
               </Avatar>
               <span
-                className={`absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-card dark:ring-[#202c33] ${
-                  isConnected ? "bg-emerald-500 animate-pulse" : "bg-slate-400 dark:bg-slate-500"
-                }`}
+                className={`absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-card dark:ring-[#202c33] ${isConnected ? "bg-emerald-500 animate-pulse" : "bg-slate-400 dark:bg-slate-500"
+                  }`}
               />
             </div>
 
@@ -720,14 +743,12 @@ export default function CreatorCollabPortal() {
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground dark:text-slate-400">
                 <span className="truncate">@{portalUsername}</span>
                 <span
-                  className={`text-[10px] flex items-center gap-1 font-medium ${
-                    isConnected ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground dark:text-slate-400"
-                  }`}
+                  className={`text-[10px] flex items-center gap-1 font-medium ${isConnected ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground dark:text-slate-400"
+                    }`}
                 >
                   <span
-                    className={`size-1.5 rounded-full ${
-                      isConnected ? "bg-emerald-500" : "bg-slate-400 dark:bg-slate-500"
-                    }`}
+                    className={`size-1.5 rounded-full ${isConnected ? "bg-emerald-500" : "bg-slate-400 dark:bg-slate-500"
+                      }`}
                   />
                   {isConnected ? "Online" : "Offline"}
                 </span>
@@ -764,11 +785,10 @@ export default function CreatorCollabPortal() {
                   toggleSound();
                 }
               }}
-              className={`size-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
-                notifPermission === "granted" && !soundEnabled
-                  ? "text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
-                  : "text-emerald-600 dark:text-[#25D366] bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25"
-              }`}
+              className={`size-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${notifPermission === "granted" && !soundEnabled
+                ? "text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
+                : "text-emerald-600 dark:text-[#25D366] bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25"
+                }`}
               title={
                 notifPermission === "granted"
                   ? soundEnabled
@@ -865,7 +885,14 @@ export default function CreatorCollabPortal() {
             </div>
           ) : (
             messages.map((m) => {
-              const isCreator = m.sender_type === "influencer";
+              const isCreator =
+                m.isCreator === true ||
+                Boolean(m.tempId) ||
+                m.sender_type === "influencer" ||
+                m.senderType === "influencer" ||
+                m.sender_type === "creator" ||
+                m.senderType === "creator" ||
+                (m.sender_type !== "marketer" && m.senderType !== "marketer" && m.senderType !== "user");
               return (
                 <div
                   key={m.id}
@@ -873,8 +900,8 @@ export default function CreatorCollabPortal() {
                 >
                   <div
                     className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed shadow-xs relative select-text ${isCreator
-                        ? "bg-emerald-600 text-white dark:bg-[#005c4b] dark:text-white rounded-tr-xs"
-                        : "bg-card text-foreground border border-border/80 dark:bg-[#202c33] dark:text-slate-100 rounded-tl-xs dark:border-[#2a3942]/60"
+                      ? "bg-emerald-600 text-white dark:bg-[#005c4b] dark:text-white rounded-tr-xs"
+                      : "bg-card text-foreground border border-border/80 dark:bg-[#202c33] dark:text-slate-100 rounded-tl-xs dark:border-[#2a3942]/60"
                       }`}
                   >
                     {!isCreator && (
@@ -883,15 +910,13 @@ export default function CreatorCollabPortal() {
                       </p>
                     )}
                     <p className="whitespace-pre-wrap">{m.content || m.message}</p>
-                    <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
-                      isCreator ? "text-white/80 dark:text-slate-300/80" : "text-muted-foreground dark:text-slate-400"
-                    }`}>
+                    <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isCreator ? "text-white/80 dark:text-slate-300/80" : "text-muted-foreground dark:text-slate-400"
+                      }`}>
                       <span>{formatTime(m.createdAt || m.created_at)}</span>
                       {isCreator && (
                         <CheckCheck
-                          className={`size-3.5 ${
-                            m.isRead || m.is_read ? "text-sky-200 dark:text-[#53bdeb]" : "text-white/70 dark:text-slate-400"
-                          }`}
+                          className={`size-3.5 ${m.isRead || m.is_read ? "text-sky-200 dark:text-[#53bdeb]" : "text-white/70 dark:text-slate-400"
+                            }`}
                         />
                       )}
                     </div>
@@ -950,19 +975,14 @@ export default function CreatorCollabPortal() {
               setNewMessage(e.target.value);
               handleLocalTyping();
             }}
-            disabled={sending}
             className="h-10 bg-muted/60 dark:bg-[#2a3942] border border-border/60 dark:border-0 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-emerald-500 rounded-lg flex-1 min-w-0"
           />
           <Button
             type="submit"
-            disabled={sending || !newMessage.trim()}
+            disabled={!newMessage.trim()}
             className="size-10 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-[#00a884] dark:hover:bg-[#029072] font-bold p-0 flex items-center justify-center shrink-0 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
           >
-            {sending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Send className="size-4" />
-            )}
+            <Send className="size-4" />
           </Button>
         </form>
       </section>
