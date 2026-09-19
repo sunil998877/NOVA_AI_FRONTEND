@@ -28,12 +28,14 @@ export function SocketProvider({ children }) {
     const onConnect = () => setIsConnected(true);
     const onDisconnect = () => setIsConnected(false);
     const onPresenceState = ({ onlineUserIds }) => {
-      if (Array.isArray(onlineUserIds)) setOnlineUserIds(onlineUserIds);
+      if (Array.isArray(onlineUserIds)) setOnlineUserIds(onlineUserIds.map((id) => String(id)));
     };
     const onUserOnline = ({ userId }) => {
+      if (!userId) return;
       setOnlineUserIds((prev) => (prev.includes(String(userId)) ? prev : [...prev, String(userId)]));
     };
     const onUserOffline = ({ userId }) => {
+      if (!userId) return;
       setOnlineUserIds((prev) => prev.filter((id) => id !== String(userId)));
     };
 
@@ -59,7 +61,30 @@ export function SocketProvider({ children }) {
   const connectWithToken = (customToken) => {
     const s = initSocket({ token: customToken, forceNew: true });
     setSocket(s);
-    if (s.disconnected) {
+
+    const onConnect = () => setIsConnected(true);
+    const onDisconnect = () => setIsConnected(false);
+    const onPresenceState = ({ onlineUserIds }) => {
+      if (Array.isArray(onlineUserIds)) setOnlineUserIds(onlineUserIds.map((id) => String(id)));
+    };
+    const onUserOnline = ({ userId }) => {
+      if (!userId) return;
+      setOnlineUserIds((prev) => (prev.includes(String(userId)) ? prev : [...prev, String(userId)]));
+    };
+    const onUserOffline = ({ userId }) => {
+      if (!userId) return;
+      setOnlineUserIds((prev) => prev.filter((id) => id !== String(userId)));
+    };
+
+    s.on("connect", onConnect);
+    s.on("disconnect", onDisconnect);
+    s.on("presence:state", onPresenceState);
+    s.on("user:online", onUserOnline);
+    s.on("user:offline", onUserOffline);
+
+    if (s.connected) {
+      setIsConnected(true);
+    } else {
       s.connect();
     }
     return s;

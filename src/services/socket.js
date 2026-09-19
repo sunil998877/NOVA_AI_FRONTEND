@@ -3,13 +3,29 @@ import { io } from "socket.io-client";
 let socketInstance = null;
 
 export function getSocketUrl() {
-  const backendTarget =
-    process.env.REACT_APP_API_URL ||
-    process.env.VITE_BACKEND_URL ||
-    (typeof window !== "undefined" && window.location.hostname === "localhost"
-      ? "http://localhost:3000"
-      : "");
-  return (backendTarget || "").replace(/\/$/, "");
+  const envTarget =
+    (typeof import.meta !== "undefined" &&
+      import.meta.env &&
+      (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_API_URL)) ||
+    (typeof process !== "undefined" &&
+      process.env &&
+      (process.env.REACT_APP_API_URL || process.env.VITE_BACKEND_URL)) ||
+    "";
+
+  if (envTarget && typeof envTarget === "string" && envTarget.trim()) {
+    return envTarget.trim().replace(/\/$/, "");
+  }
+
+  if (typeof window !== "undefined") {
+    const isLocal =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+    if (isLocal) {
+      return "http://localhost:3001";
+    }
+    return window.location.origin;
+  }
+  return "";
 }
 
 /**
@@ -29,6 +45,7 @@ export function initSocket({ token = "", forceNew = false } = {}) {
     // If token provided and socket disconnected, update auth and reconnect
     if (authToken && socketInstance.auth?.token !== authToken) {
       socketInstance.auth = { token: authToken };
+      socketInstance.io.opts.query = { token: authToken };
       if (socketInstance.disconnected) {
         socketInstance.connect();
       }
@@ -44,13 +61,14 @@ export function initSocket({ token = "", forceNew = false } = {}) {
 
   socketInstance = io(socketUrl || undefined, {
     auth: { token: authToken },
+    query: { token: authToken },
     withCredentials: true,
     transports: ["websocket", "polling"],
     reconnection: true,
-    reconnectionAttempts: 15,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    autoConnect: Boolean(authToken),
+    reconnectionAttempts: 30,
+    reconnectionDelay: 500,
+    reconnectionDelayMax: 3000,
+    autoConnect: true,
   });
 
   socketInstance.on("connect", () => {

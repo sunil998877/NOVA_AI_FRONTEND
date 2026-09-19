@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
 
   const reactAppEnv = Object.fromEntries(
     Object.entries(env)
-      .filter(([key]) => key.startsWith("REACT_APP_"))
+      .filter(([key]) => key.startsWith("REACT_APP_") || key.startsWith("VITE_"))
       .map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)])
   );
 
@@ -36,6 +36,17 @@ export default defineConfig(({ mode }) => {
           ).replace(/\/$/, ""),
           changeOrigin: true,
           secure: false,
+        },
+        "/socket.io": {
+          target: (
+            env.VITE_BACKEND_URL ||
+            env.BACKEND_PROXY_TARGET ||
+            env.REACT_APP_API_URL ||
+            "http://localhost:3001"
+          ).replace(/\/$/, ""),
+          changeOrigin: true,
+          secure: false,
+          ws: true,
         },
       },
     },

@@ -725,8 +725,7 @@ export default function CreatorCollabPortal() {
                 </AvatarFallback>
               </Avatar>
               <span
-                className={`absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-card dark:ring-[#202c33] ${isConnected ? "bg-emerald-500 animate-pulse" : "bg-slate-400 dark:bg-slate-500"
-                  }`}
+                className="absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-card dark:ring-[#202c33] bg-emerald-500 animate-pulse"
               />
             </div>
 
@@ -742,15 +741,9 @@ export default function CreatorCollabPortal() {
               </div>
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground dark:text-slate-400">
                 <span className="truncate">@{portalUsername}</span>
-                <span
-                  className={`text-[10px] flex items-center gap-1 font-medium ${isConnected ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground dark:text-slate-400"
-                    }`}
-                >
-                  <span
-                    className={`size-1.5 rounded-full ${isConnected ? "bg-emerald-500" : "bg-slate-400 dark:bg-slate-500"
-                      }`}
-                  />
-                  {isConnected ? "Online" : "Offline"}
+                <span className="text-[10px] flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Online
                 </span>
               </div>
             </div>
