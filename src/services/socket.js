@@ -28,12 +28,6 @@ export function getSocketUrl() {
   return "https://nova-ai-backend-wo7q.onrender.com";
 }
 
-/**
- * Get or initialize the singleton Socket.IO connection.
- * @param {Object} options
- * @param {string} [options.token] - JWT token for marketer or access token for influencer.
- * @param {boolean} [options.forceNew] - Force a new connection if token changed.
- */
 export function initSocket({ token = "", forceNew = false } = {}) {
   const authToken =
     token ||
@@ -42,7 +36,6 @@ export function initSocket({ token = "", forceNew = false } = {}) {
       : "");
 
   if (socketInstance && !forceNew) {
-    // If token provided and socket disconnected, update auth and reconnect
     if (authToken && socketInstance.auth?.token !== authToken) {
       socketInstance.auth = { token: authToken };
       socketInstance.io.opts.query = { token: authToken };

@@ -210,7 +210,6 @@ export function CampaignFormDialog({
               </div>
             ) : null}
 
-            {/* Email Subject Section */}
             <div className="grid gap-2">
               <Label htmlFor="email-subject" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Email Subject
@@ -262,7 +261,6 @@ export function CampaignFormDialog({
               )}
             </div>
 
-            {/* Email Body Section */}
             <div className="grid gap-2">
               <Label htmlFor="email-body" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Email Body

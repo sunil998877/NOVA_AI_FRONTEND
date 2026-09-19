@@ -309,7 +309,6 @@ export default function Chat() {
     loadConversations();
   }, []);
 
-  // 2. Fetch messages for active conversation
   const loadActiveMessages = async (collabId, quiet = false) => {
     if (!collabId) return;
     if (!quiet) setLoadingMessages(true);
@@ -325,7 +324,6 @@ export default function Chat() {
         const latestMsg = incomingList[incomingList.length - 1];
         const isIncoming = latestMsg.sender_type === "influencer" || latestMsg.senderType === "influencer";
 
-        // Alert if there is a new incoming message
         if (
           lastMessageIdRef.current &&
           String(latestMsg.id) !== String(lastMessageIdRef.current) &&
@@ -388,11 +386,9 @@ export default function Chat() {
     }
   }, [selectedCollabId]);
 
-  // 3. Socket.IO Real-Time Room Subscription & Event Handlers
   useEffect(() => {
     if (!socket || !selectedCollabId) return;
 
-    // Join the conversation room and mark read
     socket.emit("joinConversation", { conversationId: selectedCollabId });
     socket.emit("message:read", { conversationId: selectedCollabId });
 
@@ -444,7 +440,6 @@ export default function Chat() {
         setTimeout(() => scrollToBottom("smooth"), 50);
       }
 
-      // Update conversation list preview
       setConversations((prev) =>
         prev.map((c) => {
           if (String(c.id) === msgCollabId) {
@@ -503,7 +498,6 @@ export default function Chat() {
     socket.on("messages:read", handleMessagesRead);
     socket.on("conversation:updated", handleConversationUpdated);
 
-    // Reconnection listener
     const onReconnect = () => {
       socket.emit("joinConversation", { conversationId: selectedCollabId });
       loadActiveMessages(selectedCollabId, true);
@@ -521,7 +515,6 @@ export default function Chat() {
     };
   }, [socket, selectedCollabId, soundEnabled, activeCollab]);
 
-  // Handle user typing into input box
   const handleLocalTyping = () => {
     if (!socket || !selectedCollabId) return;
     if (!isTypingLocalRef.current) {
@@ -563,13 +556,11 @@ export default function Chat() {
     setNewMessage("");
     setTimeout(() => scrollToBottom("smooth"), 40);
 
-    // Stop typing indicator
     if (socket && selectedCollabId) {
       socket.emit("typing:stop", { conversationId: selectedCollabId });
       isTypingLocalRef.current = false;
     }
 
-    // 1. Send via WebSocket if connected
     let socketHandled = false;
     if (socket && socket.connected) {
       socket.emit(
@@ -588,7 +579,6 @@ export default function Chat() {
       socketHandled = true;
     }
 
-    // 2. REST delivery fallback if socket is disconnected
     if (!socketHandled) {
       try {
         const res = await collabApi.sendMessage(selectedCollabId, content);
@@ -670,12 +660,10 @@ export default function Chat() {
 
   return (
     <div className="flex w-screen h-screen max-h-screen bg-background dark:bg-[#0b141a] text-foreground dark:text-slate-100 overflow-hidden select-none">
-      {/* ─── WHATSAPP CONTACT LIST / CONVERSATION PANEL ───────────────── */}
       <aside
         className={`${mobileChatView ? "hidden md:flex" : "flex"
           } w-full md:w-80 lg:w-[380px] flex-col h-full bg-card dark:bg-[#111b21] border-r border-border dark:border-[#202c33] shrink-0 min-h-0 select-text`}
       >
-        {/* WhatsApp Top Header Bar */}
         <div className="h-16 bg-card dark:bg-[#111b21] px-4 flex items-center justify-between shrink-0 border-b border-border dark:border-[#1f2c34]">
           <div className="flex items-center gap-2">
             <Button
@@ -717,7 +705,6 @@ export default function Chat() {
           </div>
         </div>
 
-        {/* WhatsApp Pill Tabs */}
         <div className="px-3 pb-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none text-[11px] bg-card dark:bg-[#111b21] border-b border-border/60 dark:border-[#202c33]/70 shrink-0">
           {[
             { id: "all", label: "All" },
@@ -846,7 +833,6 @@ export default function Chat() {
         </div>
       </aside>
 
-      {/* ─── RIGHT CHAT ROOM ──────────────────────────────────────────── */}
       <section className="flex-1 flex flex-col h-full bg-background dark:bg-[#0b141a] relative overflow-hidden min-h-0">
         {loading && !activeCollab ? (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground dark:text-slate-400 gap-2">
@@ -867,7 +853,6 @@ export default function Chat() {
           </div>
         ) : (
           <>
-            {/* WhatsApp Chat Top Header */}
             <div className="h-16 bg-card dark:bg-[#202c33] px-4 flex items-center justify-between border-b border-border dark:border-[#2a3942] shrink-0 z-10">
               <div className="flex items-center gap-3 min-w-0">
                 <Button
@@ -1030,7 +1015,6 @@ export default function Chat() {
               </div>
             )}
 
-            {/* Collapsible Deal Proposal Header Drawer */}
             {dealInfoOpen && (
               <div className="p-3.5 bg-muted/30 dark:bg-[#182229] border-b border-border dark:border-[#202c33] shrink-0 text-xs space-y-2 text-foreground dark:text-slate-300 animate-in slide-in-from-top-2 duration-200">
                 <div className="flex items-start justify-between gap-2">
@@ -1080,7 +1064,6 @@ export default function Chat() {
               </div>
             )}
 
-            {/* WhatsApp Messages Feed */}
             <div
               className="flex-1 p-3 sm:p-5 overflow-y-auto overflow-x-hidden space-y-3 bg-muted/20 dark:bg-[#0b141a] min-h-0 select-text"
               style={{

@@ -354,7 +354,6 @@
   min-width: 0 !important;
 }
 
-/* Custom modern sleek scrollbars & scrollbar-none utilities */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;

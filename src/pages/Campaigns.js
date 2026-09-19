@@ -365,7 +365,6 @@ function Campaigns() {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center justify-end gap-1.5">
-                    {/* Direct Preview Button */}
                     <Button
                       size="sm"
                       variant="outline"

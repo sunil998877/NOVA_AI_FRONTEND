@@ -1,10 +1,6 @@
 import React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-/**
- * Segmented block pagination component matching the design:
- * [ 1 ][ 2 ][ 3 ][ ... ][ 1,023 ][ Next > ]
- */
 export function SegmentedPagination({
   currentPage = 1,
   totalPages = 1023,
@@ -15,28 +11,22 @@ export function SegmentedPagination({
   hasPrev = false,
   className = "",
 }) {
-  // Generate page list with windowing
   const getPageNumbers = () => {
     const total = Math.max(1, totalPages || 1);
     const current = Math.max(1, Math.min(currentPage || 1, total));
 
-    // If total pages is small, list all of them
     if (total <= 5) {
       return Array.from({ length: total }, (_, i) => i + 1);
     }
 
-    // When near the beginning (e.g. page 1, 2)
-    // Matches design: 1, 2, 3, '...', total
     if (current <= 2) {
       return [1, 2, 3, "...", total];
     }
 
-    // When near the end
     if (current >= total - 1) {
       return [1, "...", total - 2, total - 1, total];
     }
 
-    // When in the middle
     return [1, "...", current - 1, current, current + 1, "...", total];
   };
 
@@ -48,7 +38,6 @@ export function SegmentedPagination({
       className={`flex items-center justify-center pt-6 pb-2 ${className}`}
     >
       <div className="inline-flex items-stretch overflow-hidden rounded-[2px] border border-[#555a66] divide-x divide-[#555a66] shadow-sm select-none">
-        {/* Previous button - visible when not on page 1 */}
         {currentPage > 1 && (
           <button
             type="button"
@@ -61,7 +50,6 @@ export function SegmentedPagination({
           </button>
         )}
 
-        {/* Numbered & Ellipsis items */}
         {pages.map((item, index) => {
           if (item === "...") {
             return (
@@ -93,7 +81,6 @@ export function SegmentedPagination({
           );
         })}
 
-        {/* Next button */}
         <button
           type="button"
           onClick={onNext}

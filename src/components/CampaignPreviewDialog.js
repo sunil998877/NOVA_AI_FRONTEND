@@ -31,7 +31,6 @@ function buildFallbackHtml(campaign) {
 
   let rawBody = campaign?.body || `Hello ${recipientName},\n\nWe would love to discuss an exciting collaboration opportunity with you.\n\nBest regards,\n${senderName}`;
 
-  // Format body paragraphs
   const formattedBody = rawBody
     .replace(/<br\s*\/?>/gi, "\n")
     .split("\n\n")
@@ -92,7 +91,7 @@ function buildFallbackHtml(campaign) {
 export function CampaignPreviewDialog({ open, onOpenChange, campaign, onSend }) {
   const [loading, setLoading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
-  const [viewMode, setViewMode] = useState("desktop"); // 'desktop' | 'mobile' | 'text'
+  const [viewMode, setViewMode] = useState("desktop");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -156,7 +155,6 @@ export function CampaignPreviewDialog({ open, onOpenChange, campaign, onSend }) 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 overflow-hidden bg-background border-border/80 shadow-2xl">
-        {/* Modal Header */}
         <DialogHeader className="p-4 md:p-5 pb-3 border-b bg-muted/20">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pr-6">
             <div>
@@ -177,7 +175,6 @@ export function CampaignPreviewDialog({ open, onOpenChange, campaign, onSend }) 
               </p>
             </div>
 
-            {/* View Mode Switcher */}
             <div className="flex items-center gap-1 bg-muted/80 border p-1 rounded-lg self-start md:self-auto">
               <Button
                 variant={viewMode === "desktop" ? "default" : "ghost"}
@@ -206,7 +203,6 @@ export function CampaignPreviewDialog({ open, onOpenChange, campaign, onSend }) 
             </div>
           </div>
 
-          {/* Email Meta Envelope */}
           <div className="mt-3 bg-card rounded-lg border p-3 text-xs space-y-1.5 text-left shadow-sm">
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-start gap-2 flex-1 min-w-0">
@@ -244,7 +240,6 @@ export function CampaignPreviewDialog({ open, onOpenChange, campaign, onSend }) 
           </div>
         </DialogHeader>
 
-        {/* Preview Frame Body */}
         <div className="flex-1 overflow-auto bg-muted/40 p-3 md:p-6 flex justify-center items-start min-h-[420px]">
           {loading && !previewData && !campaign ? (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
@@ -260,7 +255,6 @@ export function CampaignPreviewDialog({ open, onOpenChange, campaign, onSend }) 
               className={`transition-all duration-300 bg-white rounded-xl shadow-xl border overflow-hidden flex flex-col ${viewMode === "mobile" ? "w-[375px] max-w-full" : "w-full max-w-[680px]"
                 }`}
             >
-              {/* Device Bezel / Header */}
               <div className="bg-slate-100 border-b px-3 py-2 flex items-center justify-between text-[11px] text-slate-500">
                 <div className="flex items-center gap-1.5">
                   <div className="size-2 rounded-full bg-red-400" />
@@ -281,7 +275,6 @@ export function CampaignPreviewDialog({ open, onOpenChange, campaign, onSend }) 
                 </button>
               </div>
 
-              {/* Email Content Iframe */}
               <iframe
                 title="Email Preview"
                 srcDoc={effectiveHtml}
@@ -291,7 +284,6 @@ export function CampaignPreviewDialog({ open, onOpenChange, campaign, onSend }) 
           )}
         </div>
 
-        {/* Modal Footer */}
         <DialogFooter className="p-3 px-4 border-t bg-muted/20 flex flex-row items-center justify-between">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Close

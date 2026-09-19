@@ -18,7 +18,6 @@ export function SocketProvider({ children }) {
   const [onlineUserIds, setOnlineUserIds] = useState([]);
 
   useEffect(() => {
-    // Determine token from AuthContext or localStorage
     const effectiveToken =
       token || (typeof window !== "undefined" ? localStorage.getItem("nova_jwt_token") || localStorage.getItem("token") : "");
 

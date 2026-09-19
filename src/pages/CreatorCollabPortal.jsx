@@ -709,7 +709,6 @@ export default function CreatorCollabPortal() {
         </div>
       </aside>
 
-      {/* ─── RIGHT CHAT MESSENGER (Full Screen Like WhatsApp) ───── */}
       <section className="flex-1 flex flex-col h-full bg-background dark:bg-[#0b141a] relative overflow-hidden">
         <div
           onClick={() => setInfoDrawerOpen(true)}

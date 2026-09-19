@@ -73,7 +73,6 @@ function Login() {
       <AnimatedParticles />
 
       <div className="relative z-10 w-full max-w-md">
-        {/* Ambient Glow Backdrop */}
         <div
           className={`absolute -inset-px rounded-2xl transition-all duration-700 pointer-events-none ${
             inputFocused
@@ -83,7 +82,6 @@ function Login() {
         />
 
         <Card className="relative border-primary/20 overflow-hidden shadow-xl">
-          {/* Top Shimmer Progress Bar */}
           <div
             className={`absolute top-0 left-0 right-0 h-0.5 transition-all duration-500 ${
               busy

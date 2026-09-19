@@ -1,11 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
-/**
- * TopProgressBar — A thin YouTube/GitHub-style progress bar
- * that shows at the top during route transitions.
- * Only visible if a navigation takes longer than ~120ms (threshold).
- */
 export default function TopProgressBar() {
   const location = useLocation();
   const [visible, setVisible] = useState(false);

@@ -55,7 +55,6 @@ export function CampaignRecipientsDialog({
     setError("");
 
     try {
-      // 1. Fetch both campaign_recipients (from contacts) and mails (tracking/deliveries) in parallel
       const [crRes, mailsRes] = await Promise.allSettled([
         recipientApi.list(campaignId),
         mailApi.list(campaignId, { limit: 500 }),
@@ -75,12 +74,10 @@ export function CampaignRecipientsDialog({
             : []
           : [];
 
-      // Fallback: if mailApi list for campaignId didn't return any, check passed `mails` prop
       if (mList.length === 0 && Array.isArray(mails)) {
         mList = mails.filter((m) => String(m.campaign_id) === String(campaignId));
       }
 
-      // Map mails by lowercase email for fast lookup
       const mailByEmail = new Map();
       mList.forEach((m) => {
         const key = String(m.email || "").trim().toLowerCase();
@@ -90,7 +87,6 @@ export function CampaignRecipientsDialog({
       const unified = [];
       const seenEmails = new Set();
 
-      // Priority 1: Add all assigned campaign recipients (from contacts)
       crList.forEach((cr) => {
         const emailKey = String(cr.email || "").trim().toLowerCase();
         if (emailKey) seenEmails.add(emailKey);
@@ -122,7 +118,6 @@ export function CampaignRecipientsDialog({
         });
       });
 
-      // Priority 2: Add any mails table entries not covered in campaign_recipients
       mList.forEach((m) => {
         const emailKey = String(m.email || "").trim().toLowerCase();
         if (emailKey && !seenEmails.has(emailKey)) {
@@ -271,7 +266,6 @@ export function CampaignRecipientsDialog({
           </div>
         ) : null}
 
-        {/* Metric counters */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-2">
           <div className="rounded-xl border bg-card/60 p-3 flex flex-col">
             <span className="text-xs text-muted-foreground font-medium">
@@ -312,7 +306,6 @@ export function CampaignRecipientsDialog({
           </div>
         </div>
 
-        {/* Search and filter bar */}
         <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between my-2">
           <div className="relative flex-1 max-w-sm">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -347,7 +340,6 @@ export function CampaignRecipientsDialog({
           </div>
         </div>
 
-        {/* Table Content */}
         <div className="flex-1 overflow-auto border rounded-xl mt-2 min-h-[220px]">
           {loading && recipients.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground">
