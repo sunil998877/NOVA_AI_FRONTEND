@@ -716,35 +716,35 @@ export default function CreatorCollabPortal() {
       <section className="flex-1 flex flex-col h-full bg-background dark:bg-[#0b141a] relative overflow-hidden">
         <div
           onClick={() => setInfoDrawerOpen(true)}
-          className="h-14 bg-card dark:bg-[#202c33] px-3 sm:px-4 flex items-center justify-between border-b border-border dark:border-[#2a3942] shrink-0 z-10 cursor-pointer hover:bg-muted/50 dark:hover:bg-[#233138] transition-colors"
+          className="h-14 bg-card dark:bg-[#202c33] px-2.5 sm:px-4 flex items-center justify-between border-b border-border dark:border-[#2a3942] shrink-0 z-10 cursor-pointer hover:bg-muted/50 dark:hover:bg-[#233138] transition-colors gap-1.5 sm:gap-2"
           title="Click to view creator profile & deal proposal"
         >
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <div className="relative shrink-0">
-              <Avatar className="size-10 rounded-full border-2 border-emerald-500/60 bg-muted dark:bg-slate-800 ring-2 ring-emerald-500/20">
+              <Avatar className="size-9 sm:size-10 rounded-full border-2 border-emerald-500/60 bg-muted dark:bg-slate-800 ring-2 ring-emerald-500/20">
                 <AvatarImage src={collab.profileImage} alt={collab.influencerName} />
                 <AvatarFallback className="font-bold bg-emerald-500/10 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-sm">
                   {collab.influencerName?.[0] || "C"}
                 </AvatarFallback>
               </Avatar>
               <span
-                className="absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-card dark:ring-[#202c33] bg-emerald-500 animate-pulse"
+                className="absolute bottom-0 right-0 size-2 sm:size-2.5 rounded-full ring-2 ring-card dark:ring-[#202c33] bg-emerald-500 animate-pulse"
               />
             </div>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs sm:text-sm font-bold text-foreground dark:text-white truncate flex items-center gap-1.5">
-                  <span>{collab.influencerName || "Creator"}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h4 className="text-xs sm:text-sm font-bold text-foreground dark:text-white truncate flex items-center gap-1 min-w-0">
+                  <span className="truncate">{collab.influencerName || "Creator"}</span>
                   <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 </h4>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border shrink-0 ${getPlatformBadge(collab.platform).badgeClass}`}>
+                <span className={`text-[8px] sm:text-[9px] font-bold px-1 sm:px-1.5 py-0.5 rounded uppercase border shrink-0 ${getPlatformBadge(collab.platform).badgeClass}`}>
                   {getPlatformBadge(collab.platform).label}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground dark:text-slate-400">
-                <span className="truncate">@{portalUsername}</span>
-                <span className="text-[10px] flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+              <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-muted-foreground dark:text-slate-400 min-w-0">
+                <span className="truncate max-w-[85px] sm:max-w-none">@{portalUsername}</span>
+                <span className="text-[10px] flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400 shrink-0">
                   <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Online
                 </span>
@@ -752,12 +752,12 @@ export default function CreatorCollabPortal() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
             <a
               href={targetChannelUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="size-8 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-[#202c33] dark:hover:bg-[#2a3942] transition-colors"
+              className="hidden md:flex size-8 rounded-xl items-center justify-center text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-[#202c33] dark:hover:bg-[#2a3942] transition-colors"
               title="Visit channel"
             >
               <ExternalLink className="size-4" />
@@ -766,7 +766,7 @@ export default function CreatorCollabPortal() {
             <button
               type="button"
               onClick={handleCopyLink}
-              className="size-8 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-[#202c33] dark:hover:bg-[#2a3942] transition-colors cursor-pointer"
+              className="hidden md:flex size-8 rounded-xl items-center justify-center text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-[#202c33] dark:hover:bg-[#2a3942] transition-colors cursor-pointer"
               title={copiedLink ? "Link copied!" : "Share deal link"}
             >
               {copiedLink ? <Check className="size-4 text-emerald-500" /> : <Share2 className="size-4" />}
@@ -781,7 +781,7 @@ export default function CreatorCollabPortal() {
                   toggleSound();
                 }
               }}
-              className={`size-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${notifPermission === "granted" && !soundEnabled
+              className={`hidden sm:flex size-8 rounded-xl items-center justify-center transition-colors cursor-pointer ${notifPermission === "granted" && !soundEnabled
                 ? "text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
                 : "text-emerald-600 dark:text-[#25D366] bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25"
                 }`}
@@ -806,17 +806,19 @@ export default function CreatorCollabPortal() {
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="h-8 px-3.5 rounded-full flex items-center gap-1.5 text-xs font-bold bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-xs transition-all cursor-pointer"
+              className="h-8 px-2 sm:px-3.5 rounded-full flex items-center gap-1.5 text-xs font-bold bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-xs transition-all cursor-pointer shrink-0"
               title="Open WhatsApp chat"
             >
-              <ExternalLink className="size-3.5 text-white" />
-              <span>WhatsApp</span>
+              <svg className="size-3.5 fill-white shrink-0" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.301-.15-1.78-.878-2.056-.978-.275-.1-.476-.15-.677.15-.2.301-.777.979-.953 1.18-.176.2-.351.226-.652.076-.301-.15-1.272-.469-2.424-1.497-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.2-.301.301-.501.101-.2.05-.376-.025-.526-.075-.15-.677-1.63-.928-2.234-.244-.588-.493-.508-.677-.518-.175-.008-.376-.01-.577-.01s-.527.076-.803.376c-.276.301-1.053 1.028-1.053 2.508s1.079 2.909 1.229 3.109c.15.201 2.123 3.242 5.143 4.545.719.31 1.28.496 1.718.635.723.23 1.381.197 1.9.12.58-.087 1.78-.727 2.03-1.43.25-.702.25-1.304.176-1.43-.076-.126-.276-.201-.577-.351zM12.04 2C6.543 2 2.08 6.463 2.08 11.96c0 1.838.498 3.565 1.365 5.05L2 22l5.127-1.345a9.92 9.92 0 0 0 4.913 1.265c5.497 0 9.96-4.463 9.96-9.96C22 6.463 17.537 2 12.04 2z"/>
+              </svg>
+              <span className="hidden sm:inline">WhatsApp</span>
             </a>
 
             <button
               type="button"
               onClick={handleToggleTheme}
-              className="size-8 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-[#202c33] dark:hover:bg-[#2a3942] transition-colors cursor-pointer"
+              className="hidden sm:flex size-8 rounded-xl items-center justify-center text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-[#202c33] dark:hover:bg-[#2a3942] transition-colors cursor-pointer"
               title={isDark ? "Switch to light mode" : "Switch to dark mode"}
             >
               {isDark ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4" />}
