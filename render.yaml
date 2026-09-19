@@ -10,12 +10,12 @@ services:
         destination: /index.html
     envVars:
       - key: REACT_APP_API_URL
-        value: https://nova-ai-backend-wo7q.onrender.com
+        sync: false
       - key: VITE_BACKEND_URL
-        value: https://nova-ai-backend-wo7q.onrender.com
+        sync: false
       - key: REACT_APP_GOOGLE_CLIENT_ID
-        value: 852226641831-uc6vtpcffl8jdp3qfsp39hiv9uurb9tg.apps.googleusercontent.com
+        sync: false
       - key: REACT_APP_GOOGLE_CLIENT_ID_ALT
-        value: 327144008213-36imti5uq5lnhrm5dq4n5115ls28gkni.apps.googleusercontent.com
+        sync: false
       - key: REACT_APP_RECAPTCHA_SITE_KEY
-        value: 6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI
+        sync: false
