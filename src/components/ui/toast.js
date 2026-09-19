@@ -43,7 +43,7 @@ function ToastItem({ toast, onDismiss }) {
 
   const dismiss = useCallback(() => {
     setLeaving(true);
-    setTimeout(() => onDismiss(toast.id), 320);
+    setTimeout(() => onDismiss(toast.id), 300);
   }, [toast.id, onDismiss]);
 
   useEffect(() => {
@@ -57,40 +57,59 @@ function ToastItem({ toast, onDismiss }) {
   return (
     <div
       style={{
-        transform: visible && !leaving ? "translateX(0) scale(1)" : "translateX(110%) scale(0.95)",
+        transform: visible && !leaving ? "translateY(0) scale(1)" : "translateY(-130%) scale(0.92)",
         opacity: visible && !leaving ? 1 : 0,
-        transition: "transform 0.32s cubic-bezier(0.34,1.56,0.64,1), opacity 0.28s ease",
-        marginBottom: 10,
+        transition: "transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.26s ease",
+        marginBottom: 8,
         pointerEvents: "auto",
       }}
     >
       <div
-        className={`relative flex w-[340px] max-w-[90vw] items-start gap-3 overflow-hidden rounded-xl border ${style.border} backdrop-blur-xl shadow-2xl p-4 pr-10`}
+        className={`relative flex w-[400px] max-w-[94vw] items-start gap-3 overflow-hidden rounded-2xl border ${style.border} backdrop-blur-2xl p-3.5 sm:p-4 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_45px_-8px_rgba(0,0,0,0.6)] cursor-pointer select-none transition-transform active:scale-[0.98]`}
         style={{ background: "hsl(var(--card) / 0.96)" }}
+        onClick={dismiss}
       >
-        <div className={`absolute left-0 top-0 h-full w-[3px] rounded-l-xl ${style.bar}`} />
-        <div className={`mt-0.5 shrink-0 ${style.icon}`}>
+        <div className={`mt-0.5 size-8 shrink-0 rounded-xl flex items-center justify-center ${style.icon} bg-muted/80 dark:bg-slate-800/80 ring-1 ring-border/50`}>
           <Icon size={18} />
         </div>
-        <div className="min-w-0 flex-1">
+
+        <div className="min-w-0 flex-1 pr-6">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 dark:text-slate-400">
+              NOVA
+            </span>
+            <span className="size-1 rounded-full bg-muted-foreground/40" />
+            <span className="text-[10px] text-muted-foreground/70 dark:text-slate-400">
+              now
+            </span>
+          </div>
+
           {toast.title && (
-            <p className="text-sm font-semibold leading-snug text-foreground">{toast.title}</p>
+            <p className="text-[13px] font-bold leading-tight text-foreground dark:text-white truncate">
+              {toast.title}
+            </p>
           )}
           {toast.message && (
-            <p className={`text-xs leading-relaxed ${toast.title ? "mt-0.5 text-muted-foreground" : "text-sm font-medium text-foreground"}`}>
+            <p className={`text-xs leading-snug text-muted-foreground dark:text-slate-300 ${toast.title ? "mt-1 line-clamp-2" : "font-medium"}`}>
               {toast.message}
             </p>
           )}
         </div>
+
         <button
-          onClick={dismiss}
-          className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          onClick={(e) => {
+            e.stopPropagation();
+            dismiss();
+          }}
+          className="absolute right-3 top-3 rounded-full p-1 text-muted-foreground/70 hover:text-foreground dark:text-slate-400 dark:hover:text-white hover:bg-muted/70 transition-colors"
+          title="Dismiss"
         >
           <X size={14} />
         </button>
+
         {duration > 0 && (
           <div
-            className={`absolute bottom-0 left-0 h-[2px] ${style.bar} opacity-30`}
+            className={`absolute bottom-0 left-0 h-[2.5px] ${style.bar} opacity-40`}
             style={{
               animation: `nova-toast-shrink ${duration}ms linear forwards`,
             }}
@@ -110,7 +129,7 @@ export function ToastProvider({ children }) {
 
   const show = useCallback((type, title, message, opts = {}) => {
     const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, type, title, message, ...opts }].slice(-6));
+    setToasts((prev) => [...prev, { id, type, title, message, ...opts }].slice(-4));
     return id;
   }, []);
 
@@ -129,14 +148,18 @@ export function ToastProvider({ children }) {
       <div
         style={{
           position: "fixed",
-          bottom: 24,
-          right: 24,
-          zIndex: 9999,
+          top: 16,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 99999,
           display: "flex",
           flexDirection: "column",
-          alignItems: "flex-end",
+          alignItems: "center",
           gap: 0,
           pointerEvents: "none",
+          width: "100%",
+          maxWidth: "440px",
+          padding: "0 12px",
         }}
       >
         {toasts.map((t) => (

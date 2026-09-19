@@ -39,6 +39,7 @@ import { Badge } from "../components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { collabApi } from "../lib/api";
 import { useSocket } from "../context/SocketContext";
+import { useToast } from "../components/ui/toast";
 import LoadingScreen from "../components/LoadingScreen";
 
 function formatNumber(num) {
@@ -130,6 +131,7 @@ function playMessageChime() {
 
 export default function CreatorCollabPortal() {
   const { token } = useParams();
+  const toast = useToast();
   const cached = collabApi.getCachedPortal ? collabApi.getCachedPortal(token) : null;
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState(cached?.error || "");
@@ -265,6 +267,7 @@ export default function CreatorCollabPortal() {
     try {
       navigator.clipboard.writeText(window.location.href);
       setCopiedLink(true);
+      toast.success("Link copied!", "Portal link copied to clipboard.");
       setTimeout(() => setCopiedLink(false), 2000);
     } catch (_) { }
   };
@@ -390,6 +393,7 @@ export default function CreatorCollabPortal() {
               });
             } catch (_) { }
           }
+          toast.info("New message from Brand", (newMsg.message || newMsg.content)?.slice(0, 80));
           document.title = "💬 (1) New message from Brand";
           socket.emit("message:read", { conversationId: collab.id });
         }
