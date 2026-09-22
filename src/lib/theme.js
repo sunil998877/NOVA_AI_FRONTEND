@@ -8,39 +8,24 @@ function cssHsl(name) {
 }
 
 export function getTheme() {
-  try {
-    return window.localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark";
-  } catch {
-    return "dark";
-  }
+  return "light";
 }
 
-export function applyTheme(theme) {
+export function applyTheme(_theme) {
   const root = document.documentElement;
-  if (theme === "light") {
-    root.classList.remove("dark");
-  } else {
-    root.classList.add("dark");
-  }
+  root.classList.remove("dark");
+  try { window.localStorage.setItem(THEME_KEY, "light"); } catch { }
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) {
-    meta.setAttribute("content", theme === "light" ? "#f7f5f0" : "#0A0E16");
-  }
+  if (meta) meta.setAttribute("content", "#f7f5f0");
 }
 
-export function setTheme(theme) {
-  try {
-    window.localStorage.setItem(THEME_KEY, theme);
-  } catch {
-
-  }
-  applyTheme(theme);
+export function setTheme(_theme) {
+  applyTheme("light");
 }
 
 export function toggleTheme() {
-  const next = getTheme() === "dark" ? "light" : "dark";
-  setTheme(next);
-  return next;
+  applyTheme("light");
+  return "light";
 }
 
 export function readChartColors() {

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Newspaper, Users, Eye, TrendingUp } from "lucide-react";
 import {
   Area,
@@ -23,10 +23,14 @@ import { useChartColors } from "../lib/theme";
 import { useWorkspaceData } from "../hooks/useWorkspaceData";
 import { buildMonthlyData, campaignMetrics, normalizeCampaignStatus } from "../lib/campaigns";
 import { formatDate } from "../lib/auth";
+import { SegmentedPagination } from "../components/ui/pagination";
+
+const PAGE_SIZE = 10;
 
 function NewsletterTracking() {
   const chart = useChartColors();
   const { campaigns, mails, stats, loading, error } = useWorkspaceData();
+  const [page, setPage] = useState(1);
 
   const issues = useMemo(() => {
     const newsletters = campaigns.filter((campaign) => /news|digest|weekly/i.test(campaign.title || ""));
@@ -157,43 +161,75 @@ function NewsletterTracking() {
           <CardDescription>Open rates by edition</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Issue</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Sent</TableHead>
-                <TableHead>Open</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {issues.map((row) => (
-                <TableRow key={row.issue}>
-                  <TableCell className="font-medium">{row.issue}</TableCell>
-                  <TableCell className="text-muted-foreground">{row.date}</TableCell>
-                  <TableCell>
-                    {row.status === "Sent" ? (
-                      <Badge>Sent</Badge>
-                    ) : (
-                      <Badge variant="outline" className="border-primary/40 text-primary">
-                        {row.status}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{row.sent ? row.sent.toLocaleString() : "—"}</TableCell>
-                  <TableCell>{row.open}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
           {issues.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
               {loading ? "Loading issues..." : "No newsletter campaigns yet."}
             </p>
-          ) : null}
+          ) : (() => {
+            const totalPages = Math.max(2, Math.ceil(issues.length / PAGE_SIZE));
+            const safePage = Math.min(page, totalPages);
+            const pagedIssues = issues.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+            return (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10 text-center">#</TableHead>
+                      <TableHead>Issue</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Sent</TableHead>
+                      <TableHead>Open</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagedIssues.map((row, index) => (
+                      <TableRow key={row.issue}>
+                        <TableCell className="text-center text-xs font-semibold text-muted-foreground w-10">
+                          {(safePage - 1) * PAGE_SIZE + index + 1}
+                        </TableCell>
+                        <TableCell className="font-medium">{row.issue}</TableCell>
+                        <TableCell className="text-muted-foreground">{row.date}</TableCell>
+                        <TableCell>
+                          {row.status === "Sent" ? (
+                            <Badge>Sent</Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-primary/40 text-primary">
+                              {row.status}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{row.sent ? row.sent.toLocaleString() : "—"}</TableCell>
+                        <TableCell>{row.open}</TableCell>
+                      </TableRow>
+                    ))}
+                    {issues.length > 0 && pagedIssues.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                          No additional issues on page {safePage}.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </>
+            );
+          })()}
         </CardContent>
       </Card>
+
+      {(() => {
+        const totalPages = Math.max(2, Math.ceil(issues.length / PAGE_SIZE));
+        const safePage = Math.min(page, totalPages);
+        return (
+          <SegmentedPagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p)}
+          />
+        );
+      })()}
     </div>
   );
 }

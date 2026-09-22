@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Bell, Search, User, Settings, LogOut, Moon, Sun } from "lucide-react";
+import { Bell, Search, User, Settings, LogOut } from "lucide-react";
+import { NotificationCenter } from "./NotificationCenter";
 import { SidebarTrigger } from "./ui/sidebar";
 import { Separator } from "./ui/separator";
 import { Input } from "./ui/input";
@@ -24,7 +25,6 @@ import {
 } from "./ui/dropdown-menu";
 import { getInitials } from "../lib/auth";
 import { useAuth } from "../lib/AuthContext";
-import { getTheme, toggleTheme } from "../lib/theme";
 
 const pageMeta = {
   "/": { title: "Dashboard", section: "Overview" },
@@ -47,21 +47,15 @@ function SiteHeader() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [theme, setThemeState] = useState(getTheme);
   const meta = pageMeta[location.pathname] || { title: "Dashboard", section: "Overview" };
   const today = new Date().toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
-  const dark = theme === "dark";
   const displayName = user?.fullName || "NOVA user";
   const displayEmail = user?.email || "";
   const initials = getInitials(displayName, displayEmail);
-
-  const onToggleTheme = () => {
-    setThemeState(toggleTheme());
-  };
 
   return (
     <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:h-16 md:px-4">
@@ -97,19 +91,7 @@ function SiteHeader() {
         <Button variant="ghost" size="icon" className="md:hidden" aria-label="Search">
           <Search />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-full"
-          aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-          onClick={onToggleTheme}
-        >
-          {dark ? <Sun /> : <Moon />}
-        </Button>
-        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-          <Bell />
-          <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-background" />
-        </Button>
+        <NotificationCenter />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-9 gap-2 px-2">

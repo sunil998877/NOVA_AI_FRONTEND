@@ -4,6 +4,18 @@ const LEGACY_AUTH_KEY = "nova-auth";
 
 export function getToken() {
   try {
+    if (typeof window !== "undefined" && import.meta.env.DEV) {
+      const params = new URLSearchParams(window.location.search);
+      const devToken = params.get("dev_token");
+      if (devToken) {
+        window.localStorage.setItem(TOKEN_KEY, devToken);
+        window.localStorage.setItem(
+          USER_KEY,
+          JSON.stringify({ id: "user_test", fullName: "sunil kumar", email: "sk88775638@gmail.com" })
+        );
+        return devToken;
+      }
+    }
     return window.localStorage.getItem(TOKEN_KEY);
   } catch {
     return null;

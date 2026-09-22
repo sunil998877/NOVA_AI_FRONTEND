@@ -44,6 +44,7 @@ import { Textarea } from "../components/ui/textarea";
 import { influencerApi } from "../lib/api";
 import { formatDate } from "../lib/auth";
 import { useToast } from "../components/ui/toast";
+import { SegmentedPagination } from "../components/ui/pagination";
 
 function CollaborationHistory() {
   const navigate = useNavigate();
@@ -56,6 +57,8 @@ function CollaborationHistory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [collabPage, setCollabPage] = useState(1);
+  const COLLAB_PAGE_SIZE = 10;
 
   const [detailItem, setDetailItem] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -111,6 +114,11 @@ function CollaborationHistory() {
       return matchesSearch && matchesPlatform && matchesStatus;
     });
   }, [collaborations, searchQuery, selectedPlatform, selectedStatus]);
+
+  const collabTotalPages = Math.max(2, Math.ceil(filteredItems.length / COLLAB_PAGE_SIZE));
+  const collabSafePage = Math.min(collabPage, collabTotalPages);
+  const paginatedItems = filteredItems.slice((collabSafePage - 1) * COLLAB_PAGE_SIZE, collabSafePage * COLLAB_PAGE_SIZE);
+  useEffect(() => { setCollabPage(1); }, [searchQuery, selectedPlatform, selectedStatus]);
 
   const stats = useMemo(() => {
     const total = collaborations.length;
@@ -386,6 +394,7 @@ function CollaborationHistory() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10 text-center">#</TableHead>
               <TableHead>Influencer</TableHead>
               <TableHead>Platform</TableHead>
               <TableHead>Recipient Email</TableHead>
@@ -396,7 +405,7 @@ function CollaborationHistory() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredItems.map((item) => {
+            {paginatedItems.map((item, index) => {
               const name = item.influencer_name || item.influencerName || "Creator";
               const username = item.influencer_username || item.influencerUsername;
               const email = item.recipient_email || item.recipientEmail;
@@ -405,6 +414,9 @@ function CollaborationHistory() {
 
               return (
                 <TableRow key={item.id} className="hover:bg-muted/40">
+                  <TableCell className="text-center text-xs font-semibold text-muted-foreground w-10">
+                    {(collabSafePage - 1) * COLLAB_PAGE_SIZE + index + 1}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="size-9 border">
@@ -486,6 +498,13 @@ function CollaborationHistory() {
                 </TableRow>
               );
             })}
+            {filteredItems.length > 0 && paginatedItems.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                  No additional records on page {collabSafePage}.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
 
@@ -510,6 +529,15 @@ function CollaborationHistory() {
           </div>
         )}
       </Card>
+
+      <SegmentedPagination
+        currentPage={collabSafePage}
+        totalPages={collabTotalPages}
+        onPageChange={(p) => setCollabPage(p)}
+      />
+      <p className="text-center text-xs text-muted-foreground -mt-3">
+        Page {collabSafePage} of {collabTotalPages} &nbsp;·&nbsp; {filteredItems.length} record{filteredItems.length !== 1 ? "s" : ""}
+      </p>
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-2xl sm:max-w-[700px] w-[95vw]">

@@ -29,6 +29,7 @@ import { Textarea } from "../components/ui/textarea";
 import { influencerApi } from "../lib/api";
 import { formatDate } from "../lib/auth";
 import { useToast } from "../components/ui/toast";
+import { SegmentedPagination } from "../components/ui/pagination";
 
 function formatNumber(num) {
   if (num === null || num === undefined) return "N/A";
@@ -58,6 +59,8 @@ function MyInfluencers() {
   const [error, setError] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [infPage, setInfPage] = useState(1);
+  const INF_PAGE_SIZE = 10;
 
   const [outreachOpen, setOutreachOpen] = useState(false);
   const [selectedInfluencer, setSelectedInfluencer] = useState(null);
@@ -186,6 +189,11 @@ function MyInfluencers() {
       return matchesSearch && matchesCategory;
     });
   }, [influencers, searchQuery, selectedCategory]);
+
+  const infTotalPages = Math.max(2, Math.ceil(filteredInfluencers.length / INF_PAGE_SIZE));
+  const infSafePage = Math.min(infPage, infTotalPages);
+  const paginatedInfluencers = filteredInfluencers.slice((infSafePage - 1) * INF_PAGE_SIZE, infSafePage * INF_PAGE_SIZE);
+  useEffect(() => { setInfPage(1); }, [searchQuery, selectedCategory]);
 
   const load = async () => {
     setLoading(true);
@@ -461,6 +469,7 @@ function MyInfluencers() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10 text-center">#</TableHead>
               <TableHead>Influencer</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Platform</TableHead>
@@ -473,8 +482,11 @@ function MyInfluencers() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredInfluencers.map((inf) => (
+            {paginatedInfluencers.map((inf, index) => (
               <TableRow key={inf.id}>
+                <TableCell className="text-center text-xs font-semibold text-muted-foreground w-10">
+                  {(infSafePage - 1) * INF_PAGE_SIZE + index + 1}
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="size-10 border">
@@ -576,6 +588,13 @@ function MyInfluencers() {
                 </TableCell>
               </TableRow>
             ))}
+            {filteredInfluencers.length > 0 && paginatedInfluencers.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
+                  No additional influencers on page {infSafePage}.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
 
@@ -603,6 +622,17 @@ function MyInfluencers() {
           </div>
         )}
       </Card>
+
+      <div className="flex items-center justify-center gap-1 flex-wrap">
+        <SegmentedPagination
+          currentPage={infSafePage}
+          totalPages={infTotalPages}
+          onPageChange={(p) => setInfPage(p)}
+        />
+      </div>
+      <p className="text-center text-xs text-muted-foreground -mt-3">
+        Page {infSafePage} of {infTotalPages} &nbsp;·&nbsp; {filteredInfluencers.length} influencer{filteredInfluencers.length !== 1 ? "s" : ""}
+      </p>
 
       <Dialog open={outreachOpen} onOpenChange={setOutreachOpen}>
         <DialogContent className="max-w-2xl sm:max-w-3xl lg:max-w-4xl w-[96vw] bg-card text-card-foreground border border-border shadow-2xl rounded-2xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">

@@ -43,6 +43,7 @@ import { campaignApi, mailApi } from "../lib/api";
 import { useWorkspaceData } from "../hooks/useWorkspaceData";
 import { toCampaignRow } from "../lib/campaigns";
 import { useToast } from "../components/ui/toast";
+import { SegmentedPagination } from "../components/ui/pagination";
 
 function Campaigns() {
   const navigate = useNavigate();
@@ -62,6 +63,8 @@ function Campaigns() {
   const [viewRecipientsOpen, setViewRecipientsOpen] = useState(false);
   const [viewRecipientsCampaign, setViewRecipientsCampaign] = useState(null);
   const [formError, setFormError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const openViewRecipients = (campaign) => {
     setViewRecipientsCampaign(campaign);
@@ -104,6 +107,26 @@ function Campaigns() {
 
     return matchesSearch && matchesFilter;
   });
+
+
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, filterStatus]);
+
+  const totalPages = Math.max(2, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const goToPage = (p) => setCurrentPage(Math.max(1, Math.min(p, totalPages)));
+
+  const getPaginationPages = () => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages = [];
+    pages.push(1);
+    if (safePage > 3) pages.push("...");
+    for (let i = Math.max(2, safePage - 1); i <= Math.min(totalPages - 1, safePage + 1); i++) pages.push(i);
+    if (safePage < totalPages - 2) pages.push("...");
+    pages.push(totalPages);
+    return pages;
+  };
 
   const getStatusBadge = (status) => {
     if (status === "completed" || status === "sent") return <Badge>Completed</Badge>;
@@ -272,6 +295,7 @@ function Campaigns() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10 text-center">#</TableHead>
               <TableHead>Campaign</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Recipients</TableHead>
@@ -284,8 +308,11 @@ function Campaigns() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((campaign) => (
+            {paginated.map((campaign, index) => (
               <TableRow key={campaign.id}>
+                <TableCell className="text-center text-xs font-semibold text-muted-foreground w-10">
+                  {(safePage - 1) * PAGE_SIZE + index + 1}
+                </TableCell>
                 <TableCell>
                   <div
                     className="flex items-center gap-3 cursor-pointer group select-none"
@@ -507,6 +534,13 @@ function Campaigns() {
                 </TableCell>
               </TableRow>
             ))}
+            {filtered.length > 0 && paginated.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
+                  No additional campaigns on page {safePage}.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
         {filtered.length === 0 && (
@@ -525,6 +559,17 @@ function Campaigns() {
           </div>
         )}
       </Card>
+
+      <SegmentedPagination
+        currentPage={safePage}
+        totalPages={totalPages}
+        onPageChange={(p) => goToPage(p)}
+      />
+      {totalPages > 1 && (
+        <p className="text-center text-xs text-muted-foreground mt-2">
+          Page {safePage} of {totalPages} &nbsp;·&nbsp; {filtered.length} campaign{filtered.length !== 1 ? "s" : ""}
+        </p>
+      )}
 
       <CampaignFormDialog
         open={showModal}

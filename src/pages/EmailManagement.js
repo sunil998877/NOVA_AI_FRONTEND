@@ -27,6 +27,7 @@ import { useWorkspaceData } from "../hooks/useWorkspaceData";
 import { campaignMetrics } from "../lib/campaigns";
 import { formatDate as formatStamp } from "../lib/auth";
 import { useToast } from "../components/ui/toast";
+import { SegmentedPagination } from "../components/ui/pagination";
 
 const templates = [
   { name: "Welcome Series", type: "Automation" },
@@ -41,6 +42,8 @@ const tabs = [
   { id: "senders", label: "Senders", icon: AtSign },
 ];
 
+const PAGE_SIZE = 10;
+
 function EmailManagement() {
   const { user } = useAuth();
   const { campaigns, mails, loading, error, reload } = useWorkspaceData();
@@ -54,6 +57,7 @@ function EmailManagement() {
   const [recipient, setRecipient] = useState({ email: "", fullName: "" });
   const [recipientError, setRecipientError] = useState("");
   const [formError, setFormError] = useState("");
+  const [listPage, setListPage] = useState(1);
 
   const lists = useMemo(
     () =>
@@ -157,27 +161,33 @@ function EmailManagement() {
         />
       </div>
 
-      {tab === "lists" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Subscriber lists</CardTitle>
-            <CardDescription>Each campaign is a recipient list in NOVA</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>List</TableHead>
-                  <TableHead>Contacts</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Updated</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {lists
-                  .filter((item) => item.name.toLowerCase().includes(query.toLowerCase()))
-                  .map((item) => (
+      {tab === "lists" && (() => {
+        const filteredLists = lists.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
+        const totalListPages = Math.max(2, Math.ceil(filteredLists.length / PAGE_SIZE));
+        const safeListPage = Math.min(listPage, totalListPages);
+        const pagedLists = filteredLists.slice((safeListPage - 1) * PAGE_SIZE, safeListPage * PAGE_SIZE);
+        return (
+          <>
+            <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Subscriber lists</CardTitle>
+              <CardDescription>Each campaign is a recipient list in NOVA</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10 text-center">#</TableHead>
+                    <TableHead>List</TableHead>
+                    <TableHead>Contacts</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Updated</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pagedLists.map((item, idx) => (
                     <TableRow key={item.id}>
+                      <TableCell className="text-center text-muted-foreground text-xs">{(safeListPage - 1) * PAGE_SIZE + idx + 1}</TableCell>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{item.contacts.toLocaleString()}</TableCell>
                       <TableCell>
@@ -188,16 +198,31 @@ function EmailManagement() {
                       <TableCell className="text-muted-foreground">{item.updated}</TableCell>
                     </TableRow>
                   ))}
-              </TableBody>
-            </Table>
-            {lists.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                {loading ? "Loading lists..." : "Create a campaign to start a list."}
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
-      )}
+                  {filteredLists.length > 0 && pagedLists.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                        No additional records on page {safeListPage}.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              {filteredLists.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  {loading ? "Loading lists..." : "Create a campaign to start a list."}
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <SegmentedPagination
+            currentPage={safeListPage}
+            totalPages={totalListPages}
+            onPageChange={(p) => setListPage(p)}
+          />
+        </>
+        );
+      })()}
 
       {tab === "templates" && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

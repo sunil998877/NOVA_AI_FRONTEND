@@ -130,6 +130,7 @@ function playMessageChime() {
 }
 
 export default function CreatorCollabPortal() {
+  const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
   const { token } = useParams();
   const toast = useToast();
   const cached = collabApi.getCachedPortal ? collabApi.getCachedPortal(token) : null;
@@ -149,45 +150,6 @@ export default function CreatorCollabPortal() {
   const [soundEnabled, setSoundEnabled] = useState(() => {
     return localStorage.getItem("nova_portal_sound") !== "false";
   });
-  const [themeState, setThemeState] = useState(() => {
-    try {
-      return document.documentElement.classList.contains("dark") ||
-        window.localStorage.getItem("nova-theme") !== "light"
-        ? "dark"
-        : "light";
-    } catch {
-      return "dark";
-    }
-  });
-  const isDark = themeState === "dark";
-
-  const handleToggleTheme = () => {
-    const next = isDark ? "light" : "dark";
-    try {
-      window.localStorage.setItem("nova-theme", next);
-    } catch { }
-    if (next === "light") {
-      document.documentElement.classList.remove("dark");
-    } else {
-      document.documentElement.classList.add("dark");
-    }
-    setThemeState(next);
-  };
-
-  useEffect(() => {
-    if (themeState === "light") {
-      document.documentElement.classList.remove("dark");
-    } else {
-      document.documentElement.classList.add("dark");
-    }
-    const sync = () => {
-      setThemeState(document.documentElement.classList.contains("dark") ? "dark" : "light");
-    };
-    const observer = new MutationObserver(sync);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    window.addEventListener("storage", sync);
-    return () => {
-      observer.disconnect();
       window.removeEventListener("storage", sync);
     };
   }, [themeState]);
@@ -815,14 +777,6 @@ export default function CreatorCollabPortal() {
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={handleToggleTheme}
-              className="hidden sm:flex size-8 rounded-xl items-center justify-center text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-[#202c33] dark:hover:bg-[#2a3942] transition-colors cursor-pointer"
-              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {isDark ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4" />}
-            </button>
           </div>
         </div>
 
@@ -843,7 +797,7 @@ export default function CreatorCollabPortal() {
               <Button
                 size="sm"
                 onClick={requestNotificationPermission}
-                className="h-7 px-3 bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-[#00a884] dark:hover:bg-[#029072] font-semibold text-xs rounded-lg cursor-pointer transition-all shadow-xs"
+                className="h-7 px-3 bg-orange-500 hover:bg-orange-600 text-white dark:bg-orange-500 dark:hover:bg-orange-600 font-semibold text-xs rounded-lg cursor-pointer transition-all shadow-xs"
               >
                 Allow
               </Button>
@@ -898,22 +852,22 @@ export default function CreatorCollabPortal() {
                 >
                   <div
                     className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed shadow-xs relative select-text ${isCreator
-                      ? "bg-emerald-600 text-white dark:bg-[#005c4b] dark:text-white rounded-tr-xs"
+                      ? "bg-orange-500 text-white dark:bg-orange-600 dark:text-white rounded-tr-xs shadow-sm shadow-orange-500/20"
                       : "bg-card text-foreground border border-border/80 dark:bg-[#202c33] dark:text-slate-100 rounded-tl-xs dark:border-[#2a3942]/60"
                       }`}
                   >
                     {!isCreator && (
-                      <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mb-1">
+                      <p className="text-[11px] font-bold text-orange-600 dark:text-orange-400 mb-1">
                         {m.sender_name || "Brand Team"}
                       </p>
                     )}
                     <p className="whitespace-pre-wrap">{m.content || m.message}</p>
-                    <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isCreator ? "text-white/80 dark:text-slate-300/80" : "text-muted-foreground dark:text-slate-400"
+                    <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isCreator ? "text-white/85 dark:text-white/90" : "text-muted-foreground dark:text-slate-400"
                       }`}>
                       <span>{formatTime(m.createdAt || m.created_at)}</span>
                       {isCreator && (
                         <CheckCheck
-                          className={`size-3.5 ${m.isRead || m.is_read ? "text-sky-200 dark:text-[#53bdeb]" : "text-white/70 dark:text-slate-400"
+                          className={`size-3.5 ${m.isRead || m.is_read ? "text-orange-200" : "text-white/70 dark:text-white/60"
                             }`}
                         />
                       )}
@@ -927,13 +881,13 @@ export default function CreatorCollabPortal() {
           {isBrandTyping && (
             <div className="flex flex-col items-start animate-in fade-in duration-200">
               <div className="bg-card dark:bg-[#202c33] text-muted-foreground dark:text-slate-300 rounded-2xl px-3.5 py-2 text-xs rounded-tl-xs border border-border dark:border-[#2a3942]/60 flex items-center gap-1.5 shadow-xs">
-                <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                <span className="text-[11px] font-medium text-orange-600 dark:text-orange-400">
                   Brand team is typing
                 </span>
                 <span className="flex items-center gap-0.5 ml-1">
-                  <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-bounce" />
-                  <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-bounce [animation-delay:150ms]" />
-                  <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-bounce [animation-delay:300ms]" />
+                  <span className="size-1.5 rounded-full bg-orange-500 animate-bounce" />
+                  <span className="size-1.5 rounded-full bg-orange-500 animate-bounce [animation-delay:150ms]" />
+                  <span className="size-1.5 rounded-full bg-orange-500 animate-bounce [animation-delay:300ms]" />
                 </span>
               </div>
             </div>
@@ -955,7 +909,7 @@ export default function CreatorCollabPortal() {
               key={chip}
               type="button"
               onClick={() => setNewMessage(chip)}
-              className="shrink-0 rounded-full border border-border dark:border-[#2a3942] bg-muted/60 dark:bg-[#202c33] hover:bg-muted dark:hover:bg-[#2a3942] hover:border-emerald-500/50 px-3 py-1 text-[11px] text-foreground dark:text-slate-200 transition-all cursor-pointer"
+              className="shrink-0 rounded-full border border-border dark:border-[#2a3942] bg-muted/60 dark:bg-[#202c33] hover:bg-muted dark:hover:bg-[#2a3942] hover:border-orange-500/50 px-3 py-1 text-[11px] text-foreground dark:text-slate-200 transition-all cursor-pointer"
             >
               {chip}
             </button>
@@ -973,12 +927,12 @@ export default function CreatorCollabPortal() {
               setNewMessage(e.target.value);
               handleLocalTyping();
             }}
-            className="h-10 bg-muted/60 dark:bg-[#2a3942] border border-border/60 dark:border-0 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-emerald-500 rounded-lg flex-1 min-w-0"
+            className="h-10 bg-muted/60 dark:bg-[#2a3942] border border-border/60 dark:border-0 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-orange-500 rounded-lg flex-1 min-w-0"
           />
           <Button
             type="submit"
             disabled={!newMessage.trim()}
-            className="size-10 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-[#00a884] dark:hover:bg-[#029072] font-bold p-0 flex items-center justify-center shrink-0 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+            className="size-10 rounded-full bg-orange-500 hover:bg-orange-600 text-white dark:bg-orange-500 dark:hover:bg-orange-600 font-bold p-0 flex items-center justify-center shrink-0 transition-all shadow-md shadow-orange-500/25 cursor-pointer"
           >
             <Send className="size-4" />
           </Button>

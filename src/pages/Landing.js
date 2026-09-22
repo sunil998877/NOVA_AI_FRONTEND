@@ -3,7 +3,6 @@ import { useAuth } from "../lib/AuthContext";
 import { cn } from "../lib/utils";
 import {
   FilmExpand,
-  LANDING_THEME_KEY,
   LandingFeatures,
   LandingFooter,
   LandingFaq,
@@ -20,14 +19,7 @@ import {
 function Landing() {
   const { authed } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [theme, setTheme] = useState(() => {
-    try {
-      return window.localStorage.getItem(LANDING_THEME_KEY) === "dark" ? "dark" : "light";
-    } catch {
-      return "light";
-    }
-  });
-  const dark = theme === "dark";
+  const dark = false;
   const acc = landingAccent(dark);
 
   useEffect(() => {
@@ -36,25 +28,12 @@ function Landing() {
     return () => nodes.forEach((node) => node.classList.remove("no-scrollbar"));
   }, []);
 
-  const toggleTheme = () => {
-    setTheme((current) => {
-      const next = current === "dark" ? "light" : "dark";
-      try {
-        window.localStorage.setItem(LANDING_THEME_KEY, next);
-      } catch {
-
-      }
-      return next;
-    });
-  };
-
   return (
     <div className={cn("relative min-h-svh overflow-x-clip scroll-smooth no-scrollbar", dark ? "bg-[#0A0E16] text-slate-100" : "bg-[#f7f5f0] text-neutral-900")}>
       <LandingNavbar
         dark={dark}
         acc={acc}
         authed={authed}
-        toggleTheme={toggleTheme}
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
       />

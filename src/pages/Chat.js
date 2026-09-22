@@ -74,7 +74,7 @@ function getPlatformBadge(platform) {
   }
   return {
     label: platform ? platform.toUpperCase() : "CREATOR",
-    badgeClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+    badgeClass: "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30",
   };
 }
 
@@ -144,6 +144,7 @@ function playMessageChime() {
 }
 
 export default function Chat() {
+  const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -174,26 +175,6 @@ export default function Chat() {
   const [soundEnabled, setSoundEnabled] = useState(() => {
     return localStorage.getItem("nova_chat_sound") !== "false";
   });
-  const [themeState, setThemeState] = useState(getTheme);
-  const isDark = themeState === "dark";
-
-  const handleToggleTheme = () => {
-    setThemeState(toggleTheme());
-  };
-
-  useEffect(() => {
-    const sync = () => {
-      setThemeState(document.documentElement.classList.contains("dark") ? "dark" : "light");
-    };
-    sync();
-    const observer = new MutationObserver(sync);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    window.addEventListener("storage", sync);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
 
   const { socket, isConnected, isUserOnline } = useSocket();
   const [isOtherTyping, setIsOtherTyping] = useState(false);
@@ -688,7 +669,7 @@ export default function Chat() {
               className="size-9 rounded-full hover:bg-muted dark:hover:bg-[#202c33] flex items-center justify-center text-muted-foreground hover:text-foreground dark:text-slate-400 dark:hover:text-white cursor-pointer transition-colors"
               title="Refresh chats"
             >
-              <RefreshCw className={`size-4.5 ${refreshing ? "animate-spin text-emerald-600 dark:text-[#00a884]" : ""}`} />
+              <RefreshCw className={`size-4.5 ${refreshing ? "animate-spin text-orange-500" : ""}`} />
             </button>
           </div>
         </div>
@@ -700,7 +681,7 @@ export default function Chat() {
               placeholder="Search or start new chat"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 pl-9 pr-3 text-xs bg-muted/60 dark:bg-[#202c33] border border-border/50 dark:border-0 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-emerald-500 dark:focus-visible:ring-[#00a884] rounded-xl"
+              className="h-9 pl-9 pr-3 text-xs bg-muted/60 dark:bg-[#202c33] border border-border/50 dark:border-0 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-orange-500 dark:focus-visible:ring-orange-500 rounded-xl"
             />
           </div>
         </div>
@@ -718,7 +699,7 @@ export default function Chat() {
               type="button"
               onClick={() => setStatusFilter(pill.id)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors shrink-0 cursor-pointer ${statusFilter === pill.id
-                ? "bg-emerald-600 text-white font-semibold shadow-xs dark:bg-[#00a884] dark:text-white"
+                ? "bg-orange-500 text-white font-semibold shadow-xs shadow-orange-500/25 dark:bg-orange-500 dark:text-white"
                 : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground dark:bg-[#202c33] dark:text-slate-300 dark:hover:bg-[#2a3942]"
                 }`}
             >
@@ -730,7 +711,7 @@ export default function Chat() {
         <div className="flex-1 overflow-y-auto min-h-0 bg-card dark:bg-[#111b21] p-2 space-y-1.5">
           {loading ? (
             <div className="p-8 flex flex-col items-center justify-center text-center text-muted-foreground dark:text-slate-400 gap-2">
-              <Loader2 className="size-6 animate-spin text-emerald-600 dark:text-[#00a884]" />
+              <Loader2 className="size-6 animate-spin text-orange-500" />
               <p className="text-xs">Loading chats...</p>
             </div>
           ) : filteredConversations.length === 0 ? (
@@ -762,7 +743,7 @@ export default function Chat() {
                     setMobileChatView(true);
                   }}
                   className={`w-full text-left p-3 rounded-2xl flex items-center gap-3 transition-all duration-150 cursor-pointer relative group border ${isSelected
-                    ? "bg-emerald-500/10 border-emerald-500/40 dark:bg-[#232d36] dark:border-[#374955] shadow-xs ring-1 ring-emerald-500/20 dark:ring-[#00a884]/30"
+                    ? "bg-orange-500/10 border-orange-500/40 dark:bg-orange-500/15 dark:border-orange-500/40 shadow-xs ring-1 ring-orange-500/20 dark:ring-orange-500/30"
                     : "bg-card hover:bg-muted/60 dark:bg-[#182229]/80 dark:hover:bg-[#202c33] border-border/50 dark:border-transparent hover:border-border dark:hover:border-[#2a3942]/60"
                     }`}
                 >
@@ -773,11 +754,11 @@ export default function Chat() {
                         alt={collab.influencer_name}
                         className="object-cover"
                       />
-                      <AvatarFallback className="text-sm font-semibold bg-emerald-500/10 dark:bg-[#331c27] text-emerald-700 dark:text-[#f87171] flex items-center justify-center">
+                      <AvatarFallback className="text-sm font-semibold bg-orange-500/10 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center">
                         {collab.influencer_name ? (
                           collab.influencer_name.slice(0, 2).toUpperCase()
                         ) : (
-                          <Users className="size-5 text-emerald-600 dark:text-emerald-400" />
+                          <Users className="size-5 text-orange-600 dark:text-orange-400" />
                         )}
                       </AvatarFallback>
                     </Avatar>
@@ -790,7 +771,7 @@ export default function Chat() {
                         {collab.influencer_name || collab.influencerName || "Creator"}
                       </h3>
                       <span
-                        className={`text-xs shrink-0 font-medium ${unread > 0 ? "text-emerald-600 dark:text-[#25D366] font-semibold" : "text-muted-foreground dark:text-[#8696a0]"
+                        className={`text-xs shrink-0 font-medium ${unread > 0 ? "text-orange-600 dark:text-orange-400 font-semibold" : "text-muted-foreground dark:text-[#8696a0]"
                           }`}
                       >
                         {formatTime(collab.lastMessageAt || collab.createdAt)}
@@ -803,7 +784,7 @@ export default function Chat() {
                           }`}
                       >
                         {collab.lastSender === "marketer" ? (
-                          <span className="inline-flex items-center gap-0.5 text-primary dark:text-[#53bdeb] mr-1">
+                          <span className="inline-flex items-center gap-0.5 text-orange-500 mr-1">
                             <CheckCheck className="size-3.5 inline" />
                           </span>
                         ) : null}
@@ -812,7 +793,7 @@ export default function Chat() {
 
                       <div className="flex items-center gap-1.5 shrink-0 ml-1">
                         {unread > 0 ? (
-                          <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-emerald-500 text-white dark:text-[#0b141a] text-[11px] font-bold flex items-center justify-center shadow-xs">
+                          <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-orange-500 text-white text-[11px] font-bold flex items-center justify-center shadow-xs">
                             {unread}
                           </span>
                         ) : (
@@ -836,7 +817,7 @@ export default function Chat() {
       <section className={`flex-1 flex flex-col h-full bg-background dark:bg-[#0b141a] relative overflow-hidden min-h-0 ${!mobileChatView ? "hidden md:flex" : "flex"}`}>
         {loading && !activeCollab ? (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground dark:text-slate-400 gap-2">
-            <Loader2 className="size-8 animate-spin text-primary dark:text-[#00a884]" />
+            <Loader2 className="size-8 animate-spin text-orange-500" />
             <p className="text-xs">Connecting to negotiation room...</p>
           </div>
         ) : !activeCollab ? (
@@ -866,12 +847,12 @@ export default function Chat() {
                 </Button>
 
                 <div className="relative shrink-0">
-                  <Avatar className="size-9 sm:size-10 rounded-full border-2 border-emerald-500/60 bg-muted dark:bg-slate-800 ring-2 ring-emerald-500/20">
+                  <Avatar className="size-9 sm:size-10 rounded-full border-2 border-orange-500/60 bg-muted dark:bg-slate-800 ring-2 ring-orange-500/20">
                     <AvatarImage
                       src={activeCollab.profile_image || activeCollab.profileImage}
                       alt={activeInfluencerName}
                     />
-                    <AvatarFallback className="font-bold bg-muted dark:bg-emerald-950 text-primary dark:text-emerald-300 text-sm">
+                    <AvatarFallback className="font-bold bg-muted dark:bg-orange-950 text-orange-600 dark:text-orange-400 text-sm">
                       {activeInfluencerName[0]}
                     </AvatarFallback>
                   </Avatar>
@@ -884,7 +865,7 @@ export default function Chat() {
                   <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                     <h4 className="text-xs sm:text-sm font-bold text-foreground dark:text-white truncate flex items-center gap-1 min-w-0">
                       <span className="truncate">{activeInfluencerName}</span>
-                      <CheckCircle2 className="size-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
+                      <CheckCircle2 className="size-3.5 text-orange-500 dark:text-orange-400 shrink-0" />
                     </h4>
                     <span
                       className={`text-[8px] sm:text-[9px] font-bold px-1 sm:px-1.5 py-0.5 rounded uppercase border shrink-0 ${getPlatformBadge(activePlatform).badgeClass
@@ -920,7 +901,7 @@ export default function Chat() {
                   className="hidden md:flex size-8 rounded-xl items-center justify-center text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-[#202c33] dark:hover:bg-[#2a3942] transition-colors cursor-pointer"
                   title={copiedLink ? "Link copied!" : "Copy creator deal link"}
                 >
-                  {copiedLink ? <Check className="size-4 text-emerald-500" /> : <Share2 className="size-4" />}
+                  {copiedLink ? <Check className="size-4 text-orange-500" /> : <Share2 className="size-4" />}
                 </button>
 
                 <a
@@ -947,7 +928,7 @@ export default function Chat() {
                   }}
                   className={`size-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer shrink-0 ${notifPermission === "granted" && !soundEnabled
                     ? "text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
-                    : "text-emerald-600 dark:text-[#25D366] bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25"
+                    : "text-orange-600 dark:text-orange-400 bg-orange-50 hover:bg-orange-100 dark:bg-orange-500/15 dark:hover:bg-orange-500/25"
                     }`}
                   title={
                     notifPermission === "granted"
@@ -969,28 +950,20 @@ export default function Chat() {
                 <button
                   type="button"
                   onClick={() => setDealInfoOpen(!dealInfoOpen)}
-                  className="h-8 px-2 sm:px-3.5 rounded-full flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-300/80 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 dark:border-emerald-500/30 transition-colors cursor-pointer shrink-0"
+                  className="h-8 px-2 sm:px-3.5 rounded-full flex items-center gap-1.5 text-xs font-semibold text-orange-700 dark:text-orange-300 bg-orange-50 hover:bg-orange-100/80 border border-orange-300/80 dark:bg-orange-500/10 dark:hover:bg-orange-500/20 dark:border-orange-500/30 transition-colors cursor-pointer shrink-0"
                   title="Deal Info"
                 >
-                  <Info className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <Info className="size-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
                   <span className="hidden sm:inline">Deal Info</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleToggleTheme}
-                  className="hidden sm:flex size-8 rounded-xl items-center justify-center text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-[#202c33] dark:hover:bg-[#2a3942] transition-colors cursor-pointer"
-                  title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-                >
-                  {isDark ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4" />}
-                </button>
               </div>
             </div>
 
             {showNotifPrompt && (
               <div className="bg-card dark:bg-[#182229] border-b border-border dark:border-[#2a3942] px-4 py-2.5 flex items-center justify-between gap-3 text-xs z-20 animate-in slide-in-from-top-1 duration-200">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="size-8 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-600 dark:text-[#25D366] shrink-0">
+                  <div className="size-8 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
                     <BellRing className="size-4 animate-pulse" />
                   </div>
                   <div className="min-w-0">
@@ -1004,7 +977,7 @@ export default function Chat() {
                   <Button
                     size="sm"
                     onClick={requestNotificationPermission}
-                    className="h-7 px-3 bg-primary hover:bg-primary/90 dark:bg-[#00a884] dark:hover:bg-[#029072] text-primary-foreground dark:text-white font-semibold text-xs rounded-lg cursor-pointer transition-all shadow-xs"
+                    className="h-7 px-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs rounded-lg cursor-pointer transition-all shadow-xs"
                   >
                     Allow
                   </Button>
@@ -1031,7 +1004,7 @@ export default function Chat() {
                       href={activePortalUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[11px] text-primary dark:text-emerald-400 hover:underline flex items-center gap-1 shrink-0"
+                      className="text-[11px] text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-1 shrink-0"
                     >
                       <span>Open Public Portal</span>
                       <ExternalLink className="size-3" />
@@ -1048,19 +1021,19 @@ export default function Chat() {
                 <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground dark:text-slate-400 pt-0.5">
                   {activeCollab.recipient_email && (
                     <span className="flex items-center gap-1">
-                      <Mail className="size-3 text-primary dark:text-emerald-400" />
+                      <Mail className="size-3 text-orange-500 dark:text-orange-400" />
                       <span>{activeCollab.recipient_email}</span>
                     </span>
                   )}
                   {activeCollab.subscribers && (
                     <span className="flex items-center gap-1">
-                      <Users className="size-3 text-primary dark:text-emerald-400" />
+                      <Users className="size-3 text-orange-500 dark:text-orange-400" />
                       <span>{formatNumber(activeCollab.subscribers)} subscribers</span>
                     </span>
                   )}
                   {activeCollab.category && (
                     <span className="flex items-center gap-1">
-                      <Tag className="size-3 text-primary dark:text-emerald-400" />
+                      <Tag className="size-3 text-orange-500 dark:text-orange-400" />
                       <span>{activeCollab.category}</span>
                     </span>
                   )}
@@ -1085,7 +1058,7 @@ export default function Chat() {
 
               {activeCollab.message && (
                 <div className="my-3 mx-auto max-w-xl rounded-xl border border-border dark:border-[#202c33] bg-card dark:bg-[#182229] p-3.5 text-xs shadow-xs space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] text-emerald-700 dark:text-emerald-400 font-bold">
+                  <div className="flex items-center justify-between text-[11px] text-orange-600 dark:text-orange-400 font-bold">
                     <span className="flex items-center gap-1.5">
                       <Sparkles className="size-3.5" />
                       <span>Initial Collaboration Proposal Sent</span>
@@ -1105,7 +1078,7 @@ export default function Chat() {
 
               {loadingMessages ? (
                 <div className="py-8 flex items-center justify-center">
-                  <Loader2 className="size-5 animate-spin text-emerald-600 dark:text-[#00a884]" />
+                  <Loader2 className="size-5 animate-spin text-orange-500" />
                 </div>
               ) : messages.length === 0 ? (
                 <div className="py-12 flex flex-col items-center justify-center text-center text-muted-foreground dark:text-slate-400 gap-2">
@@ -1131,22 +1104,22 @@ export default function Chat() {
                     >
                       <div
                         className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2 text-xs sm:text-sm leading-relaxed shadow-xs relative select-text ${isMarketer
-                          ? "bg-emerald-600 text-white dark:bg-[#005c4b] dark:text-white rounded-tr-xs"
+                          ? "bg-orange-500 text-white dark:bg-orange-600 dark:text-white rounded-tr-xs shadow-sm shadow-orange-500/20"
                           : "bg-card text-foreground border border-border/80 dark:bg-[#202c33] dark:text-slate-100 rounded-tl-xs dark:border-[#2a3942]/60"
                           }`}
                       >
                         {!isMarketer && (
-                          <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mb-1">
+                          <p className="text-[11px] font-bold text-orange-600 dark:text-orange-400 mb-1">
                             {m.sender_name || m.senderName || activeInfluencerName}
                           </p>
                         )}
                         <p className="whitespace-pre-wrap">{m.content || m.message}</p>
-                        <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isMarketer ? "text-white/80 dark:text-slate-300/80" : "text-muted-foreground dark:text-slate-400"
+                        <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isMarketer ? "text-white/85 dark:text-white/90" : "text-muted-foreground dark:text-slate-400"
                           }`}>
                           <span>{formatTime(m.createdAt || m.created_at)}</span>
                           {isMarketer && (
                             <CheckCheck
-                              className={`size-3.5 ${m.isRead || m.is_read ? "text-sky-200 dark:text-[#53bdeb]" : "text-white/70 dark:text-slate-400"
+                              className={`size-3.5 ${m.isRead || m.is_read ? "text-orange-200" : "text-white/70 dark:text-white/60"
                                 }`}
                             />
                           )}
@@ -1160,13 +1133,13 @@ export default function Chat() {
               {isOtherTyping && (
                 <div className="flex flex-col items-start animate-in fade-in duration-200">
                   <div className="bg-card dark:bg-[#202c33] text-muted-foreground dark:text-slate-300 rounded-2xl px-3.5 py-2 text-xs rounded-tl-xs border border-border dark:border-[#2a3942]/60 flex items-center gap-1.5 shadow-xs">
-                    <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                    <span className="text-[11px] font-medium text-orange-600 dark:text-orange-400">
                       {activeInfluencerName} is typing
                     </span>
                     <span className="flex items-center gap-0.5 ml-1">
-                      <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-bounce" />
-                      <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-bounce [animation-delay:150ms]" />
-                      <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-bounce [animation-delay:300ms]" />
+                      <span className="size-1.5 rounded-full bg-orange-500 animate-bounce" />
+                      <span className="size-1.5 rounded-full bg-orange-500 animate-bounce [animation-delay:150ms]" />
+                      <span className="size-1.5 rounded-full bg-orange-500 animate-bounce [animation-delay:300ms]" />
                     </span>
                   </div>
                 </div>
@@ -1185,12 +1158,12 @@ export default function Chat() {
                   setNewMessage(e.target.value);
                   handleLocalTyping();
                 }}
-                className="h-10 bg-muted/60 dark:bg-[#2a3942] border border-border/60 dark:border-0 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-emerald-500 dark:focus-visible:ring-[#00a884] rounded-lg flex-1 min-w-0"
+                className="h-10 bg-muted/60 dark:bg-[#2a3942] border border-border/60 dark:border-0 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-orange-500 dark:focus-visible:ring-orange-500 rounded-lg flex-1 min-w-0"
               />
               <Button
                 type="submit"
                 disabled={!newMessage.trim()}
-                className="size-10 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-[#00a884] dark:hover:bg-[#029072] font-bold p-0 flex items-center justify-center shrink-0 transition-all shadow-md shadow-emerald-600/20 cursor-pointer"
+                className="size-10 rounded-full bg-orange-500 hover:bg-orange-600 text-white dark:bg-orange-500 dark:hover:bg-orange-600 font-bold p-0 flex items-center justify-center shrink-0 transition-all shadow-md shadow-orange-500/25 cursor-pointer"
               >
                 <Send className="size-4" />
               </Button>

@@ -3,7 +3,7 @@ import { motion, useScroll, useSpring, useTransform } from "framer-motion";
 import { cn } from "../../lib/utils";
 
 const SCENES_COUNT = 5;
-const SCENE_DURATION_MS = 4200; 
+const SCENE_DURATION_MS = 4200;
 
 export function FilmExpand({ dark }) {
   const containerRef = useRef(null);

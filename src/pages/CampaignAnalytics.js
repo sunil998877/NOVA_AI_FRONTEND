@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -24,10 +24,14 @@ import {
 import { useChartColors } from "../lib/theme";
 import { useWorkspaceData } from "../hooks/useWorkspaceData";
 import { buildWeeklyPerformance, campaignMetrics } from "../lib/campaigns";
+import { SegmentedPagination } from "../components/ui/pagination";
+
+const PAGE_SIZE = 10;
 
 function CampaignAnalytics() {
   const chart = useChartColors();
   const { campaigns, mails, stats, loading, error } = useWorkspaceData();
+  const [page, setPage] = useState(1);
 
   const trend = useMemo(() => buildWeeklyPerformance(mails), [mails]);
   const rows = useMemo(
@@ -161,36 +165,67 @@ function CampaignAnalytics() {
             <p className="py-8 text-center text-sm text-muted-foreground">
               {loading ? "Loading analytics..." : "No campaign data yet."}
             </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Campaign</TableHead>
-                  <TableHead>Sent</TableHead>
-                  <TableHead>Delivered</TableHead>
-                  <TableHead>Opened</TableHead>
-                  <TableHead>Unopened</TableHead>
-                  <TableHead>Open rate</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.id || row.name}>
-                    <TableCell className="font-medium">{row.name}</TableCell>
-                    <TableCell>{row.sent.toLocaleString()}</TableCell>
-                    <TableCell>{row.delivered.toLocaleString()}</TableCell>
-                    <TableCell>{row.opened.toLocaleString()}</TableCell>
-                    <TableCell>{row.unopened.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge variant="success">{row.open}%</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          ) : (() => {
+            const totalPages = Math.max(2, Math.ceil(rows.length / PAGE_SIZE));
+            const safePage = Math.min(page, totalPages);
+            const pagedRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+            return (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10 text-center">#</TableHead>
+                      <TableHead>Campaign</TableHead>
+                      <TableHead>Sent</TableHead>
+                      <TableHead>Delivered</TableHead>
+                      <TableHead>Opened</TableHead>
+                      <TableHead>Unopened</TableHead>
+                      <TableHead>Open rate</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagedRows.map((row, index) => (
+                      <TableRow key={row.id || row.name}>
+                        <TableCell className="text-center text-xs font-semibold text-muted-foreground w-10">
+                          {(safePage - 1) * PAGE_SIZE + index + 1}
+                        </TableCell>
+                        <TableCell className="font-medium">{row.name}</TableCell>
+                        <TableCell>{row.sent.toLocaleString()}</TableCell>
+                        <TableCell>{row.delivered.toLocaleString()}</TableCell>
+                        <TableCell>{row.opened.toLocaleString()}</TableCell>
+                        <TableCell>{row.unopened.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Badge variant="success">{row.open}%</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {rows.length > 0 && pagedRows.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                          No additional campaigns on page {safePage}.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </>
+            );
+          })()}
         </CardContent>
       </Card>
+
+      {(() => {
+        const totalPages = Math.max(2, Math.ceil(rows.length / PAGE_SIZE));
+        const safePage = Math.min(page, totalPages);
+        return (
+          <SegmentedPagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p)}
+          />
+        );
+      })()}
     </div>
   );
 }

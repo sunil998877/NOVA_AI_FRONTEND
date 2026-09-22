@@ -350,6 +350,7 @@ export function CampaignRecipientsDialog({
             <Table>
               <TableHeader className="sticky top-0 bg-secondary/80 backdrop-blur z-10">
                 <TableRow>
+                  <TableHead className="w-10 text-center">#</TableHead>
                   <TableHead className="w-[30%]">Recipient</TableHead>
                   <TableHead className="w-[20%]">Status</TableHead>
                   <TableHead className="w-[20%]">Opens Count</TableHead>
@@ -357,7 +358,7 @@ export function CampaignRecipientsDialog({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRecipients.map((item) => {
+                {filteredRecipients.map((item, index) => {
                   const openCount =
                     Number(item.open_count) ||
                     (item.delivery_status === "opened" ? 1 : 0);
@@ -374,6 +375,9 @@ export function CampaignRecipientsDialog({
                       key={item.id}
                       className={isOpened ? "bg-primary/[0.03]" : ""}
                     >
+                      <TableCell className="text-center text-xs font-semibold text-muted-foreground w-10">
+                        {index + 1}
+                      </TableCell>
                       <TableCell>
                         <div className="font-medium text-foreground">
                           {item.email}

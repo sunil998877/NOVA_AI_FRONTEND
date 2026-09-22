@@ -118,7 +118,10 @@ function MessageCrafting() {
     try {
       const { data, conversation } = await generateEmail({
         prompt,
-        context: true,
+        history: messages,
+        tone,
+        audience,
+        context: false,
         conversationTitle: CHAT_TITLE,
       });
       setConvId(conversation?.id || null);
@@ -310,31 +313,31 @@ function MessageCrafting() {
           <div className="flex flex-wrap gap-2">
             {hasDraft
               ? REVISIONS.map((suggestion) => (
-                  <Button
-                    key={suggestion}
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="rounded-full text-muted-foreground"
-                    disabled={busy}
-                    onClick={() => send(suggestion)}
-                  >
-                    {suggestion}
-                  </Button>
-                ))
+                <Button
+                  key={suggestion}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full text-muted-foreground"
+                  disabled={busy}
+                  onClick={() => send(suggestion)}
+                >
+                  {suggestion}
+                </Button>
+              ))
               : STARTERS.map((suggestion) => (
-                  <Button
-                    key={suggestion}
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="rounded-full text-muted-foreground"
-                    disabled={busy}
-                    onClick={() => send(suggestion)}
-                  >
-                    {suggestion}
-                  </Button>
-                ))}
+                <Button
+                  key={suggestion}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full text-muted-foreground"
+                  disabled={busy}
+                  onClick={() => send(suggestion)}
+                >
+                  {suggestion}
+                </Button>
+              ))}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

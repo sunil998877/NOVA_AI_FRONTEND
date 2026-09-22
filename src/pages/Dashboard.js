@@ -30,6 +30,7 @@ import { campaignApi } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { useWorkspaceData } from "../hooks/useWorkspaceData";
 import { buildMonthlyData, buildWeeklyPerformance } from "../lib/campaigns";
+import { useToast } from "../components/ui/toast";
 
 function AnimatedNumber({ value, duration = 1500 }) {
   const [displayValue, setDisplayValue] = useState(0);
@@ -172,6 +173,7 @@ function CustomTooltip({ active, payload, label }) {
 
 function Dashboard() {
   const { user } = useAuth();
+  const toast = useToast();
   const { campaigns, mails, stats, loading, error, reload } = useWorkspaceData();
   const [showModal, setShowModal] = useState(false);
   const [period, setPeriod] = useState("7D");
@@ -186,11 +188,11 @@ function Dashboard() {
   const openRate = stats.openRate !== undefined ? Number(stats.openRate) : (delivered > 0 ? Number(((opened / delivered) * 100).toFixed(1)) : 0);
 
   const statsCards = [
-    { label: "Sent", value: sent, icon: Send, trend: "up", change: loading ? "…" : "Live" },
-    { label: "Delivered", value: delivered, icon: ArrowUpRight, trend: "up", change: loading ? "…" : "Live" },
-    { label: "Opened", value: opened, icon: Eye, trend: "up", change: loading ? "…" : "Live" },
-    { label: "Unopened", value: unopened, icon: EyeOff, trend: unopened > 0 ? "down" : "up", change: loading ? "…" : "Live" },
-    { label: "Open Rate", value: openRate, suffix: "%", icon: TrendingUp, trend: "up", change: loading ? "…" : "Live" },
+    { label: "Emails Sent", value: sent, icon: Send, trend: "up", change: loading ? "…" : "Live" },
+    { label: "Emails Delivered", value: delivered, icon: ArrowUpRight, trend: "up", change: loading ? "…" : "Live" },
+    { label: "Emails Opened", value: opened, icon: Eye, trend: "up", change: loading ? "…" : "Live" },
+    { label: "Emails Unopened", value: unopened, icon: EyeOff, trend: unopened > 0 ? "down" : "up", change: loading ? "…" : "Live" },
+    { label: "Email Open Rate", value: openRate, suffix: "%", icon: TrendingUp, trend: "up", change: loading ? "…" : "Live" },
   ];
 
   const monthlyData = useMemo(() => buildMonthlyData(campaigns, mails), [campaigns, mails]);
@@ -202,10 +204,13 @@ function Dashboard() {
     setFormError("");
     try {
       await campaignApi.create(payload);
+      toast.success("Campaign created", `"${payload.title || "New campaign"}" is ready.`);
       setShowModal(false);
       await reload();
     } catch (err) {
-      setFormError(err.message || "Could not create campaign");
+      const msg = err.message || "Could not create campaign";
+      setFormError(msg);
+      toast.error("Could not create campaign", msg);
     } finally {
       setSaving(false);
     }

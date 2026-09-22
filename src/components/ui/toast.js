@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { CheckCircle2, XCircle, Info, AlertTriangle, X } from "lucide-react";
+import { useNotifications } from "../../context/NotificationContext";
 
 const ToastContext = createContext(null);
 
@@ -122,6 +123,14 @@ function ToastItem({ toast, onDismiss }) {
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  
+  let notifContext = null;
+  try {
+    notifContext = useNotifications();
+  } catch (e) {
+    // In case ToastProvider is rendered outside NotificationProvider
+  }
+  const addNotification = notifContext?.addNotification;
 
   const dismiss = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -130,8 +139,20 @@ export function ToastProvider({ children }) {
   const show = useCallback((type, title, message, opts = {}) => {
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, type, title, message, ...opts }].slice(-4));
+
+    if (opts.record !== false && addNotification) {
+      addNotification({
+        id: `toast_${id}`,
+        type,
+        title,
+        message,
+        category: opts.category,
+        link: opts.link,
+      });
+    }
+
     return id;
-  }, []);
+  }, [addNotification]);
 
   const api = {
     success: (title, message, opts) => show("success", title, message, opts),

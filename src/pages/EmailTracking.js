@@ -14,6 +14,7 @@ import {
 } from "../components/ui/table";
 import { useWorkspaceData } from "../hooks/useWorkspaceData";
 import { mailEvent } from "../lib/campaigns";
+import { SegmentedPagination } from "../components/ui/pagination";
 
 function eventBadge(event, openCount) {
   if (event === "Opened") return <Badge variant="success">Opened {openCount > 1 ? `(${openCount}x)` : ""}</Badge>;
@@ -23,10 +24,13 @@ function eventBadge(event, openCount) {
   return <Badge variant="outline">{event}</Badge>;
 }
 
+const PAGE_SIZE = 10;
+
 function EmailTracking() {
   const { campaigns, mails, stats, loading, error } = useWorkspaceData();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
+  const [page, setPage] = useState(1);
 
   const campaignsById = useMemo(
     () => Object.fromEntries(campaigns.map((campaign) => [String(campaign.id), campaign])),
@@ -93,48 +97,72 @@ function EmailTracking() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Recent events</CardTitle>
-          <CardDescription>Latest engagement from delivered campaigns</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Recipient</TableHead>
-                <TableHead>Campaign</TableHead>
-                <TableHead>Event</TableHead>
-                <TableHead>Opens</TableHead>
-                <TableHead>Device</TableHead>
-                <TableHead>Time</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-medium">
-                    <div>{row.email}</div>
-                    {row.name ? <div className="text-xs text-muted-foreground">{row.name}</div> : null}
-                  </TableCell>
-                  <TableCell>{row.campaign}</TableCell>
-                  <TableCell>{eventBadge(row.event, row.openCount)}</TableCell>
-                  <TableCell className="tabular-nums font-semibold text-primary">
-                    {row.openCount > 0 ? row.openCount : "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{row.device}</TableCell>
-                  <TableCell className="text-muted-foreground">{row.time}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {filtered.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              {loading ? "Loading events..." : "No tracking events yet. Add recipients to a campaign."}
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
+      {(() => {
+        const totalPages = Math.max(2, Math.ceil(filtered.length / PAGE_SIZE));
+        const safePage = Math.min(page, totalPages);
+        const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+        return (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Recent events</CardTitle>
+                <CardDescription>Latest engagement from delivered campaigns</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10 text-center">#</TableHead>
+                      <TableHead>Recipient</TableHead>
+                      <TableHead>Campaign</TableHead>
+                      <TableHead>Event</TableHead>
+                      <TableHead>Opens</TableHead>
+                      <TableHead>Device</TableHead>
+                      <TableHead>Time</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paged.map((row, idx) => (
+                      <TableRow key={row.id}>
+                        <TableCell className="text-center text-muted-foreground text-xs">{(safePage - 1) * PAGE_SIZE + idx + 1}</TableCell>
+                        <TableCell className="font-medium">
+                          <div>{row.email}</div>
+                          {row.name ? <div className="text-xs text-muted-foreground">{row.name}</div> : null}
+                        </TableCell>
+                        <TableCell>{row.campaign}</TableCell>
+                        <TableCell>{eventBadge(row.event, row.openCount)}</TableCell>
+                        <TableCell className="tabular-nums font-semibold text-primary">
+                          {row.openCount > 0 ? row.openCount : "—"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{row.device}</TableCell>
+                        <TableCell className="text-muted-foreground">{row.time}</TableCell>
+                      </TableRow>
+                    ))}
+                    {filtered.length > 0 && paged.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                          No additional records on page {safePage}.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+                {filtered.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    {loading ? "Loading events..." : "No tracking events yet. Add recipients to a campaign."}
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <SegmentedPagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              onPageChange={(p) => setPage(p)}
+            />
+          </>
+        );
+      })()}
     </div>
   );
 }

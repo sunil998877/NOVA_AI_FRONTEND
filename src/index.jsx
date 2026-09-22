@@ -5,6 +5,7 @@ import App from './App';
 import AppErrorBoundary from './components/AppErrorBoundary';
 import { AuthProvider } from './lib/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { ToastProvider } from './components/ui/toast';
 import './styles/global.css';
 import { collabApi } from './lib/api';
@@ -24,11 +25,13 @@ root.render(
     <BrowserRouter>
       <AuthProvider>
         <SocketProvider>
-          <ToastProvider>
-            <AppErrorBoundary>
-              <App />
-            </AppErrorBoundary>
-          </ToastProvider>
+          <NotificationProvider>
+            <ToastProvider>
+              <AppErrorBoundary>
+                <App />
+              </AppErrorBoundary>
+            </ToastProvider>
+          </NotificationProvider>
         </SocketProvider>
       </AuthProvider>
     </BrowserRouter>
