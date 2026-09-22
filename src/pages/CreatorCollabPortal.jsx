@@ -150,9 +150,6 @@ export default function CreatorCollabPortal() {
   const [soundEnabled, setSoundEnabled] = useState(() => {
     return localStorage.getItem("nova_portal_sound") !== "false";
   });
-      window.removeEventListener("storage", sync);
-    };
-  }, [themeState]);
 
   const { socket, isConnected, connectWithToken } = useSocket();
   const [isBrandTyping, setIsBrandTyping] = useState(false);
