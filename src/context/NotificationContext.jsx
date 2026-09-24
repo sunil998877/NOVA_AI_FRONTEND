@@ -174,13 +174,19 @@ export function NotificationProvider({ children }) {
       if (Array.isArray(mails)) {
         mails.forEach((mail) => {
           if (!mail) return;
-          const status = String(mail.status || "").toLowerCase();
           const recipientEmail = mail.recipient_email || mail.email || mail.to || "Recipient";
 
-          if (mail.opened_at || mail.opened || status === "opened") {
+          if (
+            (Number(mail.open_count) || 0) > 0 ||
+            mail.delivery_status === "opened" ||
+            mail.first_opened_at ||
+            mail.last_opened_at
+          ) {
             const oId = `mail_opened_${mail.id || mail._id}`;
             if (!existingIds.has(oId)) {
-              const openTime = mail.opened_at ? new Date(mail.opened_at).getTime() : Date.now() - 1800000;
+              const openTime = mail.last_opened_at || mail.first_opened_at
+                ? new Date(mail.last_opened_at || mail.first_opened_at).getTime()
+                : Date.now() - 1800000;
               additions.push({
                 id: oId,
                 type: "info",
@@ -192,7 +198,11 @@ export function NotificationProvider({ children }) {
                 read: false,
               });
             }
-          } else if (status === "delivered" || mail.sent_at) {
+          } else if (
+            mail.delivery_status === "sent" ||
+            mail.sent_at ||
+            Boolean(mail.status)
+          ) {
             const dId = `mail_delivered_${mail.id || mail._id}`;
             if (!existingIds.has(dId)) {
               const delTime = mail.sent_at ? new Date(mail.sent_at).getTime() : (mail.createdAt ? new Date(mail.createdAt).getTime() : Date.now() - 7200000);

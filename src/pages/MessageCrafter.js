@@ -211,6 +211,7 @@ function MessageCrafter() {
                   </Button>
                 </div>
               </CardContent>
+              
             </Card>
           ))}
         </div>

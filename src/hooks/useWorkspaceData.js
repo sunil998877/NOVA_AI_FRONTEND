@@ -48,7 +48,7 @@ export function useWorkspaceData() {
       if (document.visibilityState === "visible") {
         reload(true);
       }
-    }, 8000);
+    }, 4000);
     return () => clearInterval(interval);
   }, [reload]);
 
