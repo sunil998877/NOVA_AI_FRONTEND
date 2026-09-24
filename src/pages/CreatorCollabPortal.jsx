@@ -739,7 +739,7 @@ export default function CreatorCollabPortal() {
               title="Open WhatsApp chat"
             >
               <svg className="size-3.5 fill-white shrink-0" viewBox="0 0 24 24">
-                <path d="M17.472 14.382c-.301-.15-1.78-.878-2.056-.978-.275-.1-.476-.15-.677.15-.2.301-.777.979-.953 1.18-.176.2-.351.226-.652.076-.301-.15-1.272-.469-2.424-1.497-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.2-.301.301-.501.101-.2.05-.376-.025-.526-.075-.15-.677-1.63-.928-2.234-.244-.588-.493-.508-.677-.518-.175-.008-.376-.01-.577-.01s-.527.076-.803.376c-.276.301-1.053 1.028-1.053 2.508s1.079 2.909 1.229 3.109c.15.201 2.123 3.242 5.143 4.545.719.31 1.28.496 1.718.635.723.23 1.381.197 1.9.12.58-.087 1.78-.727 2.03-1.43.25-.702.25-1.304.176-1.43-.076-.126-.276-.201-.577-.351zM12.04 2C6.543 2 2.08 6.463 2.08 11.96c0 1.838.498 3.565 1.365 5.05L2 22l5.127-1.345a9.92 9.92 0 0 0 4.913 1.265c5.497 0 9.96-4.463 9.96-9.96C22 6.463 17.537 2 12.04 2z"/>
+                <path d="M17.472 14.382c-.301-.15-1.78-.878-2.056-.978-.275-.1-.476-.15-.677.15-.2.301-.777.979-.953 1.18-.176.2-.351.226-.652.076-.301-.15-1.272-.469-2.424-1.497-.896-.799-1.501-1.786-1.677-2.087-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.176.2-.301.301-.501.101-.2.05-.376-.025-.526-.075-.15-.677-1.63-.928-2.234-.244-.588-.493-.508-.677-.518-.175-.008-.376-.01-.577-.01s-.527.076-.803.376c-.276.301-1.053 1.028-1.053 2.508s1.079 2.909 1.229 3.109c.15.201 2.123 3.242 5.143 4.545.719.31 1.28.496 1.718.635.723.23 1.381.197 1.9.12.58-.087 1.78-.727 2.03-1.43.25-.702.25-1.304.176-1.43-.076-.126-.276-.201-.577-.351zM12.04 2C6.543 2 2.08 6.463 2.08 11.96c0 1.838.498 3.565 1.365 5.05L2 22l5.127-1.345a9.92 9.92 0 0 0 4.913 1.265c5.497 0 9.96-4.463 9.96-9.96C22 6.463 17.537 2 12.04 2z" />
               </svg>
               <span className="hidden sm:inline">WhatsApp</span>
             </a>
@@ -794,7 +794,7 @@ export default function CreatorCollabPortal() {
               <Button
                 size="sm"
                 onClick={requestNotificationPermission}
-                className="h-7 px-3 bg-orange-500 hover:bg-orange-600 text-white dark:bg-orange-500 dark:hover:bg-orange-600 font-semibold text-xs rounded-lg cursor-pointer transition-all shadow-xs"
+                className="h-7 px-3 bg-teal-600 hover:bg-teal-700 text-white dark:bg-teal-600 dark:hover:bg-teal-700 font-semibold text-xs rounded-lg cursor-pointer transition-all shadow-xs"
               >
                 Allow
               </Button>
@@ -849,12 +849,12 @@ export default function CreatorCollabPortal() {
                 >
                   <div
                     className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed shadow-xs relative select-text ${isCreator
-                      ? "bg-orange-500 text-white dark:bg-orange-600 dark:text-white rounded-tr-xs shadow-sm shadow-orange-500/20"
+                      ? "bg-teal-600 text-white dark:bg-teal-600 dark:text-white rounded-tr-xs shadow-sm shadow-teal-600/20"
                       : "bg-card text-foreground border border-border/80 dark:bg-[#202c33] dark:text-slate-100 rounded-tl-xs dark:border-[#2a3942]/60"
                       }`}
                   >
                     {!isCreator && (
-                      <p className="text-[11px] font-bold text-orange-600 dark:text-orange-400 mb-1">
+                      <p className="text-[11px] font-bold text-teal-600 dark:text-teal-400 mb-1">
                         {m.sender_name || "Brand Team"}
                       </p>
                     )}
@@ -864,7 +864,7 @@ export default function CreatorCollabPortal() {
                       <span>{formatTime(m.createdAt || m.created_at)}</span>
                       {isCreator && (
                         <CheckCheck
-                          className={`size-3.5 ${m.isRead || m.is_read ? "text-orange-200" : "text-white/70 dark:text-white/60"
+                          className={`size-3.5 ${m.isRead || m.is_read ? "text-white/50" : "text-white/70 dark:text-white/60"
                             }`}
                         />
                       )}
@@ -878,13 +878,13 @@ export default function CreatorCollabPortal() {
           {isBrandTyping && (
             <div className="flex flex-col items-start animate-in fade-in duration-200">
               <div className="bg-card dark:bg-[#202c33] text-muted-foreground dark:text-slate-300 rounded-2xl px-3.5 py-2 text-xs rounded-tl-xs border border-border dark:border-[#2a3942]/60 flex items-center gap-1.5 shadow-xs">
-                <span className="text-[11px] font-medium text-orange-600 dark:text-orange-400">
+                <span className="text-[11px] font-medium text-teal-600 dark:text-teal-400">
                   Brand team is typing
                 </span>
                 <span className="flex items-center gap-0.5 ml-1">
-                  <span className="size-1.5 rounded-full bg-orange-500 animate-bounce" />
-                  <span className="size-1.5 rounded-full bg-orange-500 animate-bounce [animation-delay:150ms]" />
-                  <span className="size-1.5 rounded-full bg-orange-500 animate-bounce [animation-delay:300ms]" />
+                  <span className="size-1.5 rounded-full bg-teal-500 animate-bounce" />
+                  <span className="size-1.5 rounded-full bg-teal-500 animate-bounce [animation-delay:150ms]" />
+                  <span className="size-1.5 rounded-full bg-teal-500 animate-bounce [animation-delay:300ms]" />
                 </span>
               </div>
             </div>
@@ -906,7 +906,7 @@ export default function CreatorCollabPortal() {
               key={chip}
               type="button"
               onClick={() => setNewMessage(chip)}
-              className="shrink-0 rounded-full border border-border dark:border-[#2a3942] bg-muted/60 dark:bg-[#202c33] hover:bg-muted dark:hover:bg-[#2a3942] hover:border-orange-500/50 px-3 py-1 text-[11px] text-foreground dark:text-slate-200 transition-all cursor-pointer"
+              className="shrink-0 rounded-full border border-border dark:border-[#2a3942] bg-muted/60 dark:bg-[#202c33] hover:bg-muted dark:hover:bg-[#2a3942] hover:border-teal-500/50 px-3 py-1 text-[11px] text-foreground dark:text-slate-200 transition-all cursor-pointer"
             >
               {chip}
             </button>
@@ -924,12 +924,12 @@ export default function CreatorCollabPortal() {
               setNewMessage(e.target.value);
               handleLocalTyping();
             }}
-            className="h-10 bg-muted/60 dark:bg-[#2a3942] border border-border/60 dark:border-0 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-orange-500 rounded-lg flex-1 min-w-0"
+            className="h-10 bg-muted/60 dark:bg-[#2a3942] border border-border/60 dark:border-0 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-teal-500 dark:focus-visible:ring-teal-400 rounded-lg flex-1 min-w-0"
           />
           <Button
             type="submit"
             disabled={!newMessage.trim()}
-            className="size-10 rounded-full bg-orange-500 hover:bg-orange-600 text-white dark:bg-orange-500 dark:hover:bg-orange-600 font-bold p-0 flex items-center justify-center shrink-0 transition-all shadow-md shadow-orange-500/25 cursor-pointer"
+            className="size-10 rounded-full bg-teal-600 hover:bg-teal-700 text-white dark:bg-teal-600 dark:hover:bg-teal-700 font-bold p-0 flex items-center justify-center shrink-0 transition-all shadow-md shadow-teal-600/25 cursor-pointer"
           >
             <Send className="size-4" />
           </Button>

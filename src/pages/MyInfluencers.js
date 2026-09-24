@@ -336,6 +336,7 @@ function MyInfluencers() {
 
   const handleSendOutreach = async (e) => {
     e.preventDefault();
+    if (sendingOutreach) return;
     const cleanEmail = outreachEmail.trim();
     if (!cleanEmail || !isValidEmail(cleanEmail)) {
       toast.error("Please enter a valid recipient email");
@@ -372,7 +373,6 @@ function MyInfluencers() {
         message: outreachMessage,
         whatsappNumber: whatsappNumber.trim() || undefined,
         influencerPhone: influencerPhone.trim() || undefined,
-        portalBaseUrl: typeof window !== "undefined" ? window.location.origin : undefined,
       });
 
       toast.success("Outreach email sent successfully", `Delivered to ${cleanEmail}`);

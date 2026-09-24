@@ -3,7 +3,7 @@ import { conversationApi, openaiApi } from "./api";
 export async function ensureConversation(title) {
   try {
     const res = await conversationApi.list();
-    const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+    const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
     const existing = list.find((item) => item.title === title);
     if (existing) return existing;
     const created = await conversationApi.create({ title });
@@ -17,7 +17,7 @@ export async function ensureConversation(title) {
 export async function findConversation(title) {
   try {
     const res = await conversationApi.list();
-    const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+    const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
     return list.find((item) => item.title === title) || null;
   } catch {
     return null;
@@ -35,12 +35,19 @@ export async function loadConversationMessages(title) {
 
 export async function generateEmail({
   prompt,
-  context = false,
+  context = true,
+  tone,
+  audience,
   conversationTitle = "Message Crafter",
+  conversationId,
 }) {
   let conversation = null;
   try {
-    conversation = await ensureConversation(conversationTitle);
+    if (conversationId) {
+      conversation = { id: conversationId };
+    } else {
+      conversation = await ensureConversation(conversationTitle);
+    }
   } catch (err) {
     console.warn("[novaChat] Could not load conversation:", err.message);
   }
@@ -49,9 +56,12 @@ export async function generateEmail({
   const result = await openaiApi.generateMessage({
     conversationId: convId,
     prompt,
+    tone,
+    audience,
+    // Keep thread so follow-ups revise the last draft like ChatGPT
     context: Boolean(context && convId),
   });
-  return { data: result?.data, conversation };
+  return { data: result?.data, conversation: conversation || { id: convId } };
 }
 
 export async function craftEmail({
@@ -71,7 +81,9 @@ export async function craftEmail({
 
   const { data } = await generateEmail({
     prompt: composed,
-    context: false,
+    context: true,
+    tone,
+    audience,
     conversationTitle,
   });
   return data;

@@ -15,4 +15,4 @@ export function parseDraft(content) {
     return { subject: lines[0], body: lines.slice(1).join("\n\n") };
   }
   return { subject: "", body: text };
-}
+}

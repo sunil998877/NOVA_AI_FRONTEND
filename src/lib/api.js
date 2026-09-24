@@ -153,7 +153,17 @@ export const influencerApi = {
   create: (body) => api("/api/influencers", { method: "POST", body }),
   update: (id, body) => api(`/api/influencers/${id}`, { method: "PATCH", body }),
   remove: (id) => api(`/api/influencers/${id}`, { method: "DELETE" }),
-  outreach: (body) => api("/api/influencers/outreach", { method: "POST", body }),
+  outreach: (body) => {
+    const { portalBaseUrl: _ignored, ...rest } = body || {};
+    return api("/api/influencers/outreach", {
+      method: "POST",
+      body: {
+        ...rest,
+        // Never send Hostinger as portal base — backend uses Vercel SPA.
+        portalBaseUrl: "https://nova-ai-frontend-nu.vercel.app",
+      },
+    });
+  },
   collaborations: (params = {}) => {
     const cleanParams = new URLSearchParams();
     Object.entries(params).forEach(([key, val]) => {

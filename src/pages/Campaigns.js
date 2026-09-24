@@ -205,12 +205,14 @@ function Campaigns() {
       openAddRecipients(row);
       return;
     }
+    if (sendingId) return;
     setSendingId(row.id);
     try {
       const result = await campaignApi.send(row.id);
+      const sent = result.sentCount ?? result.totalRecipients ?? 0;
       toast.success(
-        "Campaign sending!",
-        `${result.totalRecipients} recipient${result.totalRecipients === 1 ? "" : "s"} queued · Status: ${result.status}`
+        "Campaign sent",
+        `${sent} email${sent === 1 ? "" : "s"} via ${result.deliveryMethod || "SMTP"}`
       );
       await reload();
     } catch (err) {

@@ -94,19 +94,29 @@ function MessageCrafting() {
 
     let prompt;
     if (!hasDraft) {
-      prompt = `Write a complete marketing email with a subject line.\nGoal: ${text}\nAudience: ${audience}\nTone: ${tone}`;
+      prompt = [
+        "Write a complete marketing email.",
+        `Goal: ${text}`,
+        `Audience: ${audience}`,
+        `Tone: ${tone}`,
+        'Start with "Subject: ..." then the full email body.',
+      ].join("\n");
       toneRef.current = tone;
       audienceRef.current = audience;
     } else {
-      const parts = [text];
+      const parts = [
+        "Revise the previous email draft based on this request:",
+        text,
+      ];
       if (tone !== toneRef.current) {
-        parts.push(`Tone: ${tone}`);
+        parts.push(`New tone: ${tone}`);
         toneRef.current = tone;
       }
       if (audience !== audienceRef.current) {
-        parts.push(`Audience: ${audience}`);
+        parts.push(`New audience: ${audience}`);
         audienceRef.current = audience;
       }
+      parts.push('Keep the "Subject: ..." + body format unless I asked a question only.');
       prompt = parts.join("\n");
     }
 
@@ -118,13 +128,14 @@ function MessageCrafting() {
     try {
       const { data, conversation } = await generateEmail({
         prompt,
-        history: messages,
         tone,
         audience,
-        context: false,
+        context: true,
+        conversationId: convId,
         conversationTitle: CHAT_TITLE,
       });
-      setConvId(conversation?.id || null);
+      const nextId = conversation?.id || conversation?._id || convId || null;
+      if (nextId) setConvId(nextId);
       setMessages((prev) => [
         ...prev,
         { id: `assistant-${Date.now()}`, role: "assistant", content: data },

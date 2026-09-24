@@ -587,10 +587,12 @@ export default function Chat() {
     setTimeout(() => scrollToBottom("smooth"), 80);
   };
 
+  const PORTAL_BASE = "https://nova-ai-frontend-nu.vercel.app";
+
   const handleCopyCreatorLink = () => {
     const token = activeCollab?.access_token || activeCollab?.portal_token;
     if (!token) return;
-    const url = `${window.location.origin}/collab/${token}`;
+    const url = `${PORTAL_BASE}/collab/${token}`;
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
@@ -632,7 +634,7 @@ export default function Chat() {
   );
   const activePlatform = activeCollab?.platform || "youtube";
   const activeToken = activeCollab?.access_token || activeCollab?.portal_token;
-  const activePortalUrl = activeToken ? `${window.location.origin}/collab/${activeToken}` : "";
+  const activePortalUrl = activeToken ? `${PORTAL_BASE}/collab/${activeToken}` : "";
   const whatsappNumber = activeCollab?.whatsapp_number || activeCollab?.whatsappNumber;
   const whatsappUrl = whatsappNumber
     ? `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, "")}`
@@ -1104,12 +1106,12 @@ export default function Chat() {
                     >
                       <div
                         className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2 text-xs sm:text-sm leading-relaxed shadow-xs relative select-text ${isMarketer
-                          ? "bg-orange-500 text-white dark:bg-orange-600 dark:text-white rounded-tr-xs shadow-sm shadow-orange-500/20"
+                          ? "bg-teal-600 text-white dark:bg-teal-600 dark:text-white rounded-tr-xs shadow-sm shadow-teal-600/20"
                           : "bg-card text-foreground border border-border/80 dark:bg-[#202c33] dark:text-slate-100 rounded-tl-xs dark:border-[#2a3942]/60"
                           }`}
                       >
                         {!isMarketer && (
-                          <p className="text-[11px] font-bold text-orange-600 dark:text-orange-400 mb-1">
+                          <p className="text-[11px] font-bold text-teal-600 dark:text-teal-400 mb-1">
                             {m.sender_name || m.senderName || activeInfluencerName}
                           </p>
                         )}
@@ -1119,7 +1121,7 @@ export default function Chat() {
                           <span>{formatTime(m.createdAt || m.created_at)}</span>
                           {isMarketer && (
                             <CheckCheck
-                              className={`size-3.5 ${m.isRead || m.is_read ? "text-orange-200" : "text-white/70 dark:text-white/60"
+                              className={`size-3.5 ${m.isRead || m.is_read ? "text-white/50" : "text-white/70 dark:text-white/60"
                                 }`}
                             />
                           )}
@@ -1133,13 +1135,13 @@ export default function Chat() {
               {isOtherTyping && (
                 <div className="flex flex-col items-start animate-in fade-in duration-200">
                   <div className="bg-card dark:bg-[#202c33] text-muted-foreground dark:text-slate-300 rounded-2xl px-3.5 py-2 text-xs rounded-tl-xs border border-border dark:border-[#2a3942]/60 flex items-center gap-1.5 shadow-xs">
-                    <span className="text-[11px] font-medium text-orange-600 dark:text-orange-400">
+                    <span className="text-[11px] font-medium text-teal-600 dark:text-teal-400">
                       {activeInfluencerName} is typing
                     </span>
                     <span className="flex items-center gap-0.5 ml-1">
-                      <span className="size-1.5 rounded-full bg-orange-500 animate-bounce" />
-                      <span className="size-1.5 rounded-full bg-orange-500 animate-bounce [animation-delay:150ms]" />
-                      <span className="size-1.5 rounded-full bg-orange-500 animate-bounce [animation-delay:300ms]" />
+                      <span className="size-1.5 rounded-full bg-teal-500 animate-bounce" />
+                      <span className="size-1.5 rounded-full bg-teal-500 animate-bounce [animation-delay:150ms]" />
+                      <span className="size-1.5 rounded-full bg-teal-500 animate-bounce [animation-delay:300ms]" />
                     </span>
                   </div>
                 </div>
@@ -1158,12 +1160,12 @@ export default function Chat() {
                   setNewMessage(e.target.value);
                   handleLocalTyping();
                 }}
-                className="h-10 bg-muted/60 dark:bg-[#2a3942] border border-border/60 dark:border-0 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-orange-500 dark:focus-visible:ring-orange-500 rounded-lg flex-1 min-w-0"
+                className="h-10 bg-muted/60 dark:bg-[#2a3942] border border-border/60 dark:border-0 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-teal-500 dark:focus-visible:ring-teal-400 rounded-lg flex-1 min-w-0"
               />
               <Button
                 type="submit"
                 disabled={!newMessage.trim()}
-                className="size-10 rounded-full bg-orange-500 hover:bg-orange-600 text-white dark:bg-orange-500 dark:hover:bg-orange-600 font-bold p-0 flex items-center justify-center shrink-0 transition-all shadow-md shadow-orange-500/25 cursor-pointer"
+                className="size-10 rounded-full bg-teal-600 hover:bg-teal-700 text-white dark:bg-teal-600 dark:hover:bg-teal-700 font-bold p-0 flex items-center justify-center shrink-0 transition-all shadow-md shadow-teal-600/25 cursor-pointer"
               >
                 <Send className="size-4" />
               </Button>

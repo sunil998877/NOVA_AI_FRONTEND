@@ -363,8 +363,8 @@ function CollaborationHistory() {
                 type="button"
                 onClick={() => setSelectedPlatform(plat)}
                 className={`rounded-md px-2.5 py-1 font-medium capitalize transition-colors ${selectedPlatform === plat
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
                   }`}
               >
                 {plat === "all" ? "All Platforms" : plat === "twitter" ? "Twitter/X" : plat}
@@ -379,8 +379,8 @@ function CollaborationHistory() {
                 type="button"
                 onClick={() => setSelectedStatus(st)}
                 className={`rounded-md px-2.5 py-1 font-medium capitalize transition-colors ${selectedStatus === st
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
                   }`}
               >
                 {st === "all" ? "All Status" : st}
@@ -609,8 +609,8 @@ function CollaborationHistory() {
                         type="button"
                         onClick={() => handleUpdateStatus(detailItem.id, st)}
                         className={`px-2 py-0.5 rounded text-[11px] font-medium capitalize transition-colors ${detailItem.status === st
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:text-foreground"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:text-foreground"
                           }`}
                       >
                         {st}
