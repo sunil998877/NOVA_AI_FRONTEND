@@ -1,4 +1,4 @@
-import { conversationApi, openaiApi } from "./api";
+﻿import { conversationApi, openaiApi } from "./api";
 
 export async function ensureConversation(title) {
   try {
@@ -58,7 +58,7 @@ export async function generateEmail({
     prompt,
     tone,
     audience,
-    // Keep thread so follow-ups revise the last draft like ChatGPT
+
     context: Boolean(context && convId),
   });
   return { data: result?.data, conversation: conversation || { id: convId } };

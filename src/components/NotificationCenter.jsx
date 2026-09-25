@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+﻿import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -129,7 +129,6 @@ export function NotificationCenter() {
     clearAll,
   } = useNotifications();
 
-  // Close when clicking outside
   useEffect(() => {
     function handleClickOutside(e) {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -151,7 +150,6 @@ export function NotificationCenter() {
     };
   }, [open]);
 
-  // Tab filtered items
   const filteredItems = useMemo(() => {
     if (activeTab === "all") return notifications;
     if (activeTab === "unread") return notifications.filter((n) => !n.read);
@@ -194,7 +192,7 @@ export function NotificationCenter() {
 
   return (
     <div className="relative inline-block" ref={containerRef}>
-      {/* Bell Trigger Button */}
+      {}
       <Button
         variant="ghost"
         size="icon"
@@ -215,7 +213,7 @@ export function NotificationCenter() {
         )}
       </Button>
 
-      {/* Floating Notification Panel */}
+      {}
       {open && (
         <div
           className="absolute right-0 top-full z-50 mt-2 w-[380px] max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border/80 bg-popover/95 p-0 text-popover-foreground shadow-2xl backdrop-blur-2xl animate-in fade-in-0 zoom-in-95 duration-200 sm:w-[420px]"
@@ -224,7 +222,7 @@ export function NotificationCenter() {
               "0 20px 40px -15px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.05)",
           }}
         >
-          {/* Header */}
+          {}
           <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
             <div className="flex items-center gap-2">
               <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -274,7 +272,7 @@ export function NotificationCenter() {
             </div>
           </div>
 
-          {/* Filter Tabs */}
+          {}
           <div className="flex items-center gap-1 overflow-x-auto border-b border-border/40 px-3 py-1.5 scrollbar-none">
             {tabs.map((tab) => (
               <button
@@ -302,7 +300,7 @@ export function NotificationCenter() {
             ))}
           </div>
 
-          {/* Notifications List */}
+          {}
           <ScrollArea className="max-h-[380px] overflow-y-auto">
             {filteredItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-8 text-center">

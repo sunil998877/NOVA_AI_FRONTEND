@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -76,6 +76,11 @@ function Campaigns() {
     setPreviewOpen(true);
   };
 
+  const previewRecipient = useMemo(() => {
+    if (!previewCampaign) return null;
+    return (mails || []).find((m) => String(m.campaign_id) === String(previewCampaign.id)) || null;
+  }, [previewCampaign, mails]);
+
   const rows = useMemo(
     () => campaigns.map((campaign) => toCampaignRow(campaign, mails)),
     [campaigns, mails]
@@ -107,7 +112,6 @@ function Campaigns() {
 
     return matchesSearch && matchesFilter;
   });
-
 
   useEffect(() => { setCurrentPage(1); }, [searchQuery, filterStatus]);
 
@@ -207,19 +211,45 @@ function Campaigns() {
     }
     if (sendingId) return;
     setSendingId(row.id);
+
+    const isResend = row.status === "completed";
+    const controller = new AbortController();
+
+    const feedbackTimer = setTimeout(() => {
+      toast.info(
+        "Still sending…",
+        "Emails are going out. This can take up to a minute for large lists."
+      );
+    }, 15_000);
+
+    const abortTimer = setTimeout(() => controller.abort(), 90_000);
+
     try {
-      const result = await campaignApi.send(row.id);
+      const result = await campaignApi.send(row.id, {
+        force: isResend,
+      }, controller.signal);
       const sent = result.sentCount ?? result.totalRecipients ?? 0;
       toast.success(
-        "Campaign sent",
+        isResend ? "Campaign resent" : "Campaign sent",
         `${sent} email${sent === 1 ? "" : "s"} via ${result.deliveryMethod || "SMTP"}`
       );
       await reload();
     } catch (err) {
       const message = err.message || "Could not start campaign";
-      toast.error("Send failed", message);
-      if (/no recipients/i.test(message)) openAddRecipients(row);
+      if (/timed out/i.test(message)) {
+        toast.warning(
+          "Taking too long",
+          "The send is still running in the background. Refresh in a minute to see the result."
+        );
+
+        setTimeout(() => reload(), 8_000);
+      } else {
+        toast.error(isResend ? "Resend failed" : "Send failed", message);
+        if (/no recipients/i.test(message)) openAddRecipients(row);
+      }
     } finally {
+      clearTimeout(feedbackTimer);
+      clearTimeout(abortTimer);
       setSendingId(null);
     }
   };
@@ -595,9 +625,16 @@ function Campaigns() {
       />
 
       <CampaignPreviewDialog
+        key={previewCampaign ? `preview-${previewCampaign.id}` : "no-preview"}
         open={previewOpen}
-        onOpenChange={setPreviewOpen}
+        onOpenChange={(isOpen) => {
+          setPreviewOpen(isOpen);
+          if (!isOpen) {
+            setPreviewCampaign(null);
+          }
+        }}
         campaign={previewCampaign}
+        recipient={previewRecipient}
         onSend={handleStart}
       />
 

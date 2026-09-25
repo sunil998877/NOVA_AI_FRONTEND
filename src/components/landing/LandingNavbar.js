@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Menu, Moon, Sun, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "../../lib/utils";
 import { navFrame } from "./landingTheme";
@@ -35,14 +35,7 @@ export function LandingNavbar({ dark, acc, authed, toggleTheme, menuOpen, setMen
                 </Link>
               )}
             </nav>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-              className="ml-1 grid size-9 shrink-0 place-items-center rounded-full text-neutral-900 hover:bg-black/5 lg:size-10"
-            >
-              {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-            </button>
+
             <Button asChild className={cn("ml-1 h-9 shrink-0 rounded-full px-5 text-sm shadow-none lg:ml-2 lg:h-11 lg:px-6", acc.btn)}>
               <Link to={authed ? "/dashboard" : "/signup"}>
                 {authed ? "Open dashboard" : "Get started"}
@@ -51,14 +44,6 @@ export function LandingNavbar({ dark, acc, authed, toggleTheme, menuOpen, setMen
           </div>
 
           <div className="flex items-center gap-0.5 md:hidden">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-              className="grid size-10 shrink-0 place-items-center rounded-full text-neutral-900 hover:bg-black/5"
-            >
-              {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-            </button>
             <Button
               variant="ghost"
               size="icon"

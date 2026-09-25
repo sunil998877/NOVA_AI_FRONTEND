@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Mail, Trash2, ExternalLink, Users, Send, Search, CheckCircle2, AlertCircle, Copy, Loader2, UserPlus, Pencil, Check, Tag, Sparkles, Wand2, ChevronDown, ChevronUp, MessageSquare, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
@@ -86,7 +86,6 @@ function MyInfluencers() {
   const [aiGoal, setAiGoal] = useState("Sponsorship Offer");
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiError, setAiError] = useState("");
-
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newInfluencer, setNewInfluencer] = useState({
@@ -385,8 +384,6 @@ function MyInfluencers() {
     }
   };
 
-
-
   const stats = [
     { label: "Total Saved", value: influencers.length },
     { label: "Contacted", value: influencers.filter((i) => i.status === "contacted").length },
@@ -429,7 +426,6 @@ function MyInfluencers() {
           </Card>
         ))}
       </div>
-
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:max-w-xs">
@@ -760,7 +756,6 @@ function MyInfluencers() {
                   </label>
                 )}
               </div>
-
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">

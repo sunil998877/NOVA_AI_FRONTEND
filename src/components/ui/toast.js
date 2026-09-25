@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+﻿import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { CheckCircle2, XCircle, Info, AlertTriangle, X } from "lucide-react";
 import { useNotifications } from "../../context/NotificationContext";
 
@@ -123,12 +123,12 @@ function ToastItem({ toast, onDismiss }) {
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
-  
+
   let notifContext = null;
   try {
     notifContext = useNotifications();
   } catch (e) {
-    // In case ToastProvider is rendered outside NotificationProvider
+
   }
   const addNotification = notifContext?.addNotification;
 

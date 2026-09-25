@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import { Search, Star, ExternalLink, Mail, Check, AlertCircle, ChevronLeft, ChevronRight, SlidersHorizontal, Send, Loader2, CheckCircle2, Copy, UserPlus, Pencil, Sparkles, Wand2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -1015,7 +1015,6 @@ function FindInfluencers() {
                 )}
               </div>
 
-
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="find-outreach-wa" className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
@@ -1420,4 +1419,3 @@ function FindInfluencers() {
 }
 
 export default FindInfluencers;
-

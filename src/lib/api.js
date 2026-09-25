@@ -1,4 +1,4 @@
-import { clearSession, getToken } from "./auth";
+﻿import { clearSession, getToken } from "./auth";
 
 export const API_URL = (
   import.meta.env.DEV
@@ -24,7 +24,7 @@ const emitUnauthorized = () => {
   window.dispatchEvent(new Event("nova-auth-expired"));
 };
 
-export async function api(path, { method = "GET", body, auth = true, token } = {}) {
+export async function api(path, { method = "GET", body, auth = true, token, signal } = {}) {
   const headers = {};
   if (typeof window !== "undefined" && window.location?.origin) {
     headers["X-Frontend-Url"] = window.location.origin;
@@ -44,8 +44,12 @@ export async function api(path, { method = "GET", body, auth = true, token } = {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal,
     });
   } catch (err) {
+    if (err?.name === "AbortError") {
+      throw new ApiError("Request timed out. The server is taking too long — please try again.", 0);
+    }
     throw new ApiError(
       `Cannot reach the NOVA backend. Please check server status or connection.`,
       0
@@ -100,7 +104,7 @@ export const campaignApi = {
   create: (body) => api("/api/campaigns/create", { method: "POST", body }),
   update: (id, body) => api(`/api/campaigns/${id}`, { method: "PATCH", body }),
   updateStatus: (id, body) => api(`/api/campaigns/${id}/status`, { method: "PATCH", body }),
-  send: (id) => api(`/api/campaigns/${id}/send`, { method: "POST" }),
+  send: (id, body = {}, signal) => api(`/api/campaigns/${id}/send`, { method: "POST", body, signal }),
   preview: (id) => api(`/api/campaigns/${id}/preview`),
   analytics: (id) => api(`/api/campaigns/${id}/analytics`),
   complete: (id, body = {}) => api(`/api/campaigns/${id}/complete`, { method: "POST", body }),
@@ -159,7 +163,7 @@ export const influencerApi = {
       method: "POST",
       body: {
         ...rest,
-        // Never send Hostinger as portal base — backend uses Vercel SPA.
+
         portalBaseUrl: "https://nova-ai-frontend-nu.vercel.app",
       },
     });

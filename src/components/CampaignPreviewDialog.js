@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+﻿import React, { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,6 @@ import {
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import {
-  Loader2,
   Smartphone,
   Monitor,
   Mail,
@@ -21,122 +20,225 @@ import {
   ExternalLink,
   Sparkles,
 } from "lucide-react";
-import { campaignApi } from "../lib/api";
 
-function buildFallbackHtml(campaign) {
-  const subject = campaign?.subject || campaign?.title || "Campaign Preview";
-  const senderName = campaign?.sender_name || campaign?.senderName || "Sunil Kumar";
-  const senderEmail = campaign?.sender_email || campaign?.senderEmail || "skp66235@gmail.com";
-  const recipientName = campaign?.isOutreach ? (campaign?.name?.replace(/^Outreach to\s*/i, "") || "Creator") : "Valued Customer";
+function resolvePlaceholders(text, recipient, campaign) {
+  if (!text) return "";
+  const fullName =
+    recipient?.full_name ||
+    recipient?.recipientName ||
+    recipient?.name ||
+    (campaign?.isOutreach ? campaign?.name?.replace(/^Outreach to\s*/i, "") : "") ||
+    "Valued Recipient";
+  const firstName = fullName.split(/\s+/)[0] || fullName;
+  const email = recipient?.email || recipient?.recipientEmail || "recipient@example.com";
+  const senderName = campaign?.sender_name || campaign?.senderName || "NOVA AI";
+  const campaignTitle = campaign?.name || campaign?.title || "Campaign";
 
-  let rawBody = campaign?.body || `Hello ${recipientName},\n\nWe would love to discuss an exciting collaboration opportunity with you.\n\nBest regards,\n${senderName}`;
+  let resolved = text;
+  resolved = resolved.replace(
+    /(Best\s+regards,?\s*(?:<br\s*\/?>)?\s*)(?:\{\{\s*(?:recipient_name|recipientName|full_name|fullName|name)\s*\}\}|\[\s*Recipient(?:'s)?\s*Name\s*\]|\[\s*Recipient\s*\])/gi,
+    `$1{{senderName}}`
+  );
 
-  const formattedBody = rawBody
-    .replace(/<br\s*\/?>/gi, "\n")
-    .split("\n\n")
-    .map((para) => `<p style="margin: 0 0 16px 0; color: #334155; font-size: 15px; line-height: 1.65;">${para.replace(/\n/g, "<br/>")}</p>`)
-    .join("");
+  const namePatterns = [
+    /\{\{\s*(?:recipient_name|recipientName|full_name|fullName|name)\s*\}\}/gi,
+    /\[\s*Recipient(?:'s)?\s*Name\s*\]/gi,
+    /\[\s*Recipient\s*\]/gi,
+    /\[\s*Customer\s*Name\s*\]/gi,
+    /\[\s*Client\s*Name\s*\]/gi,
+  ];
+  for (const pattern of namePatterns) {
+    resolved = resolved.replace(pattern, fullName);
+  }
+
+  resolved = resolved.replace(/\{\{\s*(?:first_name|firstName)\s*\}\}/gi, firstName);
+  resolved = resolved.replace(/\{\{\s*(?:recipient_email|recipientEmail|email)\s*\}\}/gi, email);
+
+  const companyPatterns = [
+    /\{\{\s*(?:company|organization|org)\s*\}\}/gi,
+    /\[\s*(?:Company|Organization)\s*Name\s*\]/gi,
+    /\[\s*Your\s*Company\s*\]/gi,
+  ];
+  for (const pattern of companyPatterns) {
+    resolved = resolved.replace(pattern, "NOVA AI");
+  }
+
+  resolved = resolved.replace(/\{\{\s*campaign_title\s*\}\}/gi, campaignTitle);
+
+  const senderPatterns = [
+    /\{\{\s*(?:sender_name|senderName)\s*\}\}/gi,
+    /\[\s*Your\s*Name\s*\]/gi,
+    /\[\s*Sender(?:'s)?\s*Name\s*\]/gi,
+    /\[\s*Sender\s*\]/gi,
+  ];
+  for (const pattern of senderPatterns) {
+    resolved = resolved.replace(pattern, senderName);
+  }
+
+  resolved = resolved.replace(/\[\s*Insert\s*Link\s*\]/gi, "Click here");
+  resolved = resolved.replace(/\[\s*(?:Your\s*Title|Title)\s*\]/gi, "Team");
+  resolved = resolved.replace(/\[\s*(?:Product|Service)\s*Name\s*\]/gi, campaignTitle);
+  resolved = resolved.replace(/,\s*independent(?=[ \t]*(?:\r?\n|$))/gi, "");
+  resolved = resolved.replace(/^[ \t]*independent[ \t]*(?:\r?\n|$)/gim, "");
+
+  return resolved;
+}
+
+function formatEmailBody(rawBody) {
+  if (!rawBody) return "";
+
+  let text = rawBody.replace(/<br\s*\/?>/gi, "\n");
+  const paragraphs = text.split(/\n\s*\n/);
+
+  return paragraphs
+    .map((p) => {
+      let content = p.trim();
+      if (!content) return "";
+
+      content = content.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #111827; font-weight: 600;">$1</strong>');
+      content = content.replace(/\*([^*]+)\*/g, '<em style="color: #4b5563;">$1</em>');
+
+      content = content.replace(/\n/g, "<br/>");
+
+      return `<p style="margin: 0 0 16px 0; color: #374151; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.65; word-break: break-word;">${content}</p>`;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildNovaEmailHtml(campaign, recipient) {
+  const resolvedSubject = resolvePlaceholders(
+    campaign?.subject || campaign?.name || campaign?.title || "Campaign Preview",
+    recipient,
+    campaign
+  );
+  const resolvedBody = resolvePlaceholders(
+    campaign?.body ||
+      (campaign?.isOutreach
+        ? `Hello {{recipientName}},\n\nWe would love to discuss an exciting collaboration opportunity with you.\n\nBest regards,\n{{senderName}}`
+        : `Hello {{recipientName}},\n\nThis is your preview for ${campaign?.name || campaign?.title || "Campaign"}.\n\nBest regards,\n{{senderName}}`),
+    recipient,
+    campaign
+  );
+
+  const styledBody = formatEmailBody(resolvedBody);
+  const recipientEmail = recipient?.email || "recipient@example.com";
+  const campaignName = campaign?.name || campaign?.title || "NOVA Campaign";
+  const currentYear = new Date().getFullYear();
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${subject}</title>
-  <style>
-    body { margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
-    .container { max-width: 600px; margin: 28px auto; padding: 0 16px; }
-    .card { background-color: #ffffff; border-radius: 16px; padding: 36px 32px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0; }
-    .header { padding-bottom: 20px; border-bottom: 1px solid #f1f5f9; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; }
-    .badge { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #0d9488; background: #ccfbf1; padding: 4px 10px; border-radius: 9999px; }
-    .subject { margin: 14px 0 6px 0; font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.35; }
-    .meta { font-size: 13px; color: #64748b; margin-top: 4px; }
-    .content { color: #334155; font-size: 15px; line-height: 1.65; margin: 24px 0; }
-    .cta-box { background: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 100%); border: 1px solid #99f6e4; border-radius: 12px; padding: 20px; margin: 28px 0; text-align: left; }
-    .btn { display: inline-block; background: #0d9488; color: #ffffff !important; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 10px; }
-    .footer { text-align: center; font-size: 12px; color: #94a3b8; margin-top: 28px; line-height: 1.5; }
+  <title>${resolvedSubject}</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    table { border-collapse: collapse !important; }
+    body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #f7f5f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    @media screen and (max-width: 600px) {
+      .email-container { width: 100% !important; padding: 12px !important; }
+      .content-cell { padding: 24px 20px !important; }
+    }
   </style>
 </head>
-<body>
-  <div class="container">
-    <div class="card">
-      <div class="header">
-        <div>
-          <span class="badge">${campaign?.isOutreach ? "Partnership Outreach" : "Campaign Broadcast"}</span>
-          <h1 class="subject">${subject}</h1>
-          <div class="meta">From: <strong>${senderName}</strong> &lt;${senderEmail}&gt;</div>
-        </div>
-      </div>
-      <div class="content">
-        ${formattedBody}
-      </div>
-      ${campaign?.isOutreach
-      ? `<div class="cta-box">
-              <div style="font-weight: 700; color: #0f766e; font-size: 15px; margin-bottom: 6px;">🤝 Creator Deal Portal</div>
-              <p style="margin: 0 0 12px 0; font-size: 13px; color: #475569;">Collaborate directly with our marketing team, review deliverables, and chat in real-time.</p>
-              <a href="#" class="btn">Open Deal Portal & Chat &rarr;</a>
-            </div>`
-      : ""
-    }
-      <div class="footer">
-        <p style="margin: 0 0 4px 0;">Sent via NOVA AI Marketing Platform</p>
-        <p style="margin: 0;">&copy; ${new Date().getFullYear()} NOVA AI. All rights reserved.</p>
-      </div>
-    </div>
+<body style="margin: 0; padding: 0; background-color: #f7f5f0; -webkit-font-smoothing: antialiased;">
+  <div style="display: none; font-size: 1px; color: #f7f5f0; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
+    ${resolvedSubject}
   </div>
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="background-color: #f7f5f0; min-height: 100%;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="600" class="email-container" role="presentation" style="max-width: 600px; width: 100%;">
+
+          <!-- BRAND / TOP ACCENT -->
+          <tr>
+            <td align="center" style="padding-bottom: 20px;">
+              <table border="0" cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                  <td align="center" style="vertical-align: middle;">
+                    <div style="width: 28px; height: 28px; border-radius: 8px; background-color: #ef5a2e; display: inline-block; vertical-align: middle; text-align: center; line-height: 28px; color: #ffffff; font-weight: bold; font-size: 14px;">N</div>
+                    <span style="display: inline-block; vertical-align: middle; margin-left: 8px; font-weight: 700; font-size: 15px; letter-spacing: 0.12em; color: #111827;">NOVA</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- MAIN CARD -->
+          <tr>
+            <td class="content-cell" style="background-color: #ffffff; border-radius: 16px; padding: 36px 40px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04); border: 1px solid rgba(0, 0, 0, 0.05);">
+              ${styledBody}
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td align="center" style="padding: 24px 16px; color: #9ca3af; font-size: 12px; line-height: 1.5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+              <p style="margin: 0 0 6px 0;">
+                Sent to <span style="color: #6b7280; font-weight: 500;">${recipientEmail}</span> regarding <strong>${campaignName}</strong>
+              </p>
+              <p style="margin: 0 0 8px 0; color: #9ca3af;">
+                &copy; ${currentYear} NOVA AI. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 }
 
-export function CampaignPreviewDialog({ open, onOpenChange, campaign, onSend }) {
-  const [loading, setLoading] = useState(false);
-  const [previewData, setPreviewData] = useState(null);
+export function CampaignPreviewDialog({
+  open,
+  onOpenChange,
+  campaign,
+  recipient,
+  onSend,
+}) {
   const [viewMode, setViewMode] = useState("desktop");
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (!open || !campaign?.id) {
-      setPreviewData(null);
-      return;
-    }
+  const effectiveRecipient = useMemo(() => {
+    return (
+      recipient || {
+        full_name: campaign?.isOutreach
+          ? campaign?.name?.replace(/^Outreach to\s*/i, "") || "Creator"
+          : "Valued Recipient",
+        email: "recipient@example.com",
+      }
+    );
+  }, [recipient, campaign]);
 
-    let active = true;
-    setLoading(true);
+  const effectiveSubject = useMemo(() => {
+    return resolvePlaceholders(
+      campaign?.subject || campaign?.name || campaign?.title || "Campaign Preview",
+      effectiveRecipient,
+      campaign
+    );
+  }, [campaign, effectiveRecipient]);
 
-    campaignApi
-      .preview(campaign.id)
-      .then((data) => {
-        if (active && data) {
-          setPreviewData(data);
-        }
-      })
-      .catch((err) => {
-        console.warn("[CampaignPreview] API preview fallback active:", err.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [open, campaign?.id]);
-
-  const effectiveSubject =
-    previewData?.subject || campaign?.subject || campaign?.name || campaign?.title || "Campaign Preview";
+  const effectiveSenderName = campaign?.sender_name || "NOVA AI";
+  const effectiveSenderEmail = campaign?.sender_email || "skp66235@gmail.com";
 
   const effectiveHtml = useMemo(() => {
-    if (previewData?.html && previewData.html.trim().length > 0) {
-      return previewData.html;
-    }
-    return buildFallbackHtml(campaign);
-  }, [previewData, campaign]);
+    return buildNovaEmailHtml(campaign, effectiveRecipient);
+  }, [campaign, effectiveRecipient]);
 
   const effectivePlainText = useMemo(() => {
-    if (previewData?.text) return previewData.text;
-    if (campaign?.body) return campaign.body;
-    return `Subject: ${effectiveSubject}\n\nHello,\n\nThis is your preview for ${campaign?.name || campaign?.title || "Campaign"}.\n\nBest regards,\n${campaign?.sender_name || "NOVA AI"}`;
-  }, [previewData, campaign, effectiveSubject]);
+    const resolvedBody = resolvePlaceholders(
+      campaign?.body ||
+        `Hello ${effectiveRecipient.full_name},\n\nThis is your preview for ${campaign?.name || campaign?.title || "Campaign"}.\n\nBest regards,\n${effectiveSenderName}`,
+      effectiveRecipient,
+      campaign
+    );
+    return `Subject: ${effectiveSubject}\n\n${resolvedBody}`;
+  }, [campaign, effectiveRecipient, effectiveSubject, effectiveSenderName]);
 
   const handleCopySubject = () => {
     navigator.clipboard.writeText(effectiveSubject);
@@ -223,37 +325,29 @@ export function CampaignPreviewDialog({ open, onOpenChange, campaign, onSend }) 
               <span className="font-semibold text-muted-foreground w-16 shrink-0">To:</span>
               <span className="text-muted-foreground flex items-center gap-1">
                 <User className="size-3" />
-                {previewData?.sampleRecipient?.full_name ||
-                  (campaign?.isOutreach ? campaign?.name?.replace(/^Outreach to\s*/i, "") : "Sample Recipient") ||
-                  "Sample Recipient"}{" "}
-                &lt;{previewData?.sampleRecipient?.email || "recipient@example.com"}&gt;
+                {effectiveRecipient?.full_name || "Valued Recipient"} &lt;{effectiveRecipient?.email || "recipient@example.com"}&gt;
               </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="font-semibold text-muted-foreground w-16 shrink-0">From:</span>
               <span className="text-muted-foreground flex items-center gap-1">
                 <Mail className="size-3" />
-                {campaign?.sender_name || previewData?.sampleSender?.senderName || "Sunil Kumar"}{" "}
-                &lt;{campaign?.sender_email || previewData?.sampleSender?.senderEmail || "skp66235@gmail.com"}&gt;
+                {effectiveSenderName} &lt;{effectiveSenderEmail}&gt;
               </span>
             </div>
           </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-auto bg-muted/40 p-3 md:p-6 flex justify-center items-start min-h-[420px]">
-          {loading && !previewData && !campaign ? (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
-              <Loader2 className="size-8 animate-spin text-primary" />
-              <p className="text-sm">Rendering email preview...</p>
-            </div>
-          ) : viewMode === "text" ? (
+          {viewMode === "text" ? (
             <div className="w-full max-w-[680px] bg-card rounded-xl border p-5 shadow font-mono text-xs whitespace-pre-wrap text-foreground leading-relaxed">
               {effectivePlainText}
             </div>
           ) : (
             <div
-              className={`transition-all duration-300 bg-white rounded-xl shadow-xl border overflow-hidden flex flex-col ${viewMode === "mobile" ? "w-[375px] max-w-full" : "w-full max-w-[680px]"
-                }`}
+              className={`transition-all duration-300 bg-white rounded-xl shadow-xl border overflow-hidden flex flex-col ${
+                viewMode === "mobile" ? "w-[375px] max-w-full" : "w-full max-w-[680px]"
+              }`}
             >
               <div className="bg-slate-100 border-b px-3 py-2 flex items-center justify-between text-[11px] text-slate-500">
                 <div className="flex items-center gap-1.5">

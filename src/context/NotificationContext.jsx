@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+﻿import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "../lib/AuthContext";
 import { campaignApi, mailApi } from "../lib/api";
 
@@ -6,10 +6,9 @@ const NotificationContext = createContext(null);
 
 const STORAGE_KEY_PREFIX = "nova_notifications_v1_";
 
-// Helper to infer notification category and routing link from title/message
 export function inferCategoryAndLink(title = "", message = "") {
   const text = `${title} ${message}`.toLowerCase();
-  
+
   if (text.includes("campaign created") || text.includes("new campaign") || text.includes("save to campaign") || text.includes("duplicate campaign") || text.includes("camping")) {
     return { category: "campaign", link: "/campaigns" };
   }
@@ -47,7 +46,6 @@ export function NotificationProvider({ children }) {
     return [];
   });
 
-  // Persist to localStorage whenever notifications change
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(notifications.slice(0, 100)));
@@ -56,7 +54,6 @@ export function NotificationProvider({ children }) {
     }
   }, [notifications, storageKey]);
 
-  // When user changes, reload from user's storage key
   useEffect(() => {
     try {
       const stored = localStorage.getItem(storageKey);
@@ -78,8 +75,8 @@ export function NotificationProvider({ children }) {
 
     const newNotification = {
       id: String(id),
-      type: item.type || "info", // "success" | "error" | "info" | "warning"
-      category: item.category || inferred.category, // "campaign" | "send" | "tracking" | "email" | "influencer" | "chat" | "system"
+      type: item.type || "info",
+      category: item.category || inferred.category,
       title: item.title || "Notification",
       message: item.message || "",
       link: item.link !== undefined ? item.link : inferred.link,
@@ -89,7 +86,7 @@ export function NotificationProvider({ children }) {
     };
 
     setNotifications((prev) => {
-      // Prevent exact duplicates with same id or very close title+timestamp
+
       if (prev.some((n) => n.id === newNotification.id)) return prev;
       const recentDup = prev.find(
         (n) => n.title === newNotification.title && Math.abs(n.timestamp - newNotification.timestamp) < 2000
@@ -119,7 +116,6 @@ export function NotificationProvider({ children }) {
     setNotifications([]);
   }, []);
 
-  // Synchronize campaign creation, send, and tracking events from workspace data
   const syncWorkspaceActivity = useCallback((campaigns = [], mails = []) => {
     if (!Array.isArray(campaigns)) return;
 
@@ -127,7 +123,6 @@ export function NotificationProvider({ children }) {
       const existingIds = new Set(prev.map((n) => n.id));
       const additions = [];
 
-      // 1. Sync Campaigns Created
       campaigns.forEach((camp) => {
         if (!camp) return;
         const cId = `camp_create_${camp.id || camp._id}`;
@@ -146,7 +141,6 @@ export function NotificationProvider({ children }) {
           });
         }
 
-        // 2. Sync Campaigns Sent / In-Flight
         const status = String(camp.status || "").toLowerCase();
         if (["sent", "completed", "sending", "processing"].includes(status)) {
           const sId = `camp_send_${camp.id || camp._id}`;
@@ -170,7 +164,6 @@ export function NotificationProvider({ children }) {
         }
       });
 
-      // 3. Sync Mails Delivered / Opened / Clicked
       if (Array.isArray(mails)) {
         mails.forEach((mail) => {
           if (!mail) return;
@@ -223,14 +216,12 @@ export function NotificationProvider({ children }) {
 
       if (additions.length === 0) return prev;
 
-      // Merge additions and sort by timestamp descending
       const combined = [...additions, ...prev];
       combined.sort((a, b) => b.timestamp - a.timestamp);
       return combined.slice(0, 100);
     });
   }, []);
 
-  // Automatically sync existing campaigns & deliveries once user is authenticated
   useEffect(() => {
     if (!user) return;
     let isCancelled = false;
@@ -248,7 +239,7 @@ export function NotificationProvider({ children }) {
           syncWorkspaceActivity(cList, mList);
         }
       } catch (e) {
-        // silent
+
       }
     }
 

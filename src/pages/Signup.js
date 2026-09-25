@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -56,8 +56,6 @@ function Signup() {
       setError("Please tick I'm not a robot");
       return;
     }
-
-
 
     setBusy(true);
     try {

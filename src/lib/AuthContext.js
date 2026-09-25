@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+﻿import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { authApi } from "./api";
 import { clearSession, getStoredUser, getToken, setSession } from "./auth";
 
@@ -46,7 +46,6 @@ export function AuthProvider({ children }) {
     }),
     [token, user, applySession, logout]
   );
-
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

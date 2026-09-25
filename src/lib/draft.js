@@ -1,4 +1,4 @@
-export function parseDraft(content) {
+﻿export function parseDraft(content) {
   if (!content) return { subject: "", body: "" };
   const text = content.trim();
   const subjectMatch = text.match(

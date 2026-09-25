@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   Sparkles,
   Copy,
@@ -211,7 +211,7 @@ function MessageCrafter() {
                   </Button>
                 </div>
               </CardContent>
-              
+
             </Card>
           ))}
         </div>

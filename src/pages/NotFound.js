@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Home, LayoutDashboard, Compass, Mail } from "lucide-react";
 import { NovaMark } from "../components/landing/NovaMark";
@@ -17,8 +17,6 @@ export default function NotFound() {
 
       <div className="relative z-10 flex max-w-xl flex-col items-center text-center">
 
-
-
         <h1 className="text-7xl sm:text-8xl md:text-9xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary via-orange-400 to-amber-300 dark:from-primary dark:via-teal-300 dark:to-cyan-400 drop-shadow-[0_8px_32px_rgba(239,90,46,0.35)] select-none">
           404
         </h1>
@@ -26,8 +24,6 @@ export default function NotFound() {
         <h2 className="mt-2 text-[50px] sm:text-[60px] font-extrabold tracking-tight text-foreground ">
           Page Not Found
         </h2>
-
-
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <button
