@@ -338,14 +338,12 @@ export function NotificationCenter() {
                         !item.read ? "bg-primary/[0.03]" : ""
                       }`}
                     >
-                      {/* Icon */}
                       <div
                         className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl border ${meta.bg} shadow-xs`}
                       >
                         <Icon className="size-4" />
                       </div>
 
-                      {/* Content */}
                       <div className="min-w-0 flex-1 pr-6">
                         <div className="flex items-center gap-1.5 mb-1">
                           <span
@@ -376,7 +374,6 @@ export function NotificationCenter() {
                         )}
                       </div>
 
-                      {/* Right action icons */}
                       <div className="absolute right-2.5 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                         {item.link && (
                           <span
@@ -405,7 +402,6 @@ export function NotificationCenter() {
             )}
           </ScrollArea>
 
-          {/* Footer */}
           <div className="flex items-center justify-between border-t border-border/60 bg-muted/30 px-3.5 py-2 text-xs">
             <button
               onClick={() => {
