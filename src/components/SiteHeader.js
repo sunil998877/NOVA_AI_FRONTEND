@@ -30,6 +30,8 @@ const pageMeta = {
   "/": { title: "Dashboard", section: "Overview" },
   "/dashboard": { title: "Dashboard", section: "Overview" },
   "/dashboard-view": { title: "Dashboard View", section: "Overview" },
+  "/leads": { title: "Lead Management", section: "Lead Management" },
+  "/ase/leads/import": { title: "Import Leads", section: "Lead Management" },
   "/campaigns": { title: "Your Campaigns", section: "Marketing" },
   "/campaign-analytics": { title: "Campaign Analytics", section: "Marketing" },
   "/message-crafter": { title: "Message Crafter", section: "Marketing" },

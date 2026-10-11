@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Search, Star, ExternalLink, Mail, Check, AlertCircle, ChevronLeft, ChevronRight, SlidersHorizontal, Send, Loader2, CheckCircle2, Copy, UserPlus, Pencil, Sparkles, Wand2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -877,15 +877,20 @@ function FindInfluencers() {
       )}
 
       {(prevPageToken || nextPageToken || influencers.length > 0) && (
-        <SegmentedPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          hasNext={Boolean(nextPageToken)}
-          hasPrev={currentPage > 1}
-          onPageChange={handlePageChange}
-          onNext={handleNextPage}
-          onPrev={handlePrevPage}
-        />
+        <div className="flex flex-col items-center justify-center -mt-3 mb-6 gap-2">
+          <SegmentedPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            hasNext={Boolean(nextPageToken)}
+            hasPrev={currentPage > 1}
+            onPageChange={handlePageChange}
+            onNext={handleNextPage}
+            onPrev={handlePrevPage}
+          />
+          <p className="text-center text-xs text-muted-foreground">
+            Page {currentPage} of {totalPages} &nbsp;·&nbsp; {influencers.length} influencer{influencers.length !== 1 ? "s" : ""}
+          </p>
+        </div>
       )}
 
       <Dialog open={outreachOpen} onOpenChange={setOutreachOpen}>

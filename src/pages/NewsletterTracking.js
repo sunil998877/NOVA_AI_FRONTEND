@@ -223,11 +223,16 @@ function NewsletterTracking() {
         const totalPages = Math.max(2, Math.ceil(issues.length / PAGE_SIZE));
         const safePage = Math.min(page, totalPages);
         return (
-          <SegmentedPagination
-            currentPage={safePage}
-            totalPages={totalPages}
-            onPageChange={(p) => setPage(p)}
-          />
+          <div className="flex flex-col items-center justify-center -mt-3 mb-6 gap-2">
+            <SegmentedPagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              onPageChange={(p) => setPage(p)}
+            />
+            <p className="text-center text-xs text-muted-foreground">
+              Page {safePage} of {totalPages} &nbsp;·&nbsp; {issues.length} issue{issues.length !== 1 ? "s" : ""}
+            </p>
+          </div>
         );
       })()}
     </div>

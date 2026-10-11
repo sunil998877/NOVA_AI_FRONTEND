@@ -1,0 +1,322 @@
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import {
+  Search,
+  Filter,
+  Plus,
+  Upload,
+  Download,
+  Trash2,
+  Phone,
+  Mail,
+  ShieldAlert,
+  ChevronRight,
+  MoreHorizontal,
+  CheckSquare,
+  Square,
+  X,
+  Webhook,
+  FileSpreadsheet,
+} from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Badge } from "../../components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { useToast } from "../../components/ui/toast";
+import { aseService } from "../../services/ase.service";
+import SegmentedPagination from "../../components/ui/pagination";
+import ApiWebhookCaptureDialog from "../../components/leads/ApiWebhookCaptureDialog";
+
+const HEALTH_COLORS = {
+  GREEN: "bg-emerald-500",
+  AMBER: "bg-amber-500",
+  RED: "bg-rose-500 animate-pulse",
+};
+
+const STATUS_BADGES = {
+  NEW: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+  QUEUED: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
+  CONTACTED: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300",
+  ENGAGED: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300",
+  INTERESTED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-bold",
+  CALLBACK_SCHEDULED: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-bold",
+  CLOSED_WON: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 font-bold",
+  CLOSED_LOST: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300",
+  SUPPRESSED_DNC: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 font-bold",
+};
+
+export default function AseLeads() {
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+  const [apiWebhookOpen, setApiWebhookOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const { success, error: toastError } = useToast();
+
+  useEffect(() => {
+    setCurrentPage(1);
+    fetchLeads(1);
+  }, [statusFilter]);
+
+  async function fetchLeads(page = currentPage) {
+    setLoading(true);
+    try {
+      const data = await aseService.getLeads({ q: searchTerm, status: statusFilter, page, limit: pageSize });
+      setLeads(data.items || []);
+      setTotalCount(data.total || (data.items || []).length);
+    } catch (err) {
+      toastError("Error", "Could not load leads");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+    fetchLeads(newPage);
+  };
+
+  const calculatedPages = Math.ceil(totalCount / pageSize);
+  const totalPages = Math.max(calculatedPages > 0 ? calculatedPages : 4, 1);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchLeads();
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === leads.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(leads.map((l) => l.id)));
+    }
+  };
+
+  const toggleSelectOne = (id) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const handleBulkDnc = async () => {
+    if (!window.confirm(`Suppress ${selectedIds.size} selected leads under DNC policy?`)) return;
+    try {
+      for (const id of selectedIds) {
+        await aseService.updateLead(id, { do_not_contact: 1, status: "SUPPRESSED_DNC" });
+      }
+      success("DNC Applied", `Updated ${selectedIds.size} leads to DNC`);
+      setSelectedIds(new Set());
+      fetchLeads();
+    } catch (err) {
+      toastError("Error", err.message);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Lead Store</h1>
+          <p className="text-muted-foreground mt-1">
+            Autonomous multi-channel lead records, intent tracking, and priority queues.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setApiWebhookOpen(true)}>
+            <Webhook className="w-4 h-4 mr-2 text-purple-600" /> API / Webhook
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/ase/leads/import">
+              <Upload className="w-4 h-4 mr-2" /> Import Wizard
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link to="/ase/team-console">
+              <Phone className="w-4 h-4 mr-2" /> Team Console
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* Search & Filter Bar */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+        <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-96">
+          <div className="relative w-full">
+            <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name, email, company..."
+              className="pl-9"
+            />
+          </div>
+          <Button type="submit" variant="secondary" size="sm">Search</Button>
+        </form>
+
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <select
+            className="border rounded-md px-3 py-2 text-sm bg-background"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="">All Lifecycle States</option>
+            <option value="NEW">NEW</option>
+            <option value="CONTACTED">CONTACTED</option>
+            <option value="ENGAGED">ENGAGED</option>
+            <option value="INTERESTED">INTERESTED</option>
+            <option value="CALLBACK_SCHEDULED">CALLBACK_SCHEDULED</option>
+            <option value="CLOSED_WON">CLOSED_WON</option>
+            <option value="SUPPRESSED_DNC">SUPPRESSED_DNC</option>
+          </select>
+
+          {selectedIds.size > 0 && (
+            <Button variant="destructive" size="sm" onClick={handleBulkDnc}>
+              <ShieldAlert className="w-4 h-4 mr-1.5" />
+              Suppress Selected ({selectedIds.size})
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Main Table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="rounded-md border-0 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
+                    <button onClick={toggleSelectAll} className="p-1">
+                      {selectedIds.size > 0 && selectedIds.size === leads.length ? (
+                        <CheckSquare className="w-4 h-4 text-primary" />
+                      ) : (
+                        <Square className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </button>
+                  </TableHead>
+                  <TableHead>Lead</TableHead>
+                  <TableHead>Company & Industry</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Lifecycle State</TableHead>
+                  <TableHead>Next Best Action</TableHead>
+                  <TableHead>Assigned Rep</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                      Loading Lead Store...
+                    </TableCell>
+                  </TableRow>
+                ) : leads.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                      No leads match your search criteria.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  leads.map((lead) => {
+                    const isSelected = selectedIds.has(lead.id);
+                    const healthDot = HEALTH_COLORS[lead.health] || HEALTH_COLORS.GREEN;
+                    const statusClass = STATUS_BADGES[lead.status] || "bg-secondary text-secondary-foreground";
+
+                    return (
+                      <TableRow key={lead.id} className={isSelected ? "bg-muted/40" : ""}>
+                        <TableCell>
+                          <button onClick={() => toggleSelectOne(lead.id)} className="p-1">
+                            {isSelected ? (
+                              <CheckSquare className="w-4 h-4 text-primary" />
+                            ) : (
+                              <Square className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </button>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${healthDot}`} title={`Health: ${lead.health}`} />
+                            <div>
+                              <Link
+                                to={`/ase/leads/${lead.id}`}
+                                className="font-semibold text-sm hover:underline text-primary"
+                              >
+                                {lead.name}
+                              </Link>
+                              <div className="text-xs text-muted-foreground">{lead.email}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm font-medium">{lead.company || "-"}</div>
+                          <div className="text-xs text-muted-foreground">{lead.industry || lead.location || "-"}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="font-mono text-xs">
+                            P-{lead.priority}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${statusClass}`}>
+                            {lead.status}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {lead.next_action ? (
+                            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+                              {lead.next_action === "EMAIL" && <Mail className="w-3.5 h-3.5 text-blue-500" />}
+                              {lead.next_action === "CALL" && <Phone className="w-3.5 h-3.5 text-green-500" />}
+                              <span>{lead.next_action}</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {lead.assigned_rep_name || "Unassigned"}
+                        </TableCell>
+                        <TableCell>
+                          <Button asChild variant="ghost" size="sm">
+                            <Link to={`/ase/leads/${lead.id}`}>
+                              <ChevronRight className="w-4 h-4" />
+                            </Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Centered Segmented Pagination & Summary */}
+      <div className="flex flex-col items-center justify-center -mt-3 mb-6 gap-2">
+        <SegmentedPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
+        <p className="text-center text-xs text-muted-foreground">
+          Page {currentPage} of {totalPages} &nbsp;·&nbsp; {totalCount || leads.length} lead{(totalCount || leads.length) !== 1 ? "s" : ""}
+        </p>
+      </div>
+
+      <ApiWebhookCaptureDialog
+        open={apiWebhookOpen}
+        onOpenChange={setApiWebhookOpen}
+        onSuccess={fetchLeads}
+      />
+    </div>
+  );
+}

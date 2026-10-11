@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   History,
@@ -530,14 +530,17 @@ function CollaborationHistory() {
         )}
       </Card>
 
-      <SegmentedPagination
-        currentPage={collabSafePage}
-        totalPages={collabTotalPages}
-        onPageChange={(p) => setCollabPage(p)}
-      />
-      <p className="text-center text-xs text-muted-foreground -mt-3">
-        Page {collabSafePage} of {collabTotalPages} &nbsp;·&nbsp; {filteredItems.length} record{filteredItems.length !== 1 ? "s" : ""}
-      </p>
+      {/* Centered Segmented Pagination & Summary */}
+      <div className="flex flex-col items-center justify-center -mt-3 mb-6 gap-2">
+        <SegmentedPagination
+          currentPage={collabSafePage}
+          totalPages={collabTotalPages}
+          onPageChange={(p) => setCollabPage(p)}
+        />
+        <p className="text-center text-xs text-muted-foreground">
+          Page {collabSafePage} of {collabTotalPages} &nbsp;·&nbsp; {filteredItems.length} record{filteredItems.length !== 1 ? "s" : ""}
+        </p>
+      </div>
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-2xl sm:max-w-[700px] w-[95vw]">

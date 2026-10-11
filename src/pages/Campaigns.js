@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -592,16 +592,17 @@ function Campaigns() {
         )}
       </Card>
 
-      <SegmentedPagination
-        currentPage={safePage}
-        totalPages={totalPages}
-        onPageChange={(p) => goToPage(p)}
-      />
-      {totalPages > 1 && (
-        <p className="text-center text-xs text-muted-foreground mt-2">
+      {/* Centered Segmented Pagination & Summary */}
+      <div className="flex flex-col items-center justify-center -mt-3 mb-6 gap-2">
+        <SegmentedPagination
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={(p) => goToPage(p)}
+        />
+        <p className="text-center text-xs text-muted-foreground">
           Page {safePage} of {totalPages} &nbsp;·&nbsp; {filtered.length} campaign{filtered.length !== 1 ? "s" : ""}
         </p>
-      )}
+      </div>
 
       <CampaignFormDialog
         open={showModal}

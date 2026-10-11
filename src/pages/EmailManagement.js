@@ -215,11 +215,16 @@ function EmailManagement() {
             </CardContent>
           </Card>
 
-          <SegmentedPagination
-            currentPage={safeListPage}
-            totalPages={totalListPages}
-            onPageChange={(p) => setListPage(p)}
-          />
+          <div className="flex flex-col items-center justify-center -mt-3 mb-6 gap-2">
+            <SegmentedPagination
+              currentPage={safeListPage}
+              totalPages={totalListPages}
+              onPageChange={(p) => setListPage(p)}
+            />
+            <p className="text-center text-xs text-muted-foreground">
+              Page {safeListPage} of {totalListPages} &nbsp;·&nbsp; {filteredLists.length} list{filteredLists.length !== 1 ? "s" : ""}
+            </p>
+          </div>
         </>
         );
       })()}
