@@ -1,13 +1,13 @@
-﻿import { clearSession, getToken } from "./auth";
+import { clearSession, getToken } from "./auth";
 
 export const API_URL = (
   import.meta.env.DEV
     ? ""
     : (
-        (typeof import.meta !== "undefined" && import.meta.env && (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_API_URL)) ||
-        (typeof process !== "undefined" && process.env && (process.env.REACT_APP_API_URL || process.env.VITE_BACKEND_URL)) ||
-        "https://nova-ai-backend-wo7q.onrender.com"
-      )
+      (typeof import.meta !== "undefined" && import.meta.env && (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_API_URL)) ||
+      (typeof process !== "undefined" && process.env && (process.env.REACT_APP_API_URL || process.env.VITE_BACKEND_URL)) ||
+      "https://nova-ai-backend-wo7q.onrender.com"
+    )
 ).replace(/\/$/, "");
 
 export class ApiError extends Error {
@@ -243,3 +243,68 @@ export const recipientApi = {
   remove: (campaignId, contactId) =>
     api(`/api/campaigns/${campaignId}/recipients/${contactId}`, { method: "DELETE" }),
 };
+
+export const leadApi = {
+  list: (params = {}) => {
+    const query = new URLSearchParams({
+      page: String(params.page || 1),
+      limit: String(params.limit || 50),
+    });
+    if (params.q) query.set("q", params.q);
+    if (params.source) query.set("source", params.source);
+    if (params.status) query.set("status", params.status);
+    if (params.priority) query.set("priority", params.priority);
+    return api(`/api/leads?${query}`);
+  },
+  get: (id) => api(`/api/leads/${id}`),
+  update: (id, body) => api(`/api/leads/${id}`, { method: "PATCH", body }),
+  stats: () => api("/api/leads/stats"),
+  getReps: () => api("/api/leads/team-reps"),
+  create: (body) => api("/api/leads", { method: "POST", body }),
+  importCsv: (body) => api("/api/leads/import-csv", { method: "POST", body }),
+  previewCsv: (body) => api("/api/leads/import-csv/preview", { method: "POST", body }),
+  getApiConfig: () => api("/api/leads/api-config"),
+  rotateApiKey: () => api("/api/leads/api-key/rotate", { method: "POST" }),
+  executeAction: (id) => api(`/api/leads/${id}/execute`, { method: "POST" }),
+  remove: (id) => api(`/api/leads/${id}`, { method: "DELETE" }),
+  getDecision: (id) => api(`/api/leads/${id}/decision`),
+  getBrainStatus: () => api("/api/leads/brain/status"),
+  setBrainMode: (mode) => api("/api/leads/brain/mode", { method: "POST", body: { mode } }),
+  getBrainEvaluation: () => api("/api/leads/brain/evaluation"),
+};
+
+export const callbackApi = {
+  list: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.status) query.set("status", params.status);
+    if (params.overdue) query.set("overdue", "true");
+    if (params.page) query.set("page", String(params.page));
+    if (params.limit) query.set("limit", String(params.limit));
+    return api(`/api/callbacks?${query}`);
+  },
+  get: (id) => api(`/api/callbacks/${id}`),
+  update: (id, body) => api(`/api/callbacks/${id}`, { method: "PATCH", body }),
+};
+
+export const suppressionApi = {
+  list: () => api("/api/suppressions"),
+  add: (body) => api("/api/suppressions", { method: "POST", body }),
+  remove: (id) => api(`/api/suppressions/${id}`, { method: "DELETE" }),
+};
+
+export const voiceApi = {
+  dispatch: (body) => api("/api/engine/voice/dispatch", { method: "POST", body }),
+  getConfig: () => api("/api/engine/voice/config"),
+  simulateOutcome: (body) => api("/api/engine/voice/simulate-outcome", { method: "POST", body }),
+  getHistory: () => api("/api/engine/voice/history"),
+  callLead: (body) => api("/api/engine/voice/call-lead", { method: "POST", body }),
+  callNumber: (body) => api("/api/engine/voice/call-number", { method: "POST", body }),
+  triggerAutonomousCall: (body) => api("/api/engine/voice/autonomous-call", { method: "POST", body }),
+  queueAutonomousCall: (body) => api("/api/engine/voice/queue-call", { method: "POST", body }),
+  runSchedulerCycle: () => api("/api/engine/voice/run-cycle", { method: "POST" }),
+};
+
+export const engineVoiceApi = voiceApi;
+
+
+

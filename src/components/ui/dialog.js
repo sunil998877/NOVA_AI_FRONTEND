@@ -11,16 +11,20 @@ const DialogPortal = DialogPrimitive.Portal;
 const DialogClose = DialogPrimitive.Close;
 
 const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      "fixed inset-0 z-50 bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-  />
+  <DialogPrimitive.Close asChild>
+    <div
+      ref={ref}
+      aria-hidden="true"
+      className={cn(
+        "fixed inset-0 z-50 bg-black/40 backdrop-blur-[2.5px] cursor-pointer animate-in fade-in-0 duration-200",
+        className
+      )}
+      {...props}
+    />
+  </DialogPrimitive.Close>
 ));
-DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
+DialogOverlay.displayName = "DialogOverlay";
+
 
 const DialogContent = React.forwardRef(({ className, children, ...props }, ref) => (
   <DialogPortal>

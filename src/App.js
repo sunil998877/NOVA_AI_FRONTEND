@@ -3,6 +3,12 @@ import { Routes, Route, Outlet, Navigate, useLocation } from "react-router-dom";
 import { SidebarInset, SidebarProvider } from "./components/ui/sidebar";
 import AppSidebar from "./components/AppSidebar";
 import SiteHeader from "./components/SiteHeader";
+import { useAuth } from "./lib/AuthContext";
+import { applyTheme, getTheme } from "./lib/theme";
+import LoadingScreen from "./components/LoadingScreen";
+import TopProgressBar from "./components/TopProgressBar";
+import { collabApi } from "./lib/api";
+
 const Landing = lazy(() => import("./pages/Landing"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DashboardView = lazy(() => import("./pages/DashboardView"));
@@ -23,11 +29,19 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
 const CreatorCollabPortal = lazy(() => import("./pages/CreatorCollabPortal"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-import { useAuth } from "./lib/AuthContext";
-import { applyTheme, getTheme } from "./lib/theme";
-import LoadingScreen from "./components/LoadingScreen";
-import TopProgressBar from "./components/TopProgressBar";
-import { collabApi } from "./lib/api";
+const Leads = lazy(() => import("./pages/Leads"));
+const AseDashboard = lazy(() => import("./pages/ase/AseDashboard"));
+const AseLeads = lazy(() => import("./pages/ase/AseLeads"));
+const AseLeadDetail = lazy(() => import("./pages/ase/AseLeadDetail"));
+const AseLeadImport = lazy(() => import("./pages/ase/AseLeadImport"));
+const AseCallbacks = lazy(() => import("./pages/ase/AseCallbacks"));
+const AseTeamConsole = lazy(() => import("./pages/ase/AseTeamConsole"));
+const AsePipeline = lazy(() => import("./pages/ase/AsePipeline"));
+const AseSegments = lazy(() => import("./pages/ase/AseSegments"));
+const AseReports = lazy(() => import("./pages/ase/AseReports"));
+const AseCompliance = lazy(() => import("./pages/ase/AseCompliance"));
+const AseSettings = lazy(() => import("./pages/ase/AseSettings"));
+const AseCalls = lazy(() => import("./pages/ase/AseCalls"));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -125,6 +139,21 @@ function App() {
           <Route path="/find-influencers" element={<FindInfluencers />} />
           <Route path="/my-influencers" element={<MyInfluencers />} />
           <Route path="/collaboration-history" element={<CollaborationHistory />} />
+          <Route path="/leads" element={<Leads />} />
+          <Route path="/ase/dashboard" element={<AseDashboard />} />
+          <Route path="/ase/leads" element={<AseLeads />} />
+          <Route path="/ase/leads/import" element={<AseLeadImport />} />
+          <Route path="/ase/leads/:id" element={<AseLeadDetail />} />
+          <Route path="/ase/callbacks" element={<AseCallbacks />} />
+          <Route path="/ase/calls" element={<AseCalls />} />
+          <Route path="/calls" element={<AseCalls />} />
+          <Route path="/ase/team-console" element={<AseTeamConsole />} />
+          <Route path="/ase/pipeline" element={<AsePipeline />} />
+          <Route path="/ase/segments" element={<AseSegments />} />
+          <Route path="/ase/reports" element={<AseReports />} />
+          <Route path="/ase/compliance" element={<AseCompliance />} />
+          <Route path="/ase/settings" element={<AseSettings />} />
+          <Route path="/ase/settings/integrations" element={<AseSettings />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

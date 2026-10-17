@@ -23,7 +23,7 @@ export function LandingHero({ dark, acc, authed }) {
           <span className="mt-1 block">perform.</span>
         </motion.h1>
         <motion.p variants={fadeUp} className={cn("mt-6 max-w-md text-base leading-relaxed sm:mt-8 sm:text-lg", dark ? "text-slate-400" : "text-neutral-500")}>
-          Write the email, pick a list, and send. Opens, clicks, and the next campaign sit in one admin view — then you log in and keep going.
+          The ONNX model ranks email, call, and wait for each lead. Consent and fatigue rules stay in charge, then you open the console and keep scoring.
         </motion.p>
         <motion.div variants={fadeUp} className="mt-8 flex w-full flex-col gap-3 sm:flex-row">
           <Button asChild size="lg" className={cn("h-11 w-full rounded-full px-6 shadow-none sm:w-auto", acc.btn)}>

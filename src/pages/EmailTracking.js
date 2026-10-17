@@ -155,11 +155,16 @@ function EmailTracking() {
               </CardContent>
             </Card>
 
-            <SegmentedPagination
-              currentPage={safePage}
-              totalPages={totalPages}
-              onPageChange={(p) => setPage(p)}
-            />
+            <div className="flex flex-col items-center justify-center -mt-3 mb-6 gap-2">
+              <SegmentedPagination
+                currentPage={safePage}
+                totalPages={totalPages}
+                onPageChange={(p) => setPage(p)}
+              />
+              <p className="text-center text-xs text-muted-foreground">
+                Page {safePage} of {totalPages} &nbsp;·&nbsp; {filtered.length} event{filtered.length !== 1 ? "s" : ""}
+              </p>
+            </div>
           </>
         );
       })()}

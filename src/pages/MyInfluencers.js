@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Mail, Trash2, ExternalLink, Users, Send, Search, CheckCircle2, AlertCircle, Copy, Loader2, UserPlus, Pencil, Check, Tag, Sparkles, Wand2, ChevronDown, ChevronUp, MessageSquare, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
@@ -618,17 +618,16 @@ function MyInfluencers() {
           </div>
         )}
       </Card>
-
-      <div className="flex items-center justify-center gap-1 flex-wrap">
+      <div className="flex flex-col items-center justify-center -mt-3 mb-6 gap-2">
         <SegmentedPagination
           currentPage={infSafePage}
           totalPages={infTotalPages}
           onPageChange={(p) => setInfPage(p)}
         />
+        <p className="text-center text-xs text-muted-foreground">
+          Page {infSafePage} of {infTotalPages} &nbsp;·&nbsp; {filteredInfluencers.length} influencer{filteredInfluencers.length !== 1 ? "s" : ""}
+        </p>
       </div>
-      <p className="text-center text-xs text-muted-foreground -mt-3">
-        Page {infSafePage} of {infTotalPages} &nbsp;·&nbsp; {filteredInfluencers.length} influencer{filteredInfluencers.length !== 1 ? "s" : ""}
-      </p>
 
       <Dialog open={outreachOpen} onOpenChange={setOutreachOpen}>
         <DialogContent className="max-w-2xl sm:max-w-3xl lg:max-w-4xl w-[96vw] bg-card text-card-foreground border border-border shadow-2xl rounded-2xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">

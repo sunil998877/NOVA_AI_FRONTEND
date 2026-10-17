@@ -41,27 +41,25 @@ export function SegmentedPagination({
   return (
     <nav
       aria-label="Pagination"
-      className={`flex items-center justify-center -mt-[10px] pt-3.5 pb-2 ${className}`}
+      className={`flex items-center justify-center py-0.5 ${className}`}
     >
-      <div className="inline-flex items-stretch overflow-hidden rounded-md border border-orange-500/40 divide-x divide-orange-500/30 shadow-sm select-none">
-        {currentPage > 1 && (
-          <button
-            type="button"
-            onClick={handlePrev}
-            disabled={!effectiveHasPrev}
-            className="flex items-center justify-center gap-1 bg-white hover:bg-orange-50 active:bg-orange-100 text-orange-500 px-3.5 h-[38px] text-sm font-semibold transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <ChevronLeft className="size-4 stroke-[2.5]" />
-            <span>Prev</span>
-          </button>
-        )}
+      <div className="inline-flex items-stretch overflow-hidden rounded-xl border border-orange-400/80 dark:border-orange-500/50 divide-x divide-orange-300/80 dark:divide-orange-500/40 shadow-sm select-none bg-white dark:bg-card">
+        <button
+          type="button"
+          onClick={handlePrev}
+          disabled={!effectiveHasPrev}
+          className="flex items-center justify-center gap-1 bg-white dark:bg-card hover:bg-orange-50 dark:hover:bg-orange-950/30 active:bg-orange-100 text-[#f97316] dark:text-orange-400 px-3.5 h-[38px] text-sm font-bold transition-colors disabled:text-orange-300 dark:disabled:text-orange-400/30 disabled:hover:bg-transparent disabled:cursor-not-allowed cursor-pointer"
+        >
+          <ChevronLeft className="size-4 stroke-[2.5]" />
+          <span>Prev</span>
+        </button>
 
         {pages.map((item, index) => {
           if (item === "...") {
             return (
               <span
                 key={`ellipsis-${index}`}
-                className="flex items-center justify-center bg-white text-orange-400 px-3.5 h-[38px] text-sm font-normal cursor-default select-none"
+                className="flex items-center justify-center bg-white dark:bg-card text-orange-400 px-3.5 h-[38px] text-sm font-normal cursor-default select-none"
               >
                 …
               </span>
@@ -78,8 +76,8 @@ export function SegmentedPagination({
               aria-current={isCurrent ? "page" : undefined}
               className={`flex items-center justify-center h-[38px] text-sm font-bold transition-colors min-w-[42px] px-3.5 ${
                 isCurrent
-                  ? "bg-orange-500 text-white shadow-inner shadow-orange-600/20"
-                  : "bg-white hover:bg-orange-50 active:bg-orange-100 text-orange-500 cursor-pointer"
+                  ? "bg-[#f97316] text-white shadow-inner shadow-orange-600/20"
+                  : "bg-white dark:bg-card hover:bg-orange-50 dark:hover:bg-orange-950/30 active:bg-orange-100 text-[#f97316] dark:text-orange-400 cursor-pointer"
               }`}
             >
               {typeof item === "number" ? item.toLocaleString() : item}
@@ -91,7 +89,7 @@ export function SegmentedPagination({
           type="button"
           onClick={handleNext}
           disabled={!effectiveHasNext}
-          className="flex items-center justify-center gap-1.5 bg-white hover:bg-orange-50 active:bg-orange-100 text-orange-500 px-4 h-[38px] text-sm font-semibold transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+          className="flex items-center justify-center gap-1 bg-white dark:bg-card hover:bg-orange-50 dark:hover:bg-orange-950/30 active:bg-orange-100 text-[#f97316] dark:text-orange-400 px-3.5 h-[38px] text-sm font-bold transition-colors disabled:text-orange-300 dark:disabled:text-orange-400/30 disabled:hover:bg-transparent disabled:cursor-not-allowed cursor-pointer"
         >
           <span>Next</span>
           <ChevronRight className="size-4 stroke-[2.5]" />

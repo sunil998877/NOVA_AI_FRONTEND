@@ -64,12 +64,12 @@ export default function NotFound() {
         </div>
 
         <div className="mt-12 flex flex-wrap items-center justify-center gap-6 border-t border-border/60 pt-6 text-xs text-muted-foreground">
-          <Link to={authed ? "/campaigns" : "/login"} className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
+          <Link to={authed ? "/ase/decisions" : "/login"} className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
             <Mail className="size-3.5 text-primary" />
-            <span>{authed ? "Campaigns" : "Sign In"}</span>
+            <span>{authed ? "Decision console" : "Sign In"}</span>
           </Link>
           <span className="text-border">•</span>
-          <Link to={authed ? "/dashboard-view" : "/signup"} className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
+          <Link to={authed ? "/ase/leads" : "/signup"} className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
             <Compass className="size-3.5 text-primary" />
             <span>{authed ? "Overview" : "Get Started"}</span>
           </Link>
