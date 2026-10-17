@@ -17,6 +17,7 @@ import {
   User,
   History,
   Phone,
+  PhoneCall,
   Flame,
   Layers,
   ShieldCheck,
@@ -80,6 +81,7 @@ const navGroups = [
       { path: "/ase/dashboard", label: "Sales Overview", icon: LayoutDashboard },
       { path: "/ase/leads", label: "Lead Store", icon: Users },
       { path: "/ase/pipeline", label: "Pipeline Kanban", icon: PanelsTopLeft },
+      { path: "/ase/calls", label: "Calling & Dialer", icon: PhoneCall },
       { path: "/ase/callbacks", label: "Callbacks Queue", icon: Flame },
       { path: "/ase/team-console", label: "Team Console", icon: Phone },
       { path: "/ase/segments", label: "Segments", icon: Layers },
@@ -100,7 +102,7 @@ const navGroups = [
   },
   {
     id: "email",
-    label: "EMAIL ENGINE",
+    label: "EMAIL",
     icon: Inbox,
     items: [
       { path: "/email-management", label: "Email Management", icon: Inbox },
@@ -110,7 +112,7 @@ const navGroups = [
   },
   {
     id: "network",
-    label: "SERVICES & NETWORK",
+    label: "Influencer Marketing",
     icon: MessageSquare,
     items: [
       { path: "/find-influencers", label: "Find Influencers", icon: Users },
@@ -178,7 +180,6 @@ function AppSidebar(props) {
     });
   };
 
-  // Keep active route's group opened
   useEffect(() => {
     const activeGroup = navGroups.find((g) =>
       g.items.some((item) => isItemActive(item.path))
@@ -252,7 +253,6 @@ function AppSidebar(props) {
           const isOpen = openGroups[group.id] ?? true;
           const hasActiveItem = group.items.some((item) => isItemActive(item.path));
 
-          // Mini / icon-only mode
           if (isCollapsed) {
             return (
               <SidebarGroup key={group.id} className="p-1">
@@ -271,10 +271,8 @@ function AppSidebar(props) {
             );
           }
 
-          // Full folder accordion structure (MongoDB Atlas / Cloud console style)
           return (
             <div key={group.id} className="flex flex-col mb-1.5 select-none">
-              {/* Folder Category Header */}
               <button
                 type="button"
                 onClick={() => toggleGroup(group.id)}
@@ -293,7 +291,6 @@ function AppSidebar(props) {
                 </span>
               </button>
 
-              {/* Sub-items (Files inside folder) */}
               {isOpen && (
                 <div className="flex flex-col gap-0.5 mt-0.5 animate-in fade-in-50 duration-150">
                   {group.items.map((item) => {

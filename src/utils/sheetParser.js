@@ -1,8 +1,3 @@
-/**
- * Utility to parse CSV, TSV, and Excel (.xlsx, .xls) files into
- * headers, rows, and raw CSV text.
- */
-
 export const loadSheetJs = () => {
   return new Promise((resolve, reject) => {
     if (window.XLSX) return resolve(window.XLSX);
@@ -22,9 +17,6 @@ export const loadSheetJs = () => {
   });
 };
 
-/**
- * Robust CSV parser supporting quotes, commas, semicolon, tab, and pipes
- */
 export function parseCsvText(input) {
   const text = String(input || "").replace(/^\uFEFF/, "");
   const firstLine = text.split(/[\r\n]+/)[0] || "";
@@ -82,10 +74,6 @@ export function parseCsvText(input) {
   return rows.filter((r) => r.some((cell) => String(cell).trim() !== ""));
 }
 
-/**
- * Reads a File object (.csv, .tsv, .xlsx, .xls) and returns:
- * { headers: string[], rows: Array<string[]>, csvText: string, totalRows: number }
- */
 export async function parseFileToLeads(file) {
   const fileName = file.name.toLowerCase();
   const isExcel = fileName.endsWith(".xlsx") || fileName.endsWith(".xls");

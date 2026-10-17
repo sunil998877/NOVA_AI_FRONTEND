@@ -78,7 +78,6 @@ export default function AseCompliance() {
         </Button>
       </div>
 
-      {/* Frequency Fatigue Caps Configuration Card */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -110,7 +109,6 @@ export default function AseCompliance() {
         </CardContent>
       </Card>
 
-      {/* Suppression / DNC Table */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">

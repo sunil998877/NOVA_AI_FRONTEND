@@ -618,8 +618,6 @@ function MyInfluencers() {
           </div>
         )}
       </Card>
-
-      {/* Centered Segmented Pagination & Summary */}
       <div className="flex flex-col items-center justify-center -mt-3 mb-6 gap-2">
         <SegmentedPagination
           currentPage={infSafePage}

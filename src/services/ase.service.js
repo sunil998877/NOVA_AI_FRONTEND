@@ -218,7 +218,7 @@ export const aseService = {
           speedToLeadMinutes: 18,
         };
       }
-    } catch (_) {}
+    } catch (_) { }
 
     return {
       totalLeads: 148,
@@ -241,10 +241,10 @@ export const aseService = {
   async getLeads(params = {}) {
     try {
       const res = await leadApi.list(params);
-      if (res?.data && res.data.length > 0) {
-        return { items: res.data, total: res.pagination?.total || res.data.length };
+      if (res?.data !== undefined && Array.isArray(res.data)) {
+        return { items: res.data, total: res.pagination?.total ?? res.data.length };
       }
-    } catch (_) {}
+    } catch (_) { }
     let list = [...MOCK_LEADS];
     if (params.status) list = list.filter((l) => l.status === params.status);
     if (params.q) {
@@ -265,7 +265,7 @@ export const aseService = {
       if (res?.data?.lead) {
         return res.data;
       }
-    } catch (_) {}
+    } catch (_) { }
     const lead = MOCK_LEADS.find((l) => String(l.id) === String(id)) || MOCK_LEADS[0];
     return { lead, timeline: MOCK_TIMELINE };
   },
@@ -274,8 +274,23 @@ export const aseService = {
     try {
       const res = await leadApi.update(id, data);
       return res.data;
-    } catch (_) {}
+    } catch (_) { }
     return { id, ...data };
+  },
+
+  async getTeamReps() {
+    try {
+      const res = await leadApi.getReps();
+      if (res?.data && Array.isArray(res.data)) {
+        return res.data;
+      }
+    } catch (_) { }
+    return [];
+  },
+
+  async executeAction(id) {
+    const res = await leadApi.executeAction(id);
+    return res.data;
   },
 
   async getCallbacks(params = {}) {
@@ -295,7 +310,7 @@ export const aseService = {
     try {
       const res = await suppressionApi.list();
       if (res?.data) return res.data;
-    } catch (_) {}
+    } catch (_) { }
     return [
       { id: 1, type: "EMAIL", value: "optout@competitor.com", reason: "Direct unsubscribe request", created_at: "2026-10-01" },
       { id: 2, type: "PHONE", value: "+18005550199", reason: "Do not call request during outreach", created_at: "2026-10-03" },
@@ -307,7 +322,7 @@ export const aseService = {
     try {
       const res = await suppressionApi.add(data);
       return res.data;
-    } catch (_) {}
+    } catch (_) { }
     return { success: true };
   },
 
@@ -315,7 +330,23 @@ export const aseService = {
     try {
       const res = await suppressionApi.remove(id);
       return res.data;
-    } catch (_) {}
+    } catch (_) { }
     return { success: true };
+  },
+
+  async getLeadDecision(id) {
+    return await leadApi.getDecision(id);
+  },
+
+  async getBrainStatus() {
+    return await leadApi.getBrainStatus();
+  },
+
+  async setBrainMode(mode) {
+    return await leadApi.setBrainMode(mode);
+  },
+
+  async getBrainEvaluation() {
+    return await leadApi.getBrainEvaluation();
   },
 };

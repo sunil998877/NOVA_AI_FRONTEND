@@ -32,7 +32,7 @@ export default function AsePipeline() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await aseService.getLeads();
+        const res = await aseService.getLeads({ limit: 100 });
         setLeads(res.items || []);
       } finally {
         setLoading(false);
@@ -45,7 +45,6 @@ export default function AsePipeline() {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Pipeline Kanban</h1>
@@ -58,7 +57,6 @@ export default function AsePipeline() {
         </Button>
       </div>
 
-      {/* Kanban Board Horizontal Scroll */}
       <div className="flex gap-4 overflow-x-auto pb-4">
         {COLUMNS.map((col) => {
           const colLeads = getLeadsByStatus(col.key);

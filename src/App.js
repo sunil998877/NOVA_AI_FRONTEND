@@ -41,6 +41,7 @@ const AseSegments = lazy(() => import("./pages/ase/AseSegments"));
 const AseReports = lazy(() => import("./pages/ase/AseReports"));
 const AseCompliance = lazy(() => import("./pages/ase/AseCompliance"));
 const AseSettings = lazy(() => import("./pages/ase/AseSettings"));
+const AseCalls = lazy(() => import("./pages/ase/AseCalls"));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -144,6 +145,8 @@ function App() {
           <Route path="/ase/leads/import" element={<AseLeadImport />} />
           <Route path="/ase/leads/:id" element={<AseLeadDetail />} />
           <Route path="/ase/callbacks" element={<AseCallbacks />} />
+          <Route path="/ase/calls" element={<AseCalls />} />
+          <Route path="/calls" element={<AseCalls />} />
           <Route path="/ase/team-console" element={<AseTeamConsole />} />
           <Route path="/ase/pipeline" element={<AsePipeline />} />
           <Route path="/ase/segments" element={<AseSegments />} />

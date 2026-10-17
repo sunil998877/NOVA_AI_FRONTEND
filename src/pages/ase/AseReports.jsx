@@ -31,7 +31,6 @@ export default function AseReports() {
         </div>
       </div>
 
-      {/* Metric Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
@@ -74,7 +73,6 @@ export default function AseReports() {
         </Card>
       </div>
 
-      {/* Performance Overview Table */}
       <Card>
         <CardHeader>
           <CardTitle>Channel Performance Summary</CardTitle>

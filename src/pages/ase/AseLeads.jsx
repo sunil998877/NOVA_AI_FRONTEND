@@ -25,6 +25,7 @@ import { Badge } from "../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
+import { voiceApi } from "../../lib/api";
 import SegmentedPagination from "../../components/ui/pagination";
 import ApiWebhookCaptureDialog from "../../components/leads/ApiWebhookCaptureDialog";
 
@@ -77,6 +78,25 @@ export default function AseLeads() {
     }
   }
 
+  const handleQuickCall = async (lead) => {
+    if (!lead?.phone) return;
+    try {
+      const res = await voiceApi.callLead({
+        leadId: Number(lead.id),
+        phone: lead.phone,
+        name: lead.name,
+      });
+      if (res?.data?.status === "SUCCEEDED") {
+        success("Call Placed", `Outbound voice call placed to ${lead.phone} via Plivo.`);
+        fetchLeads(currentPage);
+      } else {
+        toastError("Call Failed", res?.data?.error || "Could not place call.");
+      }
+    } catch (err) {
+      toastError("Calling Error", err.message || "Failed to initiate call.");
+    }
+  };
+
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
     fetchLeads(newPage);
@@ -121,7 +141,6 @@ export default function AseLeads() {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Lead Store</h1>
@@ -135,7 +154,7 @@ export default function AseLeads() {
           </Button>
           <Button asChild variant="outline">
             <Link to="/ase/leads/import">
-              <Upload className="w-4 h-4 mr-2" /> Import Wizard
+              <Upload className="w-4 h-4 mr-2" /> Import Leads
             </Link>
           </Button>
           <Button asChild>
@@ -146,7 +165,6 @@ export default function AseLeads() {
         </div>
       </div>
 
-      {/* Search & Filter Bar */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-3">
         <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-96">
           <div className="relative w-full">
@@ -186,7 +204,6 @@ export default function AseLeads() {
         </div>
       </div>
 
-      {/* Main Table */}
       <Card>
         <CardContent className="p-0">
           <div className="rounded-md border-0 overflow-x-auto">
@@ -280,15 +297,32 @@ export default function AseLeads() {
                             <span className="text-xs text-muted-foreground">-</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {lead.assigned_rep_name || "Unassigned"}
+                        <TableCell className="text-xs">
+                          {lead.assigned_rep_name ? (
+                            <span className="font-medium text-foreground">{lead.assigned_rep_name}</span>
+                          ) : (
+                            <span className="text-muted-foreground italic">Unassigned</span>
+                          )}
                         </TableCell>
                         <TableCell>
-                          <Button asChild variant="ghost" size="sm">
-                            <Link to={`/ase/leads/${lead.id}`}>
-                              <ChevronRight className="w-4 h-4" />
-                            </Link>
-                          </Button>
+                          <div className="flex items-center gap-1 justify-end">
+                            {lead.phone && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Call with Plivo"
+                                className="text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 h-8 w-8 p-0"
+                                onClick={(e) => { e.stopPropagation(); handleQuickCall(lead); }}
+                              >
+                                <Phone className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                            <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Link to={`/ase/leads/${lead.id}`}>
+                                <ChevronRight className="w-4 h-4" />
+                              </Link>
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -300,7 +334,6 @@ export default function AseLeads() {
         </CardContent>
       </Card>
 
-      {/* Centered Segmented Pagination & Summary */}
       <div className="flex flex-col items-center justify-center -mt-3 mb-6 gap-2">
         <SegmentedPagination
           currentPage={currentPage}

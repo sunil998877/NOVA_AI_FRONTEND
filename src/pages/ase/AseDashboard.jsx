@@ -66,7 +66,6 @@ export default function AseDashboard() {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
-      {/* Top Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -93,7 +92,6 @@ export default function AseDashboard() {
         </div>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -151,7 +149,6 @@ export default function AseDashboard() {
         </Card>
       </div>
 
-      {/* Pipeline Funnel Visualization */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -181,9 +178,7 @@ export default function AseDashboard() {
         </CardContent>
       </Card>
 
-      {/* Two Column Section: Overdue Callbacks & Recent Leads */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Hot Callbacks */}
         <Card className={callbacks.length > 0 ? "border-amber-300 dark:border-amber-800" : ""}>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -223,7 +218,6 @@ export default function AseDashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent High Priority Leads */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">

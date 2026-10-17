@@ -9,11 +9,8 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
-  Terminal,
   ShieldCheck,
-  CheckCircle2,
   AlertCircle,
-  ExternalLink,
   Zap,
 } from "lucide-react";
 import {
@@ -28,177 +25,283 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Badge } from "../ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent } from "../ui/card";
 import { useToast } from "../ui/toast";
 import { leadApi } from "../../lib/api";
 
-export default function ApiWebhookCaptureDialog({ open, onOpenChange, onSuccess }) {
-  const [activeTab, setActiveTab] = useState("endpoints"); // 'endpoints' | 'snippets' | 'tester'
-  const [codeLang, setCodeLang] = useState("curl"); // 'curl' | 'js' | 'python' | 'json'
-  const [copiedKey, setCopiedKey] = useState(false);
-  const [copiedUrl, setCopiedUrl] = useState(false);
-  const [copiedSnippet, setCopiedSnippet] = useState(false);
-  const [showKey, setShowKey] = useState(false);
-  const [apiConfig, setApiConfig] = useState({
-    apiKey: "ase-lead-key-nova-2026",
-    endpoint: "/api/leads",
-    webhookEndpoint: "/api/leads/webhook",
-    organizationId: 1,
-  });
+const EMPTY_CONFIG = {
+  apiKey: "",
+  apiKeyMasked: "",
+  apiKeyConfigured: false,
+  keyStoredAsHash: false,
+  endpoint: "/api/leads",
+  webhookEndpoint: "/api/leads/webhook",
+  organizationId: null,
+  publicBaseUrl: "",
+  deployedBaseUrl: "",
+  maxBatch: 5000,
+  devProxy: "",
+};
 
-  // Simulator state
+export default function ApiWebhookCaptureDialog({ open, onOpenChange, onSuccess }) {
+  const [activeTab, setActiveTab] = useState("endpoints");
+  const [codeLang, setCodeLang] = useState("curl");
+  const [copiedId, setCopiedId] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [apiConfig, setApiConfig] = useState(EMPTY_CONFIG);
+  const [health, setHealth] = useState({ state: "checking", detail: "" });
+  const [rotating, setRotating] = useState(false);
   const [testPayload, setTestPayload] = useState({
-    email: "claire.redfield@umbrella-corp.com",
+    email: "claire.redfield@capture-sim.example",
     name: "Claire Redfield",
     company: "Terrasave Global",
-    phone: "+1-415-555-0192",
+    phone: "+14155550192",
     priority: 85,
     tags: "inbound_api, enterprise_tier",
     updateExisting: true,
   });
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
-
   const { success, error: toastError } = useToast();
-  const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:5000";
-  const apiEndpointUrl = `${origin}${apiConfig.endpoint || "/api/leads"}`;
-  const webhookUrl = `${origin}${apiConfig.webhookEndpoint || "/api/leads/webhook"}`;
+
+  const restUrl = apiConfig.publicBaseUrl
+    ? `${apiConfig.publicBaseUrl}${apiConfig.endpoint || "/api/leads"}`
+    : "";
+  const webhookUrl = apiConfig.publicBaseUrl
+    ? `${apiConfig.publicBaseUrl}${apiConfig.webhookEndpoint || "/api/leads/webhook"}`
+    : "";
+  const secretForCopy = apiConfig.apiKey || "";
+  const maskedKey = apiConfig.apiKeyMasked || (secretForCopy ? "••••••••••••" : "Not configured");
 
   useEffect(() => {
-    if (open) {
-      loadConfig();
-    }
+    if (!open) return;
+    loadConfig();
   }, [open]);
 
   const loadConfig = async () => {
+    setHealth({ state: "checking", detail: "Checking ingestion health" });
     try {
       const res = await leadApi.getApiConfig();
-      if (res.data) setApiConfig(res.data);
-    } catch (_) {
-      // Fallback defaults
+      const config = { ...EMPTY_CONFIG, ...(res.data || {}) };
+      setApiConfig(config);
+      await checkHealth(config.publicBaseUrl);
+    } catch (err) {
+      setHealth({ state: "offline", detail: err.message || "Could not load capture configuration" });
     }
   };
 
-  const copyToClipboard = (text, type) => {
-    navigator.clipboard.writeText(text);
-    if (type === "key") {
-      setCopiedKey(true);
-      setTimeout(() => setCopiedKey(false), 2000);
-    } else if (type === "url") {
-      setCopiedUrl(true);
-      setTimeout(() => setCopiedUrl(false), 2000);
-    } else if (type === "snippet") {
-      setCopiedSnippet(true);
-      setTimeout(() => setCopiedSnippet(false), 2000);
+  const checkHealth = async (baseUrl) => {
+    if (!baseUrl) {
+      setHealth({ state: "offline", detail: "Public API URL is not configured" });
+      return;
     }
-    success("Copied", "Copied to clipboard");
+    try {
+      const response = await fetch(`${baseUrl}/api/health`);
+      if (!response.ok) {
+        setHealth({ state: "offline", detail: `Health check returned HTTP ${response.status}` });
+        return;
+      }
+      setHealth({ state: "live", detail: "Backend ingestion endpoint is reachable" });
+    } catch {
+      setHealth({ state: "offline", detail: "Backend health check failed" });
+    }
   };
 
-  const handleTestIngest = async (e) => {
-    e.preventDefault();
+  const copyToClipboard = async (text, id) => {
+    if (!text) {
+      toastError("Nothing to copy", "The value is not available yet");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((current) => (current === id ? "" : current)), 2000);
+      success("Copied", "Copied to clipboard");
+    } catch {
+      toastError("Copy failed", "Clipboard access was denied");
+    }
+  };
+
+  const rotateKey = async () => {
+    if (!window.confirm("Rotate the lead API key? Existing webhook integrations must switch to the new key.")) return;
+    setRotating(true);
+    try {
+      const res = await leadApi.rotateApiKey();
+      const next = res.data || {};
+      setApiConfig((current) => ({
+        ...current,
+        apiKey: next.apiKey || "",
+        apiKeyMasked: next.apiKeyMasked || next.apiKeyPrefix || "",
+        apiKeyPrefix: next.apiKeyPrefix,
+        keyStoredAsHash: true,
+        apiKeyConfigured: true,
+        rotatedAt: next.rotatedAt,
+      }));
+      setShowKey(true);
+      success("API key rotated", "Copy the new key now. It is stored as a hash and will not be shown again.");
+    } catch (err) {
+      toastError("Rotation failed", err.message);
+    } finally {
+      setRotating(false);
+    }
+  };
+
+  const postIngest = async (url, body, headers = {}) => {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json().catch(() => ({}));
+    return { response, payload };
+  };
+
+  const handleTestIngest = async (event) => {
+    event.preventDefault();
+    if (!restUrl || !secretForCopy) {
+      toastError("Missing credentials", "Load a public URL and an API key before sending a test lead");
+      return;
+    }
     setTesting(true);
     setTestResult(null);
-
+    const checks = [];
     try {
-      const payload = {
-        ...testPayload,
-        tags: typeof testPayload.tags === "string"
-          ? testPayload.tags.split(",").map((t) => t.trim()).filter(Boolean)
-          : testPayload.tags,
-        priority: Number(testPayload.priority) || 50,
-      };
+      const missing = await postIngest(restUrl, { email: `missing-key-${Date.now()}@capture-sim.example` });
+      checks.push({
+        name: "Missing API key",
+        pass: missing.response.status === 401,
+        detail: `HTTP ${missing.response.status}`,
+      });
 
-      const res = await leadApi.create(payload);
-      setTestResult({
-        status: "success",
-        httpStatus: 201,
-        data: res.data,
+      const invalid = await postIngest(
+        restUrl,
+        { email: "not-an-email", name: "Invalid" },
+        { "x-api-key": secretForCopy }
+      );
+      checks.push({
+        name: "Invalid email",
+        pass: invalid.response.status === 400,
+        detail: invalid.payload.error || `HTTP ${invalid.response.status}`,
       });
-      success("Lead Ingested", `Successfully captured lead: ${payload.email}`);
-      if (onSuccess) onSuccess();
+
+      const payload = {
+        email: testPayload.email,
+        name: testPayload.name,
+        company: testPayload.company,
+        phone: testPayload.phone,
+        priority: Number(testPayload.priority) || 50,
+        tags: String(testPayload.tags || "").split(",").map((tag) => tag.trim()).filter(Boolean),
+        updateExisting: false,
+        consentEmail: true,
+      };
+      const created = await postIngest(restUrl, payload, { "x-api-key": secretForCopy });
+      checks.push({
+        name: "Authenticated ingestion",
+        pass: created.response.status === 201 || created.response.status === 200,
+        detail: created.payload.data?.status || created.payload.error || `HTTP ${created.response.status}`,
+      });
+
+      const duplicate = await postIngest(restUrl, payload, { "x-api-key": secretForCopy });
+      checks.push({
+        name: "Duplicate email",
+        pass: duplicate.response.status === 200 && duplicate.payload.data?.status === "skipped",
+        detail: duplicate.payload.data?.status || duplicate.payload.error || `HTTP ${duplicate.response.status}`,
+      });
+
+      setTestResult({
+        status: checks.every((check) => check.pass) ? "success" : "error",
+        httpStatus: created.response.status,
+        data: created.payload.data || created.payload,
+        checks,
+      });
+      if (created.response.ok && onSuccess) onSuccess();
+      if (checks.every((check) => check.pass)) {
+        success("Checks passed", "Authentication, validation, deduplication, and ingestion responded as expected");
+      } else {
+        toastError("Some checks failed", "Review the response panel for the failing step");
+      }
     } catch (err) {
-      setTestResult({
-        status: "error",
-        error: err.message || "Failed to ingest lead",
-      });
-      toastError("Ingestion Failed", err.message);
+      setTestResult({ status: "error", error: err.message || "Failed to reach the ingestion endpoint", checks });
+      toastError("Ingestion failed", err.message);
     } finally {
       setTesting(false);
     }
   };
 
-  const curlSnippet = `curl -X POST "${apiEndpointUrl}" \\
-  -H "Content-Type: application/json" \\
-  -H "x-api-key: ${apiConfig.apiKey}" \\
-  -H "x-organization-id: ${apiConfig.organizationId}" \\
-  -d '{
-    "email": "sarah.connor@cyberdyne.io",
+  const sampleLead = `{
+    "email": "sarah.connor@cyberdyne.example",
     "name": "Sarah Connor",
     "company": "Cyberdyne Systems",
-    "phone": "+1-415-555-0144",
+    "phone": "+14155550144",
     "priority": 85,
     "tags": ["inbound_web", "enterprise"],
+    "consentEmail": true,
     "updateExisting": true
-  }'`;
+  }`;
 
-  const jsSnippet = `// Node.js (fetch or axios) or Browser
-const response = await fetch("${apiEndpointUrl}", {
+  const keyHeader = secretForCopy || "YOUR_API_KEY";
+  const curlSnippet = `curl -X POST "${restUrl || "https://your-api-host/api/leads"}" \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: ${keyHeader}" \\
+  -d '${sampleLead.replace(/\n/g, "\n  ")}'`;
+
+  const batchSnippet = `{
+  "updateExisting": false,
+  "leads": [
+    { "email": "ada@acme.example", "name": "Ada Lovelace", "consentEmail": true },
+    { "email": "grace@acme.example", "name": "Grace Hopper", "phone": "+14155550100" }
+  ]
+}`;
+
+  const jsSnippet = `const response = await fetch("${restUrl || "https://your-api-host/api/leads"}", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
-    "x-api-key": "${apiConfig.apiKey}",
-    "x-organization-id": "${apiConfig.organizationId}",
+    "x-api-key": "${keyHeader}",
   },
   body: JSON.stringify({
-    email: "sarah.connor@cyberdyne.io",
+    email: "sarah.connor@cyberdyne.example",
     name: "Sarah Connor",
     company: "Cyberdyne Systems",
-    phone: "+1-415-555-0144",
+    phone: "+14155550144",
     priority: 85,
     tags: ["inbound_web", "enterprise"],
+    consentEmail: true,
     updateExisting: true,
   }),
-});
-
-const data = await response.json();
-console.log("Ingested lead:", data);`;
+});`;
 
   const pythonSnippet = `import requests
 
-url = "${apiEndpointUrl}"
-headers = {
-    "Content-Type": "application/json",
-    "x-api-key": "${apiConfig.apiKey}",
-    "x-organization-id": "${apiConfig.organizationId}",
-}
-payload = {
-    "email": "sarah.connor@cyberdyne.io",
-    "name": "Sarah Connor",
-    "company": "Cyberdyne Systems",
-    "phone": "+1-415-555-0144",
-    "priority": 85,
-    "tags": ["inbound_web", "enterprise"],
-    "updateExisting": True,
-}
+requests.post(
+    "${restUrl || "https://your-api-host/api/leads"}",
+    headers={"Content-Type": "application/json", "x-api-key": "${keyHeader}"},
+    json={
+        "email": "sarah.connor@cyberdyne.example",
+        "name": "Sarah Connor",
+        "company": "Cyberdyne Systems",
+        "phone": "+14155550144",
+        "priority": 85,
+        "consentEmail": True,
+        "updateExisting": True,
+    },
+)`;
 
-res = requests.post(url, json=payload, headers=headers)
-print("Status:", res.status_code, res.json())`;
+  const snippetFor = (lang) => {
+    if (lang === "curl") return curlSnippet;
+    if (lang === "js") return jsSnippet;
+    if (lang === "python") return pythonSnippet;
+    return `${sampleLead}\n\nBatch:\n${batchSnippet}`;
+  };
 
-  const jsonSchemaSnippet = `{
-  "email": "string (required, e.g. 'lead@acme.com')",
-  "name": "string (optional, e.g. 'Jane Doe')",
-  "firstName": "string (optional)",
-  "lastName": "string (optional)",
-  "company": "string (optional, e.g. 'Acme Corp')",
-  "phone": "string (optional, e.g. '+14155550199')",
-  "whatsapp_number": "string (optional)",
-  "priority": "number (optional, 1-100, default: 50)",
-  "tags": ["array of strings", "e.g. ['inbound', 'demo']"],
-  "source": "string (default: 'API')",
-  "updateExisting": "boolean (default: false — set true to update on match)",
-  "segment_attributes": { "industry": "SaaS", "budget": "50k" },
-  "metadata": { "formId": "landing_page_hero" }
-}`;
+  const healthBadge = health.state === "live"
+    ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+    : health.state === "checking"
+    ? "bg-slate-50 text-slate-600 border-slate-300"
+    : "bg-rose-50 text-rose-700 border-rose-300";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -211,141 +314,98 @@ print("Status:", res.status_code, res.json())`;
             <div>
               <div className="flex items-center gap-2">
                 <DialogTitle>Real-Time API & Webhook Lead Capture</DialogTitle>
-                <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-300">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse" />
-                  Live Ingestion
+                <Badge variant="outline" className={`text-[10px] ${healthBadge}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full mr-1 ${health.state === "live" ? "bg-emerald-500 animate-pulse" : health.state === "checking" ? "bg-slate-400" : "bg-rose-500"}`} />
+                  {health.state === "live" ? "Ingestion reachable" : health.state === "checking" ? "Checking" : "Ingestion offline"}
                 </Badge>
               </div>
               <DialogDescription>
-                Capture leads in real-time from web forms, landing pages, or backend services via authenticated REST API.
+                {health.detail || "Capture leads from forms and backend services with an API key bound to this organization."}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        {/* Tab switcher */}
         <div className="flex items-center gap-2 border-b pb-2 text-xs">
-          <Button
-            size="sm"
-            variant={activeTab === "endpoints" ? "default" : "ghost"}
-            onClick={() => setActiveTab("endpoints")}
-            className="h-8"
-          >
+          <Button size="sm" variant={activeTab === "endpoints" ? "default" : "ghost"} onClick={() => setActiveTab("endpoints")} className="h-8">
             <Key className="w-3.5 h-3.5 mr-1.5" /> Endpoints & Auth
           </Button>
-          <Button
-            size="sm"
-            variant={activeTab === "snippets" ? "default" : "ghost"}
-            onClick={() => setActiveTab("snippets")}
-            className="h-8"
-          >
+          <Button size="sm" variant={activeTab === "snippets" ? "default" : "ghost"} onClick={() => setActiveTab("snippets")} className="h-8">
             <Code className="w-3.5 h-3.5 mr-1.5" /> Code Samples
           </Button>
-          <Button
-            size="sm"
-            variant={activeTab === "tester" ? "default" : "ghost"}
-            onClick={() => setActiveTab("tester")}
-            className="h-8"
-          >
+          <Button size="sm" variant={activeTab === "tester" ? "default" : "ghost"} onClick={() => setActiveTab("tester")} className="h-8">
             <Zap className="w-3.5 h-3.5 mr-1.5 text-amber-500" /> Live Webhook Simulator
           </Button>
         </div>
 
-        {/* TAB 1: ENDPOINTS & AUTH */}
         {activeTab === "endpoints" && (
           <div className="space-y-4 py-2">
-            {/* Primary Endpoint */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
                 <Label className="font-semibold">REST Ingestion Endpoint (POST)</Label>
                 <Badge variant="outline" className="text-[10px]">JSON Payload</Badge>
               </div>
               <div className="flex gap-2">
-                <Input
-                  readOnly
-                  value={apiEndpointUrl}
-                  className="font-mono text-xs bg-muted/50"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(apiEndpointUrl, "url")}
-                >
-                  {copiedUrl ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                <Input readOnly value={restUrl || "Loading public endpoint…"} className="font-mono text-xs bg-muted/50" />
+                <Button variant="outline" size="sm" onClick={() => copyToClipboard(restUrl, "rest")} aria-label="Copy REST endpoint">
+                  {copiedId === "rest" ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Accepts a single lead object or a batch array of leads (up to 5,000 leads per request).
+                Accepts one lead object or a batch of up to {apiConfig.maxBatch || 5000} leads.
               </p>
             </div>
 
-            {/* Webhook Endpoint */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
                 <Label className="font-semibold">Webhook Ingestion Endpoint (POST)</Label>
                 <Badge variant="outline" className="text-[10px]">Zapier / Make / Form Hook</Badge>
               </div>
               <div className="flex gap-2">
-                <Input
-                  readOnly
-                  value={webhookUrl}
-                  className="font-mono text-xs bg-muted/50"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(webhookUrl, "url")}
-                >
-                  <Copy className="w-4 h-4" />
+                <Input readOnly value={webhookUrl || "Loading public endpoint…"} className="font-mono text-xs bg-muted/50" />
+                <Button variant="outline" size="sm" onClick={() => copyToClipboard(webhookUrl, "webhook")} aria-label="Copy webhook endpoint">
+                  {copiedId === "webhook" ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
             </div>
 
-            {/* API Key */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
                 <Label className="font-semibold">Authentication Header (x-api-key)</Label>
-                <Badge variant="outline" className="text-[10px] text-purple-700 bg-purple-50 border-purple-200">
-                  Header Auth
-                </Badge>
+                <Badge variant="outline" className="text-[10px] text-purple-700 bg-purple-50 border-purple-200">Header Auth</Badge>
               </div>
               <div className="flex gap-2">
                 <Input
                   readOnly
-                  type={showKey ? "text" : "password"}
-                  value={apiConfig.apiKey}
+                  type={showKey && secretForCopy ? "text" : "password"}
+                  value={showKey && secretForCopy ? secretForCopy : maskedKey}
                   className="font-mono text-xs bg-muted/50"
                 />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowKey(!showKey)}
-                >
+                <Button variant="outline" size="sm" onClick={() => setShowKey((current) => !current)} disabled={!secretForCopy} aria-label="Show API key">
                   {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(apiConfig.apiKey, "key")}
-                >
-                  {copiedKey ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                <Button variant="outline" size="sm" onClick={() => copyToClipboard(secretForCopy, "key")} disabled={!secretForCopy} aria-label="Copy API key">
+                  {copiedId === "key" ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                </Button>
+                <Button variant="outline" size="sm" onClick={rotateKey} disabled={rotating} aria-label="Rotate API key">
+                  <RefreshCw className={`w-4 h-4 ${rotating ? "animate-spin" : ""}`} />
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Pass as header: <code>x-api-key: {showKey ? apiConfig.apiKey : "••••••••••••"}</code> with all POST requests.
+                Send <code>x-api-key</code> on every POST. The key is checked on the server and is not placed in the query string.
+                {apiConfig.keyStoredAsHash && !secretForCopy ? " The current key is stored as a hash. Rotate it to reveal a new one." : ""}
               </p>
             </div>
 
-            {/* Organization Header */}
             <div className="p-3 rounded-lg border bg-muted/30 text-xs flex items-center justify-between">
               <div>
-                <span className="font-semibold">Tenant Isolation Header</span>
+                <span className="font-semibold">Organization</span>
                 <p className="text-muted-foreground text-[11px]">
-                  Send <code>x-organization-id: {apiConfig.organizationId}</code> to scope leads to this workspace.
+                  This key writes leads to organization #{apiConfig.organizationId ?? "—"}. A different <code>x-organization-id</code> is rejected.
                 </p>
               </div>
               <Badge variant="secondary" className="font-mono text-xs">
-                Org #{apiConfig.organizationId}
+                Org #{apiConfig.organizationId ?? "—"}
               </Badge>
             </div>
 
@@ -354,10 +414,10 @@ print("Status:", res.status_code, res.json())`;
                 <ShieldCheck className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
                 <div className="text-xs space-y-1">
                   <span className="font-semibold text-purple-900 dark:text-purple-300">
-                    Real-time Deduplication & Suppression Pipeline
+                    Deduplication, consent, and suppression
                   </span>
                   <p className="text-muted-foreground">
-                    Incoming leads are immediately deduplicated against existing records (by email, phone, and company domain). If a match is found and <code>updateExisting: true</code> is passed, attributes are refreshed without breaking active multi-channel cadences.
+                    Leads are matched by email, phone, and company domain. <code>updateExisting: true</code> refreshes profile fields and leaves lifecycle, consent, DNC, and cadence in place. Ingestion does not grant permission to email or call. Suppressed leads are stored as do-not-contact.
                   </p>
                 </div>
               </CardContent>
@@ -365,7 +425,6 @@ print("Status:", res.status_code, res.json())`;
           </div>
         )}
 
-        {/* TAB 2: CODE SAMPLES */}
         {activeTab === "snippets" && (
           <div className="space-y-3 py-2">
             <div className="flex items-center justify-between">
@@ -375,159 +434,69 @@ print("Status:", res.status_code, res.json())`;
                     key={lang}
                     onClick={() => setCodeLang(lang)}
                     className={`px-3 py-1 rounded-md capitalize font-medium transition-all ${
-                      codeLang === lang
-                        ? "bg-background text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
+                      codeLang === lang ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {lang === "js" ? "JavaScript" : lang === "json" ? "Schema JSON" : lang}
+                    {lang === "js" ? "JavaScript" : lang === "json" ? "Examples" : lang}
                   </button>
                 ))}
               </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const content =
-                    codeLang === "curl"
-                      ? curlSnippet
-                      : codeLang === "js"
-                      ? jsSnippet
-                      : codeLang === "python"
-                      ? pythonSnippet
-                      : jsonSchemaSnippet;
-                  copyToClipboard(content, "snippet");
-                }}
-              >
-                {copiedSnippet ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5 mr-1" /> Copy Code
-                  </>
-                )}
+              <Button variant="outline" size="sm" onClick={() => copyToClipboard(snippetFor(codeLang), "snippet")}>
+                {copiedId === "snippet" ? <><Check className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Copied</> : <><Copy className="w-3.5 h-3.5 mr-1" /> Copy Code</>}
               </Button>
             </div>
-
             <div className="relative rounded-lg bg-slate-950 p-4 text-slate-100 font-mono text-xs overflow-x-auto max-h-80 border border-slate-800">
-              <pre>
-                {codeLang === "curl" && curlSnippet}
-                {codeLang === "js" && jsSnippet}
-                {codeLang === "python" && pythonSnippet}
-                {codeLang === "json" && jsonSchemaSnippet}
-              </pre>
+              <pre>{snippetFor(codeLang)}</pre>
             </div>
           </div>
         )}
 
-        {/* TAB 3: LIVE SIMULATOR */}
         {activeTab === "tester" && (
           <form onSubmit={handleTestIngest} className="space-y-4 py-2">
             <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs">
-              <span className="font-semibold text-amber-900 dark:text-amber-300 block mb-0.5">
-                Interactive API Simulator
-              </span>
+              <span className="font-semibold text-amber-900 dark:text-amber-300 block mb-0.5">Connection checks</span>
               <p className="text-muted-foreground">
-                Send a real test payload to verify live ingestion into the database right now.
+                Sends a missing key, an invalid email, one consented lead, and a duplicate to {restUrl || "the public endpoint"}.
               </p>
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="space-y-1">
                 <Label>Email (Required)</Label>
-                <Input
-                  required
-                  type="email"
-                  value={testPayload.email}
-                  onChange={(e) => setTestPayload({ ...testPayload, email: e.target.value })}
-                  placeholder="jane.doe@company.com"
-                />
+                <Input required type="email" value={testPayload.email} onChange={(e) => setTestPayload({ ...testPayload, email: e.target.value })} />
               </div>
-
               <div className="space-y-1">
                 <Label>Full Name</Label>
-                <Input
-                  value={testPayload.name}
-                  onChange={(e) => setTestPayload({ ...testPayload, name: e.target.value })}
-                  placeholder="Jane Doe"
-                />
+                <Input value={testPayload.name} onChange={(e) => setTestPayload({ ...testPayload, name: e.target.value })} />
               </div>
-
               <div className="space-y-1">
                 <Label>Company Name</Label>
-                <Input
-                  value={testPayload.company}
-                  onChange={(e) => setTestPayload({ ...testPayload, company: e.target.value })}
-                  placeholder="Acme Corp"
-                />
+                <Input value={testPayload.company} onChange={(e) => setTestPayload({ ...testPayload, company: e.target.value })} />
               </div>
-
               <div className="space-y-1">
                 <Label>Phone Number</Label>
-                <Input
-                  value={testPayload.phone}
-                  onChange={(e) => setTestPayload({ ...testPayload, phone: e.target.value })}
-                  placeholder="+1-555-0199"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label>Priority (1 - 100)</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={testPayload.priority}
-                  onChange={(e) => setTestPayload({ ...testPayload, priority: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label>Tags (comma separated)</Label>
-                <Input
-                  value={testPayload.tags}
-                  onChange={(e) => setTestPayload({ ...testPayload, tags: e.target.value })}
-                  placeholder="inbound_api, enterprise"
-                />
+                <Input value={testPayload.phone} onChange={(e) => setTestPayload({ ...testPayload, phone: e.target.value })} />
               </div>
             </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <Button
-                type="submit"
-                disabled={testing}
-                className="bg-purple-600 hover:bg-purple-700 text-white"
-                size="sm"
-              >
-                {testing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Ingesting Lead...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" /> Ingest Test Lead Now
-                  </>
-                )}
-              </Button>
-            </div>
-
+            <Button type="submit" disabled={testing || !secretForCopy} className="bg-purple-600 hover:bg-purple-700 text-white" size="sm">
+              {testing ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Running checks...</> : <><Send className="w-4 h-4 mr-2" /> Run ingestion checks</>}
+            </Button>
+            {!secretForCopy && (
+              <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5" /> Rotate the API key on the Endpoints tab to reveal a secret for this test.
+              </p>
+            )}
             {testResult && (
-              <div
-                className={`p-3 rounded-lg border text-xs font-mono overflow-x-auto max-h-48 ${
-                  testResult.status === "success"
-                    ? "bg-emerald-50/50 border-emerald-300 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300"
-                    : "bg-rose-50/50 border-rose-300 text-rose-900 dark:bg-rose-950/30 dark:text-rose-300"
-                }`}
-              >
-                <div className="flex items-center justify-between font-bold pb-1 mb-1 border-b border-current/20">
-                  <span>
-                    {testResult.status === "success" ? "✓ HTTP 201 Created / Updated" : "✕ Ingestion Error"}
-                  </span>
-                  <span>Response Payload</span>
+              <div className={`p-3 rounded-lg border text-xs font-mono overflow-x-auto max-h-48 ${testResult.status === "success" ? "bg-emerald-50/50 border-emerald-300" : "bg-rose-50/50 border-rose-300"}`}>
+                <div className="font-bold pb-1 mb-1 border-b border-current/20">
+                  {testResult.status === "success" ? "Checks passed" : "Check failure"}
                 </div>
+                {Array.isArray(testResult.checks) && (
+                  <ul className="mb-2 space-y-1">
+                    {testResult.checks.map((check) => (
+                      <li key={check.name}>{check.pass ? "pass" : "fail"} — {check.name}: {check.detail}</li>
+                    ))}
+                  </ul>
+                )}
                 <pre>{JSON.stringify(testResult.data || testResult.error, null, 2)}</pre>
               </div>
             )}
@@ -535,9 +504,7 @@ print("Status:", res.status_code, res.json())`;
         )}
 
         <DialogFooter className="border-t pt-3">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

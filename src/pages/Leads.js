@@ -20,9 +20,13 @@ import {
   Code,
   Zap,
   Search,
+  Sparkles,
+  Bot,
   X,
+  ExternalLink,
+  Building,
 } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -31,7 +35,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { useToast } from "../components/ui/toast";
-import { leadApi, callbackApi, suppressionApi } from "../lib/api";
+import { leadApi, callbackApi, suppressionApi, voiceApi } from "../lib/api";
 import SegmentedPagination from "../components/ui/pagination";
 import CsvExcelImportDialog from "../components/leads/CsvExcelImportDialog";
 import ApiWebhookCaptureDialog from "../components/leads/ApiWebhookCaptureDialog";
@@ -156,13 +160,32 @@ export default function Leads() {
     }
   };
 
+  const handleQuickCall = async (lead) => {
+    if (!lead?.phone) return;
+    try {
+      const res = await voiceApi.callLead({
+        leadId: Number(lead.id),
+        phone: lead.phone,
+        name: lead.name,
+      });
+      if (res?.data?.status === "SUCCEEDED") {
+        success("Call Placed", `Outbound voice call placed to ${lead.phone} via Plivo.`);
+        fetchLeads();
+      } else {
+        toastError("Call Failed", res?.data?.error || "Could not place call.");
+      }
+    } catch (err) {
+      toastError("Calling Error", err.message || "Failed to initiate call.");
+    }
+  };
+
   const activeInEngine =
     (stats.byStatus?.QUEUED || 0) +
     (stats.byStatus?.CONTACTED || 0) +
     (stats.byStatus?.ENGAGED || 0);
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-6 max-w-[1650px] mx-auto w-full">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -196,7 +219,6 @@ export default function Leads() {
         </div>
       </div>
 
-      {/* ASE Metrics */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="border-border">
           <CardHeader className="pb-2">
@@ -257,7 +279,6 @@ export default function Leads() {
         </Card>
       </div>
 
-      {/* Tabs */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border pb-2">
         <Button
           variant={activeTab === "all" ? "default" : "ghost"}
@@ -312,7 +333,6 @@ export default function Leads() {
         </Button>
       </div>
 
-      {/* View 1: Callback Queue */}
       {activeTab === "callbacks" ? (
         <Card>
           <CardHeader>
@@ -396,7 +416,6 @@ export default function Leads() {
           </CardContent>
         </Card>
       ) : (
-        /* View 2: Leads Table */
         <Card>
           <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
             <CardTitle>Autonomous Pipeline Leads</CardTitle>
@@ -503,6 +522,17 @@ export default function Leads() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
+                              {lead.phone && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  title="Call with Plivo"
+                                  className="text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                  onClick={(e) => { e.stopPropagation(); handleQuickCall(lead); }}
+                                >
+                                  <Phone className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -531,7 +561,6 @@ export default function Leads() {
         </Card>
       )}
 
-      {/* Centered Segmented Pagination & Summary */}
       <div className="flex flex-col items-center justify-center -mt-3 mb-6 gap-2">
         <SegmentedPagination
           currentPage={currentPage}
@@ -543,7 +572,6 @@ export default function Leads() {
         </p>
       </div>
 
-      {/* Lead Detail & Timeline Drawer/Modal */}
       {selectedLead && (
         <LeadDetailModal
           open={detailOpen}
@@ -557,7 +585,6 @@ export default function Leads() {
         />
       )}
 
-      {/* Callback Completion Modal */}
       {completeCallbackTarget && (
         <CompleteCallbackDialog
           open={Boolean(completeCallbackTarget)}
@@ -571,21 +598,18 @@ export default function Leads() {
         />
       )}
 
-      {/* Add Lead Dialog */}
       <AddLeadDialog
         open={addOpen}
         onOpenChange={setAddOpen}
         onSuccess={() => { fetchLeads(); fetchStats(); }}
       />
 
-      {/* CSV / Excel Import Dialog */}
       <CsvExcelImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
         onSuccess={() => { fetchLeads(); fetchStats(); }}
       />
 
-      {/* Real-time Authenticated API & Webhook Lead Capture Dialog */}
       <ApiWebhookCaptureDialog
         open={apiWebhookOpen}
         onOpenChange={setApiWebhookOpen}
@@ -626,110 +650,268 @@ function LeadDetailModal({ open, onOpenChange, data, onRefresh }) {
     }
   };
 
+  const handleQuickCall = async () => {
+    if (!lead.phone) return;
+    try {
+      setUpdating(true);
+      const res = await voiceApi.callLead({
+        leadId: Number(lead.id),
+        phone: lead.phone,
+        name: lead.name,
+      });
+      if (res?.data?.status === "SUCCEEDED") {
+        success("Call Placed", `Outbound voice call placed to ${lead.phone} via Plivo.`);
+        onRefresh();
+      } else {
+        toastError("Call Failed", res?.data?.error || "Could not place call.");
+      }
+    } catch (err) {
+      toastError("Calling Error", err.message || "Failed to initiate call.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleAutonomousCall = async () => {
+    if (!lead.phone) return;
+    try {
+      setUpdating(true);
+      await voiceApi.triggerAutonomousCall({ leadId: Number(lead.id) });
+      success("Autonomous Call Fired", `ASE Engine initiated voice call for ${lead.name || lead.email}`);
+      onRefresh();
+    } catch (err) {
+      toastError("Autonomous Call Failed", err.message || "Failed to trigger call.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-bold flex items-center gap-2">
-              {lead.name || lead.email}
-              <Badge variant="outline">{lead.status}</Badge>
-            </DialogTitle>
+      <DialogContent className="max-w-5xl lg:max-w-6xl xl:max-w-7xl w-[96vw] max-h-[90vh] overflow-y-auto p-6 md:p-8 sm:max-w-5xl lg:sm:max-w-6xl xl:sm:max-w-7xl">
+        <DialogHeader className="border-b border-border/80 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <DialogTitle className="text-2xl font-bold flex items-center gap-2.5 text-foreground">
+                {lead.name || lead.email}
+                <Badge variant="outline" className="text-xs px-2.5 py-0.5 border-border font-semibold">
+                  {lead.status}
+                </Badge>
+                {lead.priority && (
+                  <Badge variant="secondary" className="text-xs font-mono">
+                    P{lead.priority}
+                  </Badge>
+                )}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
+                <span className="font-medium text-foreground">{lead.company || "Independent"}</span>
+                <span>•</span>
+                <span>Organization ID: {lead.organization_id}</span>
+              </DialogDescription>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link
+                to={`/ase/leads/${lead.id}`}
+                className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/30"
+              >
+                <span>Full Profile Page</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
-          <DialogDescription>
-            {lead.company || "Independent"} • Organization ID: {lead.organization_id}
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-3 gap-4 py-4 border-y border-border my-2">
-          <div>
-            <div className="text-xs font-medium text-muted-foreground">Email</div>
-            <div className="text-sm font-semibold truncate">{lead.email}</div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">
-              Consent: {lead.email_consent?.status || "GRANTED"}
-            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-4">
+          <div className="p-4 rounded-xl border border-border/80 bg-muted/30 space-y-1">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Email Address</span>
+            <span className="text-sm font-semibold truncate block text-foreground">{lead.email}</span>
+            <span className="text-xs text-muted-foreground block">
+              Consent: <strong className="text-emerald-600 font-medium">{lead.email_consent?.status || "GRANTED"}</strong>
+            </span>
           </div>
-          <div>
-            <div className="text-xs font-medium text-muted-foreground">Phone</div>
-            <div className="text-sm font-semibold truncate">{lead.phone || "-"}</div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">
-              Voice: {lead.voice_consent?.status || "GRANTED"}
-            </div>
+
+          <div className="p-4 rounded-xl border border-border/80 bg-muted/30 space-y-1">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Phone Number</span>
+            <span className="text-sm font-semibold font-mono truncate block text-foreground">{lead.phone || "Not configured"}</span>
+            <span className="text-xs text-muted-foreground block">
+              Voice: <strong className="text-emerald-600 font-medium">{lead.voice_consent?.status || "GRANTED"}</strong>
+            </span>
           </div>
-          <div>
-            <div className="text-xs font-medium text-muted-foreground">Engine Recommendation</div>
-            <div className="text-sm font-semibold text-primary">{lead.next_action || "Idle / Complete"}</div>
-            {lead.next_action_time && (
-              <div className="text-[10px] text-muted-foreground">
-                Scheduled: {new Date(lead.next_action_time).toLocaleString()}
+
+          <div className="p-4 rounded-xl border border-border/80 bg-muted/30 space-y-1">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Engine Recommendation</span>
+            <span className="text-sm font-bold text-violet-600 dark:text-violet-400 block">{lead.next_action || "Idle / Complete"}</span>
+            <span className="text-xs text-muted-foreground font-mono block">
+              {lead.next_action_time ? new Date(lead.next_action_time).toLocaleString() : "No pending touch"}
+            </span>
+          </div>
+
+          <div className="p-4 rounded-xl border border-border/80 bg-muted/30 space-y-1">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Lifecycle Health</span>
+            <span className="text-sm font-semibold text-foreground block">
+              Status: <strong className="text-primary">{lead.status}</strong>
+            </span>
+            <span className="text-xs text-muted-foreground block">
+              DNC Flag: <strong className={lead.do_not_contact ? "text-rose-600" : "text-emerald-600"}>{lead.do_not_contact ? "Suppressed" : "Active"}</strong>
+            </span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl border border-border/80 bg-card flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mr-1">Quick Actions:</span>
+            {lead.phone && (
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 h-8 font-semibold shadow-none"
+                disabled={updating || lead.do_not_contact}
+                onClick={handleQuickCall}
+              >
+                <Phone className="w-3.5 h-3.5" />
+                Call (Plivo)
+              </Button>
+            )}
+            {lead.phone && (
+              <Button
+                size="sm"
+                className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5 h-8 font-semibold shadow-none"
+                disabled={updating || lead.do_not_contact}
+                onClick={handleAutonomousCall}
+              >
+                <Bot className="w-3.5 h-3.5" />
+                Auto Call
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs font-semibold"
+              disabled={updating}
+              onClick={() => handleStateChange("INTERESTED")}
+            >
+              Mark Interested
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs font-semibold"
+              disabled={updating}
+              onClick={() => handleStateChange("CLOSED_WON")}
+            >
+              Mark Won
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs font-semibold"
+              disabled={updating}
+              onClick={() => handleStateChange("CLOSED_LOST")}
+            >
+              Mark Lost
+            </Button>
+            <Button
+              size="sm"
+              variant={lead.do_not_contact ? "secondary" : "destructive"}
+              className="h-8 text-xs font-semibold"
+              disabled={updating}
+              onClick={handleDncToggle}
+            >
+              {lead.do_not_contact ? "Remove DNC" : "Suppress DNC"}
+            </Button>
+          </div>
+        </div>
+
+        {lead.metadata?.company_research && (
+          <div className="rounded-xl border border-violet-200/80 bg-violet-50/40 dark:border-violet-900 dark:bg-violet-950/20 p-5 text-xs">
+            <div className="flex items-center justify-between mb-3 border-b border-violet-200/60 dark:border-violet-800 pb-2">
+              <span className="font-bold text-violet-700 dark:text-violet-300 flex items-center gap-2 text-sm">
+                <Sparkles className="w-4 h-4 text-violet-600" />
+                AI Company Intelligence ({lead.metadata.company_research.company})
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded border border-violet-300 font-mono text-muted-foreground uppercase">
+                {lead.metadata.company_research.source || "ai_analyzed"}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Executive Overview</span>
+                <p className="text-foreground/90 text-xs leading-relaxed">{lead.metadata.company_research.summary}</p>
+              </div>
+              {lead.metadata.company_research.coreServices && (
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Core Services & Solutions</span>
+                  <p className="text-foreground/90 text-xs leading-relaxed">{lead.metadata.company_research.coreServices}</p>
+                </div>
+              )}
+            </div>
+            {lead.metadata.company_research.growthOpportunity && (
+              <div className="mt-3 rounded-lg p-3 bg-background/80 border border-violet-200/80 dark:border-violet-800">
+                <span className="text-[11px] font-bold text-violet-700 dark:text-violet-300 block mb-0.5">Autonomous Outreach Angle</span>
+                <p className="text-xs text-foreground leading-relaxed">{lead.metadata.company_research.growthOpportunity}</p>
               </div>
             )}
           </div>
-        </div>
+        )}
 
-        {/* State Management Toolbar */}
-        <div className="flex items-center gap-2 flex-wrap mb-4">
-          <span className="text-xs text-muted-foreground mr-1">Quick Action:</span>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={updating}
-            onClick={() => handleStateChange("INTERESTED")}
-          >
-            Mark Interested
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={updating}
-            onClick={() => handleStateChange("CLOSED_WON")}
-          >
-            Mark Won
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={updating}
-            onClick={() => handleStateChange("CLOSED_LOST")}
-          >
-            Mark Lost
-          </Button>
-          <Button
-            size="sm"
-            variant={lead.do_not_contact ? "secondary" : "destructive"}
-            disabled={updating}
-            onClick={handleDncToggle}
-          >
-            {lead.do_not_contact ? "Remove DNC" : "Suppress DNC"}
-          </Button>
-        </div>
+        <div className="border border-border/80 rounded-xl p-5 bg-card">
+          <div className="flex items-center justify-between mb-4 border-b border-border/60 pb-3">
+            <h4 className="text-sm font-bold flex items-center gap-2 text-foreground">
+              <Activity className="w-4 h-4 text-primary" />
+              Immutable Audit Trail & Timeline ({timeline.length} events)
+            </h4>
+            <span className="text-xs text-muted-foreground font-mono">Real-time outbox stream</span>
+          </div>
 
-        {/* Timeline */}
-        <div>
-          <h4 className="text-sm font-bold mb-3 flex items-center gap-1.5">
-            <Activity className="w-4 h-4 text-primary" />
-            Immutable Audit Trail & Timeline ({timeline.length} events)
-          </h4>
           <div className="space-y-3">
             {timeline.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No events recorded yet.</p>
+              <p className="text-xs text-muted-foreground py-4 text-center">No events recorded yet.</p>
             ) : (
-              timeline.map((ev) => (
-                <div key={ev.id} className="flex items-start gap-3 text-xs border-l-2 border-primary/40 pl-3 py-1">
-                  <div className="min-w-[120px] text-[10px] text-muted-foreground">
-                    {new Date(ev.created_at).toLocaleString()}
-                  </div>
-                  <div>
-                    <span className="font-semibold">{ev.event_type}</span>
-                    <span className="text-muted-foreground ml-2">via {ev.channel}</span>
-                    {ev.payload && (
-                      <pre className="mt-1 p-1.5 bg-muted rounded text-[10px] font-mono overflow-x-auto max-w-lg">
-                        {JSON.stringify(ev.payload, null, 2)}
-                      </pre>
-                    )}
-                  </div>
-                </div>
-              ))
+                timeline.map((ev) => {
+                  const p = ev.payload || {};
+                  let title = ev.event_type;
+                  let description = null;
+
+                  if (ev.event_type === "ActionScheduled") {
+                    title = `Outreach Scheduled (${p.action || ev.channel || "EMAIL"})`;
+                    description = p.scheduled_for ? `Queued for ${new Date(p.scheduled_for).toLocaleTimeString()}` : "Queued by the Autonomous Engine";
+                  } else if (ev.event_type === "ActionDispatched") {
+                    title = `Outreach Dispatched (${p.action || ev.channel || "EMAIL"})`;
+                    description = `Sent via ${ev.channel || "EMAIL"} channel`;
+                  } else if (ev.event_type === "ActionCompleted" || ev.event_type === "EMAIL_SENT") {
+                    title = `Outreach Delivered Successfully`;
+                    description = p.subject ? `Subject: "${p.subject}"` : `Delivered to recipient inbox`;
+                  } else if (ev.event_type === "ActionFailed" || ev.event_type === "EMAIL_FAILED") {
+                    title = `Outreach Attempt Failed`;
+                    description = p.error || p.reason || "Action was blocked or rejected by mail server";
+                  } else if (ev.event_type === "LeadStateChanged") {
+                    title = `Lead Status Updated`;
+                    description = p.from_state && p.to_state ? `Moved from ${p.from_state} to ${p.to_state}` : "Lifecycle state updated";
+                  } else if (ev.event_type === "COMPANY_RESEARCHED") {
+                    title = `AI Company Research Completed`;
+                    description = p.summary || `Researched ${p.company || "lead"}`;
+                  } else if (ev.event_type === "ORCHESTRATOR_DECISION") {
+                    title = `Autonomous Engine Decision`;
+                    description = p.nextAction ? `Next action: ${p.nextAction}` : "Evaluated lead progression";
+                  }
+
+                  return (
+                    <div key={ev.id} className="flex items-start gap-4 text-xs border-l-2 border-primary/50 pl-4 py-2 hover:bg-muted/20 rounded-r-lg transition-colors">
+                      <div className="min-w-[140px] text-xs font-mono text-muted-foreground pt-0.5">
+                        {new Date(ev.created_at).toLocaleString()}
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-foreground text-sm">{title}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 font-bold rounded bg-muted text-muted-foreground uppercase font-mono">via {ev.channel}</span>
+                        </div>
+                        {description && (
+                          <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
             )}
           </div>
         </div>

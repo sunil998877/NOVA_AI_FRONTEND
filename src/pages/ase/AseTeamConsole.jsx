@@ -41,8 +41,13 @@ export default function AseTeamConsole() {
       setCallbacks(items);
       if (items.length > 0) {
         selectCallbackItem(items[0]);
+      } else {
+        setSelectedCallback(null);
+        setLeadDetail(null);
       }
-    } catch (_) {
+    } catch (err) {
+      toastError("Load Error", err.message || "Could not load the team console.");
+      setCallbacks([]);
     } finally {
       setLoading(false);
     }
@@ -75,7 +80,6 @@ export default function AseTeamConsole() {
 
   return (
     <div className="flex flex-col gap-4 max-w-7xl mx-auto w-full h-[calc(100vh-120px)] min-h-[600px]">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Salesperson Team Console</h1>
@@ -88,9 +92,7 @@ export default function AseTeamConsole() {
         </Button>
       </div>
 
-      {/* Three Panel Layout */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1 min-h-0">
-        {/* LEFT PANEL: Queue (3 cols) */}
         <Card className="md:col-span-3 flex flex-col min-h-0">
           <CardHeader className="py-3 px-4 border-b">
             <CardTitle className="text-sm font-semibold flex items-center justify-between">
@@ -99,6 +101,13 @@ export default function AseTeamConsole() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-2 flex-1 overflow-y-auto space-y-2">
+            {loading ? (
+              <p className="p-3 text-xs text-muted-foreground">Loading the handoff queue…</p>
+            ) : callbacks.length === 0 ? (
+              <p className="p-3 text-xs text-muted-foreground">
+                No leads are waiting for a salesperson. Interested leads and scheduled callbacks appear here.
+              </p>
+            ) : null}
             {callbacks.map((cb) => {
               const isSelected = selectedCallback?.id === cb.id;
               const isOverdue = cb.status === "OVERDUE";
@@ -123,7 +132,7 @@ export default function AseTeamConsole() {
                   <div className="text-[11px] text-muted-foreground truncate">{cb.lead_company}</div>
                   <div className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    Due: {new Date(cb.due_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    Due: {cb.due_at ? new Date(cb.due_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Unscheduled"}
                   </div>
                 </div>
               );
@@ -131,7 +140,6 @@ export default function AseTeamConsole() {
           </CardContent>
         </Card>
 
-        {/* CENTER PANEL: Lead Profile & Conversation Timeline (6 cols) */}
         <Card className="md:col-span-6 flex flex-col min-h-0">
           <CardHeader className="py-3 px-4 border-b flex flex-row items-center justify-between">
             <div>
@@ -179,13 +187,11 @@ export default function AseTeamConsole() {
           </CardContent>
         </Card>
 
-        {/* RIGHT PANEL: Context & Recommended Actions (3 cols) */}
         <Card className="md:col-span-3 flex flex-col min-h-0">
           <CardHeader className="py-3 px-4 border-b">
             <CardTitle className="text-sm font-semibold">Rep Actions</CardTitle>
           </CardHeader>
           <CardContent className="p-4 flex-1 overflow-y-auto space-y-4">
-            {/* Recommended Action */}
             <div className="p-3 rounded-lg border bg-primary/5 border-primary/30">
               <span className="text-[10px] font-bold text-primary block mb-1">
                 RECOMMENDED ACTION
@@ -198,7 +204,6 @@ export default function AseTeamConsole() {
               </p>
             </div>
 
-            {/* Rep Notes */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium">Call Notes</label>
               <Input
@@ -209,7 +214,6 @@ export default function AseTeamConsole() {
               />
             </div>
 
-            {/* Quick Disposition Buttons */}
             <div className="space-y-2 pt-2">
               <Button
                 size="sm"

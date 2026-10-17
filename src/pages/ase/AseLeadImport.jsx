@@ -86,20 +86,18 @@ export default function AseLeadImport() {
 
   return (
     <div className="flex flex-col gap-6 max-w-4xl mx-auto w-full">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Lead Import Wizard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Import Leads</h1>
           <p className="text-muted-foreground mt-1">
             Bulk ingest leads with automatic column mapping, deduplication, and DNC screening.
           </p>
         </div>
         <Button asChild variant="outline">
-          <Link to="/ase/leads">Exit Wizard</Link>
+          <Link to="/ase/leads">Back to Leads</Link>
         </Button>
       </div>
 
-      {/* Step Indicator */}
       <div className="grid grid-cols-5 gap-2 border-b pb-4">
         {STEPS.map((st, i) => (
           <div
@@ -117,7 +115,6 @@ export default function AseLeadImport() {
         ))}
       </div>
 
-      {/* STEP 1: Upload */}
       {currentStep === 1 && (
         <Card>
           <CardHeader>
@@ -155,7 +152,6 @@ export default function AseLeadImport() {
         </Card>
       )}
 
-      {/* STEP 2: Column Mapping */}
       {currentStep === 2 && (
         <Card>
           <CardHeader>
@@ -208,7 +204,6 @@ export default function AseLeadImport() {
         </Card>
       )}
 
-      {/* STEP 3: Validation */}
       {currentStep === 3 && (
         <Card>
           <CardHeader>
@@ -242,7 +237,6 @@ export default function AseLeadImport() {
         </Card>
       )}
 
-      {/* STEP 4: Duplicate Resolution */}
       {currentStep === 4 && (
         <Card>
           <CardHeader>
@@ -294,7 +288,6 @@ export default function AseLeadImport() {
         </Card>
       )}
 
-      {/* STEP 5: Summary */}
       {currentStep === 5 && summary && (
         <Card className="border-emerald-300 dark:border-emerald-800">
           <CardHeader>

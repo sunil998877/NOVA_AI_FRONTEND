@@ -145,7 +145,6 @@ export default function CsvExcelImportDialog({ open, onOpenChange, onSuccess }) 
           </div>
         </DialogHeader>
 
-        {/* Step progress pills */}
         <div className="grid grid-cols-4 gap-2 py-2 border-b text-xs">
           {[
             { num: 1, label: "Upload File" },
@@ -171,7 +170,6 @@ export default function CsvExcelImportDialog({ open, onOpenChange, onSuccess }) 
           ))}
         </div>
 
-        {/* STEP 1: Upload */}
         {step === 1 && (
           <div className="space-y-4 py-4">
             <div className="border-2 border-dashed border-muted-foreground/30 hover:border-primary/60 rounded-xl p-8 text-center transition-all bg-muted/10 hover:bg-muted/30">
@@ -218,7 +216,6 @@ export default function CsvExcelImportDialog({ open, onOpenChange, onSuccess }) 
           </div>
         )}
 
-        {/* STEP 2: Column Mapping */}
         {step === 2 && parsedData && (
           <div className="space-y-4 py-2">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 bg-muted/40 rounded-lg border text-xs">
@@ -291,7 +288,6 @@ export default function CsvExcelImportDialog({ open, onOpenChange, onSuccess }) 
               </Table>
             </div>
 
-            {/* Quick Preview Table */}
             <div className="space-y-1">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Live Data Preview (First 3 Rows)
@@ -333,7 +329,6 @@ export default function CsvExcelImportDialog({ open, onOpenChange, onSuccess }) 
           </div>
         )}
 
-        {/* STEP 3: Deduplication Strategy */}
         {step === 3 && (
           <div className="space-y-4 py-2">
             <div>
@@ -397,7 +392,6 @@ export default function CsvExcelImportDialog({ open, onOpenChange, onSuccess }) 
           </div>
         )}
 
-        {/* STEP 4: Summary */}
         {step === 4 && summary && (
           <div className="space-y-4 py-4 text-center">
             <div className="mx-auto w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 flex items-center justify-center">

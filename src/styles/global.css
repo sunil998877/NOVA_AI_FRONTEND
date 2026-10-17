@@ -96,6 +96,7 @@
   html {
     overflow-y: scroll !important;
     overflow-x: hidden !important;
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -105,7 +106,9 @@
     overflow-x: hidden !important;
     margin-right: 0px !important;
     padding-right: 0px !important;
+    width: 100% !important;
   }
+
 
   body[data-scroll-locked],
   body[style*="pointer-events"],

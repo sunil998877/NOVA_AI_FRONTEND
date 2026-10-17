@@ -23,7 +23,7 @@ export function LandingOverview({ dark, acc }) {
           <div style={{ marginTop: 35 }}>
             <img
               src="/landing/overview-dashboard.jpg"
-              alt="NOVA 3D AI Neural Core in brand coral-orange — holographic campaign analytics, 68.4% open rate, active campaigns, and live telemetry matching Open Dashboard theme"
+              alt="NOVA decision engine — next action probabilities for email, call, and wait"
               className="block h-auto w-full shadow-2xl transition hover:scale-[1.02] duration-300"
               style={{ objectFit: "contain", borderRadius: 40 }}
             />
@@ -36,7 +36,7 @@ export function LandingOverview({ dark, acc }) {
                 dark ? "text-slate-400" : "text-[#3d3d3d]"
               )}
             >
-              Open the dashboard and the numbers are already there. How many you sent, who opened, who clicked — no spreadsheet in sight. The next campaign lines up below, nearest first, so nothing sits in draft too long.
+              Open the console and the score is already there. Email, call, or wait, with the reason beside it. Consent, suppression, and attempt limits still stop a bad action before it leaves.
             </p>
             <ul className={cn("mt-8 space-y-5 text-[15px] sm:text-base", dark ? "text-slate-400" : "text-[#6b6b6b]")}>
               {[
