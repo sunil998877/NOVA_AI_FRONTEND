@@ -301,10 +301,30 @@ export const voiceApi = {
   callNumber: (body) => api("/api/engine/voice/call-number", { method: "POST", body }),
   triggerAutonomousCall: (body) => api("/api/engine/voice/autonomous-call", { method: "POST", body }),
   queueAutonomousCall: (body) => api("/api/engine/voice/queue-call", { method: "POST", body }),
+  getCallDetails: (id) => api(`/api/engine/voice/call/${id}`),
   runSchedulerCycle: () => api("/api/engine/voice/run-cycle", { method: "POST" }),
 };
 
 export const engineVoiceApi = voiceApi;
+
+export const senderAccountApi = {
+  list: (status = "") => api(`/api/sender-accounts${status ? `?status=${status}` : ""}`),
+  get: (id) => api(`/api/sender-accounts/${id}`),
+  create: (body) => api("/api/sender-accounts", { method: "POST", body }),
+  update: (id, body) => api(`/api/sender-accounts/${id}`, { method: "PATCH", body }),
+  remove: (id) => api(`/api/sender-accounts/${id}`, { method: "DELETE" }),
+  verify: (id) => api(`/api/sender-accounts/${id}/verify`, { method: "POST" }),
+  pause: (id) => api(`/api/sender-accounts/${id}/pause`, { method: "POST" }),
+  resume: (id) => api(`/api/sender-accounts/${id}/resume`, { method: "POST" }),
+};
+
+export const campaignEngineApi = {
+  dryRun: (campaignId) => api(`/api/campaigns/${campaignId}/dry-run`, { method: "POST" }),
+  pause: (campaignId) => api(`/api/campaigns/${campaignId}/pause`, { method: "POST" }),
+  resume: (campaignId) => api(`/api/campaigns/${campaignId}/resume`, { method: "POST" }),
+  cancel: (campaignId) => api(`/api/campaigns/${campaignId}/cancel`, { method: "POST" }),
+  deliveryStats: (campaignId) => api(`/api/campaigns/${campaignId}/delivery-stats`),
+};
 
 
 

@@ -294,11 +294,18 @@ export const aseService = {
   },
 
   async getCallbacks(params = {}) {
-    const res = await callbackApi.list(params);
-    if (res && Array.isArray(res.data)) {
-      return { items: res.data, stats: res.stats || { open_count: 0, overdue_count: 0, completed_count: 0 } };
+    try {
+      const res = await callbackApi.list(params);
+      if (res && Array.isArray(res.data)) {
+        return { items: res.data, stats: res.stats || { open_count: 0, overdue_count: 0, completed_count: 0 } };
+      }
+    } catch (_) { }
+    let list = [...MOCK_CALLBACKS];
+    if (params.status) list = list.filter((c) => c.status === params.status);
+    if (params.overdue) {
+      list = list.filter((c) => c.status === "OVERDUE" || (c.due_at && new Date(c.due_at).getTime() < Date.now()));
     }
-    return { items: [], stats: { open_count: 0, overdue_count: 0, completed_count: 0 } };
+    return { items: list, stats: { open_count: list.length, overdue_count: list.filter((c) => c.status === "OVERDUE").length, completed_count: 0 } };
   },
 
   async updateCallback(id, data) {
