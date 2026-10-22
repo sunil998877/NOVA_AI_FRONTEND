@@ -434,7 +434,7 @@ export default function AseLeadDetail() {
               {lead.next_action_time && (
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
                   <Clock className="w-3.5 h-3.5" />
-                  Scheduled: {new Date(lead.next_action_time).toLocaleString()}
+                  Scheduled: {new Date(lead.next_action_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "medium" })} IST
                 </div>
               )}
               <div className="flex items-center gap-2 pt-2">

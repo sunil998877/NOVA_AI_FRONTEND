@@ -27,8 +27,50 @@ function getEventDate(ev) {
   return isNaN(d.getTime()) ? new Date() : d;
 }
 
+function formatIndianDateTime(val) {
+  if (!val) return "";
+  const d = typeof val === "string" || typeof val === "number" ? new Date(val) : val;
+  if (!(d instanceof Date) || isNaN(d.getTime())) return String(val);
+
+  return (
+    d.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    }) + " IST"
+  );
+}
+
 function formatEventTime(d) {
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+  const dateObj = typeof d === "string" || typeof d === "number" ? new Date(d) : d;
+  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return "";
+  return dateObj.toLocaleTimeString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function isIsoDateString(val) {
+  if (typeof val !== "string") return false;
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val) && !isNaN(new Date(val).getTime());
+}
+
+function isDateKey(key) {
+  if (typeof key !== "string") return false;
+  const lower = key.toLowerCase();
+  return (
+    lower.includes("time") ||
+    lower.includes("date") ||
+    lower.endsWith("_at") ||
+    lower.endsWith("at")
+  );
 }
 
 function getDateKey(d) {
@@ -40,15 +82,16 @@ function getDateKey(d) {
 
 function formatDateGroupHeader(d) {
   const now = new Date();
-  const isSameDay = (d1, d2) =>
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate();
+  const isSameDay = (d1, d2) => {
+    const s1 = d1.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    const s2 = d2.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    return s1 === s2;
+  };
 
-  const yesterday = new Date();
-  yesterday.setDate(now.getDate() - 1);
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const formattedDate = d.toLocaleDateString("en-US", {
+  const formattedDate = d.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
     month: "long",
     day: "numeric",
     year: "numeric",
@@ -70,7 +113,10 @@ function formatDateGroupHeader(d) {
     };
   }
 
-  const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "long" });
+  const dayOfWeek = d.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    weekday: "long",
+  });
   const diffDays = Math.round((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
   const tone = diffDays <= 3 ? "rose" : "slate";
 
@@ -167,14 +213,35 @@ function normalizeEventDisplay(ev, lead = {}) {
   } else if (t === "ActionScheduled" || t === "OUTREACH_SCHEDULED") {
     type = "scheduled";
     title = `Outreach Scheduled (${p.action || channel || "EMAIL"})`;
-    badgeText = "Queued";
-    badgeClass = "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200/60";
-    primary = p.scheduled_time
-      ? `Queued for dispatch at ${formatEventTime(new Date(p.scheduled_time))}`
-      : "Queued by the Autonomous Engine";
+    const isPastDue = p.scheduled_time && new Date(p.scheduled_time) <= new Date();
+    const isCompleted = Boolean(lead.status && lead.status !== "NEW" && lead.status !== "QUEUED");
+
+    if (isCompleted) {
+      badgeText = "Completed";
+      badgeClass = "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300/60";
+      primary = p.scheduled_time
+        ? `Dispatched at ${formatEventTime(new Date(p.scheduled_time))}`
+        : "Outreach processed";
+      rightTop = "Cadence Queue";
+      rightBottom = "Status: Processed";
+    } else if (isPastDue) {
+      badgeText = "Due";
+      badgeClass = "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200/60";
+      primary = p.scheduled_time
+        ? `Ready for dispatch since ${formatEventTime(new Date(p.scheduled_time))}`
+        : "Due for dispatch";
+      rightTop = "Cadence Queue";
+      rightBottom = "Status: Ready";
+    } else {
+      badgeText = "Queued";
+      badgeClass = "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200/60";
+      primary = p.scheduled_time
+        ? `Queued for dispatch at ${formatEventTime(new Date(p.scheduled_time))}`
+        : "Queued by the Autonomous Engine";
+      rightTop = "Cadence Queue";
+      rightBottom = "Status: Pending";
+    }
     secondary = `Channel: ${p.action || channel || "EMAIL"}`;
-    rightTop = "Cadence Queue";
-    rightBottom = "Status: Pending";
   } else if (t === "LeadStateChanged" || t === "LEAD_STATE_CHANGED" || t === "LEAD_STATUS_UPDATED" || t === "LEAD_DEDUPLICATED") {
     type = "state_changed";
     title = "Lead Status Updated";
@@ -725,17 +792,51 @@ export default function UnifiedInteractionTimeline({ timeline = [], lead = {} })
                             </div>
 
                             {isExpanded && (
-                              <div className="mt-3 pt-3 border-t border-border/50 text-xs space-y-2">
+                              <div className="mt-3 pt-3 border-t border-border/50 text-xs space-y-2.5">
+                                <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground px-0.5">
+                                  <span className="font-semibold text-foreground/80">Event Details & Timetable</span>
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 font-semibold text-[10px]">
+                                    IST (Indian Standard Time, UTC+5:30)
+                                  </span>
+                                </div>
                                 {item.rawPayload && Object.keys(item.rawPayload).length > 0 && (
-                                  <div className="p-2.5 bg-muted/60 rounded-lg font-mono text-[11px] overflow-x-auto space-y-1 text-muted-foreground">
-                                    {Object.entries(item.rawPayload).map(([k, v]) => (
-                                      <div key={k} className="flex gap-2">
-                                        <span className="font-semibold text-foreground/70">{k}:</span>
-                                        <span className="text-foreground/90 truncate">
-                                          {typeof v === "object" ? JSON.stringify(v) : String(v)}
-                                        </span>
-                                      </div>
-                                    ))}
+                                  <div className="rounded-lg border border-border/70 bg-muted/30 overflow-hidden font-mono text-[11px] shadow-2xs">
+                                    <table className="w-full text-left border-collapse">
+                                      <tbody>
+                                        {Object.entries(item.rawPayload).map(([k, v], idx) => {
+                                          const isTime = isIsoDateString(v) || (isDateKey(k) && typeof v === "string" && !isNaN(new Date(v).getTime()));
+                                          return (
+                                            <tr
+                                              key={k}
+                                              className={idx % 2 === 0 ? "bg-muted/40" : "bg-transparent"}
+                                            >
+                                              <td className="py-2 px-3 font-semibold text-foreground/80 whitespace-nowrap w-1/3 border-b border-border/40 align-top">
+                                                {k}:
+                                              </td>
+                                              <td className="py-2 px-3 text-foreground/90 border-b border-border/40 break-all align-top">
+                                                {isTime ? (
+                                                  <div className="space-y-0.5">
+                                                    <div className="font-bold text-primary flex items-center gap-1.5 flex-wrap">
+                                                      <span>{formatIndianDateTime(v)}</span>
+                                                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-primary/10 text-primary font-sans font-semibold">
+                                                        IST
+                                                      </span>
+                                                    </div>
+                                                    <div className="text-[10px] text-muted-foreground font-mono">
+                                                      UTC: {new Date(v).toISOString()}
+                                                    </div>
+                                                  </div>
+                                                ) : typeof v === "object" ? (
+                                                  JSON.stringify(v)
+                                                ) : (
+                                                  String(v)
+                                                )}
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
                                   </div>
                                 )}
                               </div>
