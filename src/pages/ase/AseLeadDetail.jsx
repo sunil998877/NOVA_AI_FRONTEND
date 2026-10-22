@@ -26,6 +26,10 @@ import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
 import { voiceApi } from "../../lib/api";
 import { useAuth } from "../../lib/AuthContext";
+import UnifiedInteractionTimeline from "../../components/ase/UnifiedInteractionTimeline";
+import AiGeneratedEmailCard from "../../components/ase/AiGeneratedEmailCard";
+import LeadFollowUpSequenceCard from "../../components/ase/LeadFollowUpSequenceCard";
+import AssignedRepDropdown from "../../components/ase/AssignedRepDropdown";
 
 export default function AseLeadDetail() {
   const { id } = useParams();
@@ -51,7 +55,7 @@ export default function AseLeadDetail() {
       try {
         const res = await aseService.getLead(id);
         setData(res);
-      } catch {}
+      } catch { }
     }, 3000);
     return () => clearInterval(timer);
   }, [id, data?.lead?.metadata?.outreach_status, data?.lead?.metadata?.outreach_email?.subject]);
@@ -312,38 +316,18 @@ export default function AseLeadDetail() {
                   <span className="font-medium">{lead.company || "-"}</span>
                 </div>
                 <div>
-                  <span className="text-xs text-muted-foreground block">Source</span>
-                  <Badge variant="outline">{lead.source}</Badge>
+                  <span className="text-xs text-muted-foreground block mb-1">Source</span>
+                  <Badge variant="outline" className="h-8 px-3 rounded-full text-xs font-bold border-slate-200 dark:border-border inline-flex items-center">
+                    {lead.source}
+                  </Badge>
                 </div>
                 <div>
-                  <span className="text-xs text-muted-foreground block mb-1">Assigned Rep</span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <select
-                      className="text-xs font-medium bg-background border border-input rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
-                      value={lead.assigned_rep_id || ""}
-                      onChange={(e) => handleRepAssign(e.target.value ? Number(e.target.value) : null)}
-                      disabled={updating}
-                    >
-                      <option value="">Unassigned</option>
-                      {teamReps.map((rep) => (
-                        <option key={rep.id} value={rep.id}>
-                          {rep.fullName} {rep.role ? `(${rep.role})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    {user?.id && lead.assigned_rep_id !== user.id && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-[11px] h-7 px-2 text-primary hover:bg-primary/10"
-                        onClick={() => handleRepAssign(user.id)}
-                        disabled={updating}
-                        title="Assign to myself"
-                      >
-                        Claim
-                      </Button>
-                    )}
-                  </div>
+                  <AssignedRepDropdown
+                    value={lead.assigned_rep_id}
+                    reps={teamReps}
+                    onChange={handleRepAssign}
+                    disabled={updating}
+                  />
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground block">Attempts</span>
@@ -404,126 +388,11 @@ export default function AseLeadDetail() {
             </Card>
           )}
 
-          {lead.metadata?.outreach_email?.subject && (
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-primary" />
-                    Professional email
-                  </CardTitle>
-                  <Badge variant="outline" className="text-[10px]">Written from company research</Badge>
-                </div>
-                <CardDescription className="text-sm font-medium text-foreground">
-                  {lead.metadata.outreach_email.subject}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                  {lead.metadata.outreach_email.text}
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          <AiGeneratedEmailCard lead={lead} onLeadUpdated={fetchLead} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Activity className="w-4 h-4 text-primary" />
-                Unified Interaction Timeline ({timeline.length} events)
-              </CardTitle>
-              <CardDescription>
-                Chronological audit record of every email, voice call, outcome, and rep action.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {timeline.length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-4">No events logged yet.</p>
-                ) : (
-                  timeline.map((ev) => {
-                    const p = ev.payload || {};
-                    let title = ev.event_type;
-                    let description = null;
-                    let statusBadge = null;
+          <LeadFollowUpSequenceCard lead={lead} onUpdated={fetchLead} />
 
-                    if (ev.event_type === "ActionScheduled") {
-                      title = `Outreach Scheduled (${p.action || ev.channel || "EMAIL"})`;
-                      description = p.scheduled_for ? `Queued for dispatch at ${new Date(p.scheduled_for).toLocaleTimeString()}` : "Queued by the Autonomous Engine";
-                    } else if (ev.event_type === "ActionDispatched") {
-                      title = `Outreach Dispatched (${p.action || ev.channel || "EMAIL"})`;
-                      description = `Sent via ${ev.channel || "EMAIL"} channel to prospect`;
-                    } else if (ev.event_type === "ActionCompleted" || ev.event_type === "EMAIL_SENT") {
-                      title = `Outreach Delivered Successfully`;
-                      description = p.subject ? `Subject: "${p.subject}"` : `Delivered to recipient inbox`;
-                      statusBadge = <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-[10px]">Success</Badge>;
-                    } else if (ev.event_type === "ActionFailed" || ev.event_type === "EMAIL_FAILED") {
-                      title = `Outreach Attempt Failed`;
-                      description = p.error || p.reason || "Action was blocked or rejected by mail server";
-                      statusBadge = <Badge variant="destructive" className="text-[10px]">Failed</Badge>;
-                    } else if (ev.event_type === "LeadStateChanged") {
-                      title = `Lead Status Updated`;
-                      description = p.from_state && p.to_state ? `Moved from ${p.from_state} to ${p.to_state}` : "Lifecycle state changed";
-                    } else if (ev.event_type === "EMAIL_DRAFTED") {
-                      title = "Professional email written";
-                      description = p.subject ? `Subject: "${p.subject}"` : "Drafted from the company analysis";
-                    } else if (ev.event_type === "COMPANY_RESEARCHED") {
-                      title = `AI Company Research Completed`;
-                      description = p.summary || `Researched corporate profile for ${p.company || "lead"}`;
-                    } else if (ev.event_type === "ORCHESTRATOR_DECISION" || ev.event_type === "DECISION_EVALUATED") {
-                      title = `NOVA Brain Decision (${p.action || "NONE"})`;
-                      description = p.reasonSummary || (p.nextAction ? `Next action: ${p.nextAction}` : "Evaluated lead progression rules");
-                      if (p.isAssistedByMl) {
-                        statusBadge = <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px]">ML {Math.round((p.confidence || 0) * 100)}%</Badge>;
-                      } else {
-                        statusBadge = <Badge variant="outline" className="text-[10px]">Rules Baseline</Badge>;
-                      }
-                    } else if (ev.event_type === "ACTION_BLOCKED_BY_COMPLIANCE") {
-                      title = `Blocked by Compliance Guard`;
-                      description = p.reason || "Dispatch withheld by safety rules";
-                      statusBadge = <Badge variant="destructive" className="text-[10px]">Blocked</Badge>;
-                    }
-
-                    return (
-                      <div key={ev.id} className="flex items-start gap-3 border-l-2 border-primary/30 pl-4 py-2 text-xs">
-                        <div className="min-w-[125px] text-[11px] text-muted-foreground pt-0.5">
-                          {new Date(ev.created_at).toLocaleString([], {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-foreground text-xs">{title}</span>
-                            <Badge variant="outline" className="text-[10px] px-1 py-0">
-                              {ev.channel}
-                            </Badge>
-                            {statusBadge}
-                          </div>
-                          {description && (
-                            <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
-                          )}
-                          {(p.eventId || p.correlationId || p.error) && (
-                            <details className="text-[10px] text-muted-foreground cursor-pointer pt-0.5">
-                              <summary className="hover:text-foreground">Technical Log Details</summary>
-                              <div className="mt-1 p-2 bg-muted/60 rounded font-mono text-[10px] overflow-x-auto space-y-0.5">
-                                {p.eventId && <div>Event ID: {p.eventId}</div>}
-                                {p.correlationId && <div>Correlation: {p.correlationId}</div>}
-                                {p.error && <div className="text-destructive font-semibold">Error: {p.error}</div>}
-                                {p.reason && <div>Reason: {p.reason}</div>}
-                              </div>
-                            </details>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <UnifiedInteractionTimeline timeline={timeline} lead={lead} />
         </div>
 
         <div className="space-y-6">

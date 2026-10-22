@@ -5,7 +5,7 @@ import { useSocket } from "../context/SocketContext";
 export function useChat({
   conversationId,
   initialMessages = [],
-  senderType = "user", 
+  senderType = "user",
   senderName = "You",
   onNewMessage = null,
   onSyncNeeded = null,
@@ -34,7 +34,7 @@ export function useChat({
       if (!newMsg || String(newMsg.conversationId) !== String(conversationId)) return;
 
       setMessages((prev) => {
-      
+
         if (newMsg.tempId) {
           const existsByTemp = prev.some((m) => m.tempId === newMsg.tempId || m.id === newMsg.tempId);
           if (existsByTemp) {
@@ -44,7 +44,7 @@ export function useChat({
           }
         }
 
-    
+
         const existsById = prev.some((m) => String(m.id) === String(newMsg.id));
         if (existsById) return prev;
 
@@ -56,7 +56,7 @@ export function useChat({
       }
     };
 
-   
+
     const handleTypingStart = (data) => {
       if (String(data.conversationId) !== String(conversationId)) return;
       setIsOtherTyping(true);
@@ -76,7 +76,7 @@ export function useChat({
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
 
-  
+
     const handleMessagesRead = (data) => {
       if (String(data.conversationId) !== String(conversationId)) return;
       setMessages((prev) =>
@@ -84,7 +84,7 @@ export function useChat({
       );
     };
 
-  
+
     const handleReconnect = () => {
       socket.emit("joinConversation", { conversationId });
       if (typeof onSyncNeeded === "function") {
@@ -109,7 +109,7 @@ export function useChat({
     };
   }, [socket, conversationId, senderType, onNewMessage, onSyncNeeded]);
 
- 
+
   const sendMessage = useCallback(
     (text, messageType = "text") => {
       if (!text || !String(text).trim()) return null;
@@ -131,16 +131,16 @@ export function useChat({
         pending: true,
       };
 
-      
+
       setMessages((prev) => [...prev, optimisticMsg]);
 
-    
+
       if (socket && conversationId) {
         socket.emit("typing:stop", { conversationId });
         isTypingLocalRef.current = false;
       }
 
-     
+
       if (socket && socket.connected) {
         socket.emit(
           "sendMessage",
@@ -153,7 +153,7 @@ export function useChat({
           (err, response) => {
             if (err) {
               console.error("[useChat] Error sending message via socket:", err);
-              
+
               setMessages((prev) =>
                 prev.map((m) => (m.tempId === tempId ? { ...m, failed: true, pending: false } : m))
               );
@@ -171,7 +171,7 @@ export function useChat({
     [socket, conversationId, senderType, senderName]
   );
 
- 
+
   const handleTyping = useCallback(() => {
     if (!socket || !conversationId) return;
 
@@ -189,7 +189,7 @@ export function useChat({
     }, 2000);
   }, [socket, conversationId]);
 
- 
+
   const markAsRead = useCallback(() => {
     if (!socket || !conversationId) return;
     socket.emit("message:read", { conversationId });

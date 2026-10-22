@@ -278,6 +278,14 @@ export const aseService = {
     return { id, ...data };
   },
 
+  async draftLeadEmail(id, options = {}) {
+    try {
+      const res = await leadApi.draftEmail(id, options);
+      return res.data;
+    } catch (_) { }
+    return null;
+  },
+
   async getTeamReps() {
     try {
       const res = await leadApi.getReps();

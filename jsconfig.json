@@ -11,7 +11,9 @@
     "skipLibCheck": true,
     "noResolve": true,
     "types": [],
-    "typeRoots": ["./node_modules/@types"]
+    "typeRoots": [
+      "./node_modules/@types"
+    ]
   },
   "include": [
     "src"

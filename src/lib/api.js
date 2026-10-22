@@ -258,6 +258,7 @@ export const leadApi = {
   },
   get: (id) => api(`/api/leads/${id}`),
   update: (id, body) => api(`/api/leads/${id}`, { method: "PATCH", body }),
+  draftEmail: (id, body = {}) => api(`/api/leads/${id}/draft-email`, { method: "POST", body }),
   stats: () => api("/api/leads/stats"),
   getReps: () => api("/api/leads/team-reps"),
   create: (body) => api("/api/leads", { method: "POST", body }),
@@ -324,6 +325,49 @@ export const campaignEngineApi = {
   resume: (campaignId) => api(`/api/campaigns/${campaignId}/resume`, { method: "POST" }),
   cancel: (campaignId) => api(`/api/campaigns/${campaignId}/cancel`, { method: "POST" }),
   deliveryStats: (campaignId) => api(`/api/campaigns/${campaignId}/delivery-stats`),
+};
+
+export const followUpApi = {
+  listSequences: () => api("/api/follow-ups/sequences"),
+  createSequence: (body) => api("/api/follow-ups/sequences", { method: "POST", body }),
+  getSequence: (id) => api(`/api/follow-ups/sequences/${id}`),
+  updateSequence: (id, body) => api(`/api/follow-ups/sequences/${id}`, { method: "PATCH", body }),
+  deleteSequence: (id) => api(`/api/follow-ups/sequences/${id}`, { method: "DELETE" }),
+  listEnrollments: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.status) query.set("status", params.status);
+    if (params.limit) query.set("limit", String(params.limit));
+    if (params.offset) query.set("offset", String(params.offset));
+    return api(`/api/follow-ups/enrollments?${query}`);
+  },
+  getEnrollment: (id) => api(`/api/follow-ups/enrollments/${id}`),
+  enrollLead: (body) => api("/api/follow-ups/enrollments", { method: "POST", body }),
+  pauseEnrollment: (id, body = {}) => api(`/api/follow-ups/enrollments/${id}/pause`, { method: "PATCH", body }),
+  resumeEnrollment: (id) => api(`/api/follow-ups/enrollments/${id}/resume`, { method: "PATCH" }),
+  cancelEnrollment: (id, body = {}) => api(`/api/follow-ups/enrollments/${id}/cancel`, { method: "PATCH", body }),
+  stopEnrollment: (id, body = {}) => api(`/api/follow-ups/enrollments/${id}/stop`, { method: "PATCH", body }),
+  markReplyProcessed: (id) => api(`/api/follow-ups/enrollments/${id}/mark-processed`, { method: "PATCH" }),
+  listReplies: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.limit) query.set("limit", String(params.limit));
+    if (params.offset) query.set("offset", String(params.offset));
+    return api(`/api/follow-ups/replies?${query}`);
+  },
+  listBlockedTasks: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.limit) query.set("limit", String(params.limit));
+    if (params.offset) query.set("offset", String(params.offset));
+    return api(`/api/follow-ups/blocked-tasks?${query}`);
+  },
+  getLeadJourney: (leadId) => api(`/api/follow-ups/leads/${leadId}`),
+  previewTask: (id) => api(`/api/follow-ups/tasks/${id}/preview`),
+  updateTask: (id, body) => api(`/api/follow-ups/tasks/${id}`, { method: "PATCH", body }),
+  retryTask: (id) => api(`/api/follow-ups/tasks/${id}/retry`, { method: "POST" }),
+  getAutomationStatus: () => api("/api/follow-ups/automation/status"),
+  startAutomation: (body = {}) => api("/api/follow-ups/automation/start", { method: "POST", body }),
+  pauseAutomation: (body = {}) => api("/api/follow-ups/automation/pause", { method: "POST", body }),
+  resumeAutomation: (body = {}) => api("/api/follow-ups/automation/resume", { method: "POST", body }),
+  stopAutomation: (body = {}) => api("/api/follow-ups/automation/stop", { method: "POST", body }),
 };
 
 
