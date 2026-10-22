@@ -506,7 +506,7 @@ export default function Leads() {
                                 <span>{lead.next_action}</span>
                                 {lead.next_action_time && (
                                   <span className="text-[10px] text-muted-foreground">
-                                    ({new Date(lead.next_action_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})
+                                    ({new Date(lead.next_action_time).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })} IST)
                                   </span>
                                 )}
                               </div>
@@ -743,7 +743,7 @@ function LeadDetailModal({ open, onOpenChange, data, onRefresh }) {
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Engine Recommendation</span>
             <span className="text-sm font-bold text-violet-600 dark:text-violet-400 block">{lead.next_action || "Idle / Complete"}</span>
             <span className="text-xs text-muted-foreground font-mono block">
-              {lead.next_action_time ? new Date(lead.next_action_time).toLocaleString() : "No pending touch"}
+              {lead.next_action_time ? `${new Date(lead.next_action_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "medium" })} IST` : "No pending touch"}
             </span>
           </div>
 

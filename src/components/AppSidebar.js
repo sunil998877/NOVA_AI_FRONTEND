@@ -25,6 +25,7 @@ import {
   Database,
   ChevronUp,
   ChevronDown,
+  CalendarClock,
 } from "lucide-react";
 import {
   Sidebar,
@@ -80,6 +81,7 @@ const navGroups = [
     items: [
       { path: "/ase/dashboard", label: "Sales Overview", icon: LayoutDashboard },
       { path: "/ase/leads", label: "Lead Store", icon: Users },
+      { path: "/follow-ups", label: "Cold Follow-Ups", icon: CalendarClock },
       { path: "/ase/pipeline", label: "Pipeline Kanban", icon: PanelsTopLeft },
       { path: "/ase/calls", label: "Calling & Dialer", icon: PhoneCall },
       { path: "/ase/callbacks", label: "Callbacks Queue", icon: Flame },

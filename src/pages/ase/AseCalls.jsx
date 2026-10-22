@@ -34,6 +34,7 @@ import {
   Hash,
   Delete,
   Info,
+  ArrowUpRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -91,21 +92,25 @@ function formatCallDuration(seconds) {
 }
 
 function formatCallDisposition(val) {
-  if (!val) return "Completed";
+  if (!val) return "No Disposition";
   const s = String(val).trim();
   const lower = s.toLowerCase();
 
-  if (lower === "actiondispatched") return "Call Dispatched";
-  if (lower === "actioncompleted") return "Call Connected";
-  if (lower === "actionfailed") return "Call Failed";
-  if (lower.includes("ambiguous")) return "Ambiguous Outcome";
+  if (lower.includes("ring timeout") || lower.includes("timeout")) return "Ring Timeout Reached";
+  if (lower.includes("early media") || lower.includes("early_media")) return "Early Media Signal";
+  if (lower.includes("user_busy") || lower.includes("busy")) return "Line Busy";
+  if (lower.includes("no_answer") || lower.includes("no answer")) return "No Answer";
+  if (lower.includes("rejected") || lower.includes("call_rejected")) return "Call Rejected";
+  if (lower.includes("canceled") || lower.includes("cancelled")) return "Call Canceled";
   if (lower.includes("interested") && !lower.includes("not")) return "Interested";
   if (lower.includes("not_interested") || lower.includes("not interested")) return "Not Interested";
   if (lower.includes("callback")) return "Callback Requested";
   if (lower.includes("dnc") || lower.includes("do not call")) return "Do Not Call (DNC)";
-  if (lower.includes("no_answer") || lower.includes("no answer")) return "No Answer";
-  if (lower === "answer" || lower.includes("answered") || lower.includes("connected")) return "Answered / Connected";
-  if (lower.includes("normal hangup") || lower.includes("normal_clearing") || lower === "completed") return "Completed";
+  if (lower.includes("voicemail") || lower.includes("answering machine")) return "Voicemail Detected";
+  if (lower === "answer" || lower.includes("answered") || lower.includes("connected")) return "Call Connected";
+  if (lower.includes("normal hangup") || lower.includes("normal_clearing") || lower === "completed") return "Call Completed";
+  if (lower === "actiondispatched") return "Call Dispatched";
+  if (lower === "actionfailed") return "Call Failed";
 
   return s
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -131,23 +136,23 @@ function renderDispositionBadge(disposition) {
       </Badge>
     );
   }
-  if (lower.includes("answered") || lower.includes("connected")) {
+  if (lower.includes("connected")) {
     return (
       <Badge className="bg-blue-50 text-blue-700 border border-blue-200/90 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60 whitespace-nowrap text-xs px-2.5 py-0.5 font-semibold rounded-md shadow-none">
         {text}
       </Badge>
     );
   }
-  if (lower.includes("ambiguous")) {
+  if (lower.includes("not interested") || lower.includes("dnc") || lower.includes("rejected")) {
     return (
-      <Badge className="bg-purple-50 text-purple-700 border border-purple-200/90 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/60 whitespace-nowrap text-xs px-2.5 py-0.5 font-semibold rounded-md shadow-none">
+      <Badge className="bg-rose-50 text-rose-700 border border-rose-200/90 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60 whitespace-nowrap text-xs px-2.5 py-0.5 font-semibold rounded-md shadow-none">
         {text}
       </Badge>
     );
   }
-  if (lower.includes("not interested") || lower.includes("dnc") || lower.includes("failed")) {
+  if (lower.includes("timeout") || lower.includes("busy") || lower.includes("no answer") || lower.includes("early media")) {
     return (
-      <Badge className="bg-rose-50 text-rose-700 border border-rose-200/90 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60 whitespace-nowrap text-xs px-2.5 py-0.5 font-semibold rounded-md shadow-none">
+      <Badge variant="outline" className="bg-amber-50/50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800 whitespace-nowrap text-xs px-2.5 py-0.5 font-medium rounded-md shadow-none">
         {text}
       </Badge>
     );
@@ -159,23 +164,71 @@ function renderDispositionBadge(disposition) {
   );
 }
 
-function formatCallStatus(val) {
-  if (!val) return "Completed";
-  const s = String(val).trim();
-  const lower = s.toLowerCase();
+function renderStatusBadge(statusVal, isAnswered) {
+  const s = String(statusVal || "").toLowerCase().trim();
 
-  if (lower === "answered" || lower === "answer") return "Connected";
-  if (lower.includes("ambiguous")) return "Evaluated";
-  if (lower === "completed") return "Completed";
-  if (lower === "failed") return "Failed";
-  if (lower === "queued") return "Queued";
-  if (lower.includes("busy")) return "Busy";
-  if (lower.includes("no_answer") || lower.includes("no answer")) return "No Answer";
+  if (isAnswered || s === "answered" || s === "answer" || s === "in_progress" || s === "in-progress") {
+    return (
+      <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-xs px-2.5 py-1 font-semibold rounded-md inline-flex items-center gap-1.5 shadow-none">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        Connected
+      </Badge>
+    );
+  }
 
-  return s
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  if (s.includes("early_media") || s.includes("early media") || s.includes("early-media")) {
+    return (
+      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 text-xs px-2.5 py-1 font-medium rounded-md shadow-none">
+        Early Media
+      </Badge>
+    );
+  }
+
+  if (s.includes("timeout") || s.includes("ring_timeout")) {
+    return (
+      <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 text-xs px-2.5 py-1 font-medium rounded-md shadow-none">
+        Ring Timeout
+      </Badge>
+    );
+  }
+
+  if (s.includes("busy")) {
+    return (
+      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 text-xs px-2.5 py-1 font-medium rounded-md shadow-none">
+        Line Busy
+      </Badge>
+    );
+  }
+
+  if (s.includes("ringing")) {
+    return (
+      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 text-xs px-2.5 py-1 font-medium rounded-md shadow-none">
+        Ringing
+      </Badge>
+    );
+  }
+
+  if (s.includes("initiated") || s.includes("queued")) {
+    return (
+      <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800 text-xs px-2.5 py-1 font-medium rounded-md shadow-none">
+        Initiated
+      </Badge>
+    );
+  }
+
+  if (s.includes("failed") || s.includes("rejected")) {
+    return (
+      <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 text-xs px-2.5 py-1 font-medium rounded-md shadow-none">
+        Failed
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="outline" className="bg-muted/40 text-muted-foreground border-border text-xs px-2.5 py-1 font-medium rounded-md shadow-none">
+      Completed (Unanswered)
+    </Badge>
+  );
 }
 
 export default function AseCalls() {
@@ -212,6 +265,28 @@ export default function AseCalls() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [selectedCallDetails, setSelectedCallDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
+  const handleOpenDetails = async (call) => {
+    setSelectedCallDetails(call);
+    if (!call?.id) return;
+    setLoadingDetails(true);
+    try {
+      const res = await voiceApi.getCallDetails(call.id);
+      if (res?.data?.call) {
+        setSelectedCallDetails((prev) => ({
+          ...prev,
+          ...res.data.call,
+          webhookEvents: res.data.webhookEvents || [],
+          callback: res.data.callback || null,
+          lead: res.data.lead || null,
+        }));
+      }
+    } catch {
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
 
   const { success, error: toastError } = useToast();
 
@@ -342,66 +417,46 @@ export default function AseCalls() {
   };
 
   const combinedCalls = useMemo(() => {
-    const list = [];
+    const rawList = historyData.calls || historyData.plivoCalls || [];
+    return rawList.map((c) => {
+      const isAnswered = Boolean(c.is_answered || c.isAnswered || c.status === "ANSWERED" || c.call_state === "ANSWER");
+      const durationSec = Number(c.duration ?? c.duration_sec ?? c.call_duration ?? 0);
+      const costStr = c.cost !== null && c.cost !== undefined
+        ? (String(c.cost).startsWith("$") || c.cost === "Pending" ? c.cost : `$${Number(c.cost).toFixed(4)}`)
+        : (c.cost_status === "PENDING" ? "Pending" : "$0.0000");
 
-    (historyData.plivoCalls || []).forEach((pc) => {
-      const isAnswered = pc.call_state === "ANSWER";
-      const durationSec = Number(pc.call_duration || pc.billed_duration || 0);
-      list.push({
-        id: pc.call_uuid || `plivo_${Math.random()}`,
-        callUuid: pc.call_uuid,
-        source: "plivo",
-        direction: pc.call_direction || "outbound",
-        from: pc.from_number,
-        to: pc.to_number,
-        status: isAnswered ? "ANSWERED" : (pc.call_state || "COMPLETED"),
+      return {
+        id: c.id || c.call_uuid || `call_${Math.random()}`,
+        internalId: c.call_id || c.id,
+        callUuid: c.call_uuid || c.callUuid || c.provider_call_uuid,
+        source: c.initiation_source === "MANUAL" ? "manual" : (c.is_autonomous || c.isAutonomous ? "autonomous" : (c.source || "plivo")),
+        direction: c.call_type?.toLowerCase() || c.call_direction || "outbound",
+        from: c.from || c.from_number,
+        to: c.to || c.phone_number || c.to_number,
+        status: c.status || c.provider_status || (isAnswered ? "ANSWERED" : "COMPLETED"),
+        providerStatus: c.provider_status || c.call_state || c.status,
+        normalizedOutcome: c.normalized_outcome || c.normalizedOutcome || c.status,
         duration: durationSec,
-        cost: pc.total_amount ? `$${Number(pc.total_amount).toFixed(4)}` : "$0.0000",
-        rawCost: Number(pc.total_amount || 0),
-        timestamp: pc.initiation_time || pc.answer_time || pc.end_time || new Date().toISOString(),
-        disposition: isAnswered ? "Connected / Answered" : (pc.hangup_cause_name || "Completed"),
-        carrier: pc.to_number_carrier || null,
-        carrierType: pc.to_number_type || "Mobile",
-        isAutonomous: Boolean(pc.is_autonomous),
-        leadName: pc.lead_name || null,
-        leadId: pc.lead_id || null,
-        leadCompany: pc.lead_company || null,
-        leadEmail: pc.lead_email || null,
-        leadPriority: pc.lead_priority || null,
-        hangupCause: pc.hangup_cause_name || "NORMAL_CLEARING",
-      });
-    });
-
-    (historyData.leadCalls || []).forEach((lc) => {
-      const p = lc.payload || {};
-      const durationSec = Number(p.duration || 0);
-      list.push({
-        id: `event_${lc.id}`,
-        callUuid: p.callId || null,
-        source: "ase_engine",
-        direction: "outbound",
-        from: p.from || historyData.stats.fromNumber,
-        to: lc.lead_phone || p.phone || "Unknown",
-        status: p.status || lc.status || "COMPLETED",
-        duration: durationSec,
-        cost: p.cost ? `$${Number(p.cost).toFixed(4)}` : "$0.0000",
-        rawCost: Number(p.cost || 0),
-        timestamp: lc.created_at || new Date().toISOString(),
-        disposition: p.disposition || p.outcome || lc.event_type,
-        carrier: p.carrier || null,
-        carrierType: "Mobile",
-        isAutonomous: !p.manual,
-        leadName: lc.lead_name || null,
-        leadId: lc.lead_id || null,
-        leadCompany: lc.lead_company || null,
-        leadEmail: lc.lead_email || null,
-        leadPriority: lc.lead_priority || null,
-        prompt: p.prompt || null,
-        hangupCause: p.hangupCause || "Completed",
-      });
-    });
-
-    return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        billableDuration: Number(c.billable_duration || c.billable_duration_sec || c.billed_duration || 0),
+        cost: costStr,
+        rawCost: c.rawCost !== undefined ? c.rawCost : (c.total_amount ? Number(c.total_amount) : (c.cost && !isNaN(c.cost) ? Number(c.cost) : null)),
+        costStatus: c.cost_status || (costStr === "Pending" ? "PENDING" : "FINAL"),
+        timestamp: c.timestamp || c.answered_at || c.created_at || c.initiation_time || new Date().toISOString(),
+        disposition: c.disposition || c.business_disposition || c.hangup_cause_name || "Completed",
+        carrier: c.carrier || c.to_number_carrier || null,
+        carrierType: c.carrierType || c.to_number_type || "Mobile",
+        isAutonomous: Boolean(c.isAutonomous ?? c.is_autonomous ?? (c.initiation_source === "AUTONOMOUS_AI")),
+        isAnswered,
+        leadName: c.leadName || c.lead_name || null,
+        leadId: c.leadId || c.lead_id || null,
+        leadCompany: c.leadCompany || c.lead_company || null,
+        leadEmail: c.leadEmail || c.lead_email || null,
+        leadPriority: c.leadPriority || c.lead_priority || null,
+        hangupCause: c.hangupCause || c.hangup_cause || c.hangup_cause_name || "NORMAL_CLEARING",
+        failureReason: c.failureReason || c.failure_reason || null,
+        callbackId: c.callbackId || c.callback_id || null,
+      };
+    }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [historyData]);
 
   const filteredCalls = useMemo(() => {
@@ -413,13 +468,14 @@ export default function AseCalls() {
         (c.leadName && c.leadName.toLowerCase().includes(q)) ||
         (c.leadCompany && c.leadCompany.toLowerCase().includes(q)) ||
         (c.carrier && c.carrier.toLowerCase().includes(q)) ||
-        (c.disposition && c.disposition.toLowerCase().includes(q));
+        (c.disposition && c.disposition.toLowerCase().includes(q)) ||
+        (c.callUuid && c.callUuid.toLowerCase().includes(q));
 
       const matchesStatus =
         statusFilter === "all" ||
-        (statusFilter === "answered" && c.status === "ANSWERED") ||
-        (statusFilter === "completed" && c.status !== "ANSWERED" && c.status !== "FAILED") ||
-        (statusFilter === "failed" && c.status === "FAILED");
+        (statusFilter === "answered" && c.isAnswered) ||
+        (statusFilter === "completed" && !c.isAnswered && !c.status?.toLowerCase().includes("failed")) ||
+        (statusFilter === "failed" && (c.status?.toLowerCase().includes("failed") || c.status?.toLowerCase().includes("timeout") || c.status?.toLowerCase().includes("busy")));
 
       const matchesSource =
         sourceFilter === "all" ||
@@ -736,26 +792,19 @@ export default function AseCalls() {
                         </td>
 
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <Badge
-                            variant="outline"
-                            className={`text-xs px-2.5 py-1 font-semibold rounded-md border shadow-none ${
-                              call.status === "ANSWERED"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
-                                : "bg-muted/40 text-muted-foreground border-border"
-                            }`}
-                          >
-                            {formatCallStatus(call.status)}
-                          </Badge>
+                          {renderStatusBadge(call.status, call.isAnswered)}
                         </td>
 
                         <td className="px-4 py-4 whitespace-nowrap">
-                          {call.duration > 0 ? (
+                          {call.isAnswered && call.duration > 0 ? (
                             <div className="inline-flex items-center gap-1.5 font-semibold text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-md border border-emerald-200/80 dark:border-emerald-800/60 font-mono">
                               <Clock className="w-3 h-3" />
                               {formatCallDuration(call.duration)}
                             </div>
+                          ) : call.isAnswered ? (
+                            <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400 px-2 py-1 font-semibold">Connected (0s)</span>
                           ) : (
-                            <span className="font-mono text-xs text-muted-foreground/60 px-2 py-1">0s</span>
+                            <span className="font-mono text-xs text-muted-foreground/60 px-2 py-1">0s (Unanswered)</span>
                           )}
                         </td>
 
@@ -772,7 +821,9 @@ export default function AseCalls() {
                         </td>
 
                         <td className="px-4 py-4 font-mono text-xs font-semibold text-foreground whitespace-nowrap">
-                          {call.cost}
+                          <span className={call.cost === "Pending" ? "text-amber-600 dark:text-amber-400 font-sans text-xs italic" : ""}>
+                            {call.cost}
+                          </span>
                         </td>
 
                         <td className="px-4 py-4 whitespace-nowrap">
@@ -797,7 +848,7 @@ export default function AseCalls() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setSelectedCallDetails(call)}
+                              onClick={() => handleOpenDetails(call)}
                               className="h-8 text-xs font-medium px-2.5 hover:bg-muted border-border shadow-none"
                             >
                               <Info className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
@@ -1220,9 +1271,18 @@ export default function AseCalls() {
                         Direct Call
                       </Badge>
                     )}
+                    {selectedCallDetails.isAnswered ? (
+                      <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[11px] shadow-none">
+                        Confirmed Answer
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-muted text-muted-foreground text-[11px] shadow-none">
+                        Unanswered / Non-connected
+                      </Badge>
+                    )}
                   </h3>
                   <p className="text-xs text-muted-foreground font-mono">
-                    UUID: {selectedCallDetails.callUuid || selectedCallDetails.id}
+                    Provider UUID: {selectedCallDetails.callUuid || selectedCallDetails.provider_call_uuid || "Pending Provider Dispatch"} &bull; Internal ID: #{selectedCallDetails.id}
                   </p>
                 </div>
               </div>
@@ -1236,6 +1296,13 @@ export default function AseCalls() {
             </div>
 
             <div className="p-6 space-y-5 overflow-y-auto">
+              {loadingDetails && (
+                <div className="p-3 bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 rounded-lg text-xs flex items-center gap-2">
+                  <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                  Loading authoritative provider records and webhook audit log...
+                </div>
+              )}
+
               <div className="p-4 rounded-xl bg-muted/40 border border-border/80 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1243,10 +1310,13 @@ export default function AseCalls() {
                       {selectedCallDetails.leadName || "Direct Callee"}
                     </h4>
                     <p className="text-xs font-mono font-medium text-muted-foreground">
-                      {selectedCallDetails.to}
+                      {selectedCallDetails.to || selectedCallDetails.phone_number}
                     </p>
                   </div>
-                  {renderDispositionBadge(selectedCallDetails.disposition)}
+                  <div className="flex items-center gap-2">
+                    {renderStatusBadge(selectedCallDetails.status || selectedCallDetails.normalized_outcome || "")}
+                    {renderDispositionBadge(selectedCallDetails.disposition || selectedCallDetails.business_disposition || "")}
+                  </div>
                 </div>
 
                 {selectedCallDetails.leadCompany && (
@@ -1259,38 +1329,98 @@ export default function AseCalls() {
 
               <div>
                 <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                  Telephony Diagnostics & Network Telemetry
+                  Authoritative Telephony Diagnostics & Metrics
                 </h5>
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                   <div className="p-3 rounded-lg border border-border/80 bg-background space-y-1">
-                    <span className="text-muted-foreground block text-[11px]">Talk Duration</span>
+                    <span className="text-muted-foreground block text-[11px]">Conversation Duration</span>
                     <span className="font-bold font-mono text-sm text-foreground">
-                      {formatCallDuration(selectedCallDetails.duration)}
+                      {formatCallDuration(selectedCallDetails.duration ?? selectedCallDetails.duration_seconds ?? 0)}
                     </span>
                   </div>
 
                   <div className="p-3 rounded-lg border border-border/80 bg-background space-y-1">
-                    <span className="text-muted-foreground block text-[11px]">Billed Amount</span>
+                    <span className="text-muted-foreground block text-[11px]">Billable Duration</span>
+                    <span className="font-bold font-mono text-sm text-foreground">
+                      {formatCallDuration(selectedCallDetails.billable_duration_seconds ?? selectedCallDetails.duration ?? 0)}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-border/80 bg-background space-y-1">
+                    <span className="text-muted-foreground block text-[11px]">Provider Cost</span>
                     <span className="font-bold font-mono text-sm text-emerald-600 dark:text-emerald-400">
-                      {selectedCallDetails.cost}
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-lg border border-border/80 bg-background space-y-1">
-                    <span className="text-muted-foreground block text-[11px]">Network Carrier</span>
-                    <span className="font-semibold text-foreground">
-                      {selectedCallDetails.carrier || "Carrier Gateway"}
+                      {selectedCallDetails.cost || (selectedCallDetails.provider_cost ? `$${Number(selectedCallDetails.provider_cost).toFixed(4)}` : "Pending")}
                     </span>
                   </div>
 
                   <div className="p-3 rounded-lg border border-border/80 bg-background space-y-1">
                     <span className="text-muted-foreground block text-[11px]">Hangup Disposition</span>
-                    <span className="font-mono text-foreground font-medium">
-                      {selectedCallDetails.hangupCause}
+                    <span className="font-mono text-foreground font-medium truncate block">
+                      {selectedCallDetails.hangupCause || selectedCallDetails.hangup_cause || "Carrier Normal Clearing"}
                     </span>
                   </div>
                 </div>
               </div>
+
+              {selectedCallDetails.callback && (
+                <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" />
+                      Associated Callback Lifecycle Task
+                    </span>
+                    <Badge variant="outline" className="border-amber-500/40 text-amber-700 text-xs">
+                      {selectedCallDetails.callback.status || "REQUESTED"}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">SLA Status</span>
+                      <span className="font-medium text-foreground">{selectedCallDetails.callback.sla_status || "PENDING"}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Requested Due At</span>
+                      <span className="font-medium text-foreground">
+                        {selectedCallDetails.callback.requested_at ? new Date(selectedCallDetails.callback.requested_at).toLocaleString() : "As soon as possible"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Assigned Agent</span>
+                      <span className="font-medium text-foreground">{selectedCallDetails.callback.owner_name || "Autonomous Queue"}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedCallDetails.webhookEvents && selectedCallDetails.webhookEvents.length > 0 && (
+                <div>
+                  <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center justify-between">
+                    <span>Provider Webhook Audit Trail (Deduplicated)</span>
+                    <span className="text-muted-foreground text-[11px] font-mono">{selectedCallDetails.webhookEvents.length} events logged</span>
+                  </h5>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {selectedCallDetails.webhookEvents.map((evt, idx) => (
+                      <div key={evt.id || idx} className="p-2.5 rounded-lg border border-border/80 bg-background text-xs flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-foreground uppercase tracking-wide">{evt.event_type}</span>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              {evt.provider_status || "received"}
+                            </Badge>
+                          </div>
+                          <span className="text-[11px] font-mono text-muted-foreground">
+                            {evt.created_at ? new Date(evt.created_at).toLocaleTimeString() : ""} &bull; Fingerprint: {(evt.event_fingerprint || "").slice(0, 12)}...
+                          </span>
+                        </div>
+                        <div className="text-right font-mono text-[11px] text-muted-foreground">
+                          {evt.duration_seconds != null ? `${evt.duration_seconds}s` : ""}
+                          {evt.hangup_cause ? ` &bull; ${evt.hangup_cause}` : ""}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center justify-between">
@@ -1346,7 +1476,7 @@ export default function AseCalls() {
                 <Button
                   size="sm"
                   onClick={() => {
-                    setCustomPhone(selectedCallDetails.to);
+                    setCustomPhone(selectedCallDetails.to || selectedCallDetails.phone_number || "");
                     if (selectedCallDetails.leadName) setRecipientName(selectedCallDetails.leadName);
                     if (selectedCallDetails.leadId) setSelectedLeadId(String(selectedCallDetails.leadId));
                     setSelectedCallDetails(null);
