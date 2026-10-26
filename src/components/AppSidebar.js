@@ -26,6 +26,7 @@ import {
   ChevronUp,
   ChevronDown,
   CalendarClock,
+  BookOpen,
 } from "lucide-react";
 import {
   Sidebar,
@@ -89,6 +90,7 @@ const navGroups = [
       { path: "/ase/segments", label: "Segments", icon: Layers },
       { path: "/ase/reports", label: "ASE Reports", icon: ChartBar },
       { path: "/ase/compliance", label: "Compliance & DNC", icon: ShieldCheck },
+      { path: "/ase/playbook", label: "Sales Playbook", icon: BookOpen },
       { path: "/ase/settings", label: "ASE Settings", icon: Settings },
     ],
   },
