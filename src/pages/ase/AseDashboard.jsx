@@ -30,12 +30,16 @@ export default function AseDashboard() {
       try {
         const [m, cb, l] = await Promise.all([
           aseService.getDashboardMetrics(),
-          aseService.getCallbacks({ overdue: true }),
-          aseService.getLeads({ limit: 5 }),
+          aseService.getCallbacks({ overdue: true }).catch(() => ({ items: [] })),
+          aseService.getLeads({ limit: 50 }).catch(() => ({ items: [] })),
         ]);
         setMetrics(m);
         setCallbacks(cb.items || []);
-        setLeads(l.items || []);
+        setLeads(
+          [...(l.items || [])]
+            .sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0))
+            .slice(0, 5)
+        );
       } finally {
         setLoading(false);
       }
@@ -143,7 +147,7 @@ export default function AseDashboard() {
             <Phone className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{metrics.callConnectionRate}</div>
+            <div className="text-3xl font-bold">{metrics.callConnectionRate || "—"}</div>
             <p className="text-xs text-muted-foreground mt-1">Autonomous First Calls</p>
           </CardContent>
         </Card>

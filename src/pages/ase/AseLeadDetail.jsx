@@ -35,6 +35,7 @@ import UnifiedInteractionTimeline from "../../components/ase/UnifiedInteractionT
 import AiGeneratedEmailCard from "../../components/ase/AiGeneratedEmailCard";
 import LeadFollowUpSequenceCard from "../../components/ase/LeadFollowUpSequenceCard";
 import AssignedRepDropdown from "../../components/ase/AssignedRepDropdown";
+import LeadNextActionButtons from "../../components/ase/LeadNextActionButtons";
 
 const BRAIN_EVENT_TYPES = new Set([
   "NOVA_BRAIN_DECISION",
@@ -226,6 +227,7 @@ export default function AseLeadDetail() {
   const [updating, setUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [copiedField, setCopiedField] = useState(null);
+  const [loadError, setLoadError] = useState(null);
 
   const fetchLead = useCallback(async (isInitial = false) => {
     if (isInitial) {
@@ -234,9 +236,13 @@ export default function AseLeadDetail() {
     try {
       const res = await aseService.getLead(id);
       setData(res);
+      setLoadError(null);
       aseService.getLeadDecision(id).then((dRes) => setBrainDecision(dRes?.decision || null)).catch(() => { });
     } catch (err) {
-      if (isInitial) toastError("Error", "Could not load lead detail");
+      if (isInitial) {
+        setLoadError(err.message || "Could not load lead detail");
+        toastError("Error", "Could not load lead detail");
+      }
     } finally {
       setLoading(false);
     }
@@ -324,24 +330,9 @@ export default function AseLeadDetail() {
     }
   };
 
-  const handleExecuteNow = async () => {
-    if (!data?.lead) return;
-    try {
-      setUpdating(true);
-      const result = await aseService.executeAction(id);
-      const lag = Number(result?.elapsedMs);
-      success(
-        "Action Executed",
-        Number.isFinite(lag)
-          ? `Next action ran immediately in ${lag}ms (timing gates bypassed).`
-          : "Next action has been executed successfully."
-      );
-      await fetchLead();
-    } catch (err) {
-      toastError("Execution Failed", err.message || "Failed to execute next action.");
-    } finally {
-      setUpdating(false);
-    }
+  const handleHoldCadence = () => {
+    success("Holding cadence", "No email or call will go out for the next 24 hours unless you send it yourself.");
+    fetchLead();
   };
 
   const handleQuickCall = async () => {
@@ -370,8 +361,12 @@ export default function AseLeadDetail() {
     if (!data?.lead?.phone) return;
     try {
       setUpdating(true);
-      await voiceApi.triggerAutonomousCall({ leadId: Number(id) });
-      success("Autonomous Call Fired", `ASE Engine initiated voice call for ${data.lead.name || data.lead.email}`);
+      const res = await voiceApi.triggerAutonomousCall({ leadId: Number(id) });
+      if (res?.data?.queued) {
+        success("Queued for approval", "AI-Recommended mode will not dial until a rep clicks Approve & call.");
+      } else {
+        success("Autonomous Call Fired", `ASE Engine initiated voice call for ${data.lead.name || data.lead.email}`);
+      }
       await fetchLead();
     } catch (err) {
       toastError("Autonomous Call Failed", err.message || "Failed to trigger call.");
@@ -404,23 +399,32 @@ export default function AseLeadDetail() {
   }
 
   const { lead, timeline = [] } = data || {};
-  if (!lead) return null;
+  if (!lead) {
+    return (
+      <div className="p-8 text-center text-muted-foreground border border-dashed rounded-xl bg-card">
+        <p className="text-sm font-semibold">{loadError || "This lead could not be loaded."}</p>
+        <Link to="/ase/leads" className="mt-3 inline-block text-xs text-primary hover:underline">
+          Back to leads
+        </Link>
+      </div>
+    );
+  }
 
   const initials = getInitials(lead.name);
   const firstName = (lead.name || "this lead").trim().split(/\s+/)[0];
-  const locationText = lead.location || (lead.city ? `${lead.city}${lead.state ? `, ${lead.state}` : ""}` : "San Francisco, CA");
+  const locationText = lead.location || (lead.city ? `${lead.city}${lead.state ? `, ${lead.state}` : ""}` : "");
   const loggedDecision = getLatestLoggedDecision(timeline);
   const mlDecision = {
-    ...(brainDecision || {}),
     ...(loggedDecision || {}),
-    probabilities: loggedDecision?.probabilities || brainDecision?.probabilities,
-    rankedActions: loggedDecision?.rankedActions || loggedDecision?.ranked_actions || brainDecision?.rankedActions || brainDecision?.ranked_actions,
-    action: loggedDecision?.action
+    ...(brainDecision || {}),
+    probabilities: brainDecision?.probabilities || loggedDecision?.probabilities,
+    rankedActions: brainDecision?.rankedActions || brainDecision?.ranked_actions || loggedDecision?.rankedActions || loggedDecision?.ranked_actions,
+    action: lead.next_action
       || brainDecision?.action
       || brainDecision?.recommendedAction
-      || actionFromExplanation(loggedDecision?.reasonSummary || brainDecision?.explanation),
-    confidence: loggedDecision?.confidence ?? brainDecision?.confidence,
-    explanation: loggedDecision?.reasonSummary || loggedDecision?.explanation || brainDecision?.explanation,
+      || loggedDecision?.action,
+    confidence: brainDecision?.confidence ?? loggedDecision?.confidence,
+    explanation: brainDecision?.explanation || loggedDecision?.reasonSummary || loggedDecision?.explanation,
     conversionPrediction: brainDecision?.conversionPrediction,
     delayHours: brainDecision?.delayHours ?? loggedDecision?.delayHours,
     scheduledTime: brainDecision?.scheduledTime ?? loggedDecision?.scheduledTime,
@@ -434,34 +438,15 @@ export default function AseLeadDetail() {
   const emailPct = channel.email;
   const waitPct = channel.wait;
   const callPct = channel.call;
-  const winningChannel = !channel.hasData
-    ? "EMAIL"
-    : emailPct >= waitPct && emailPct >= callPct
-      ? "EMAIL"
-      : waitPct >= callPct
-        ? "WAIT"
-        : "CALL";
-  const recommendedAction = String(mlDecision.action || winningChannel || "WAIT").toUpperCase();
+  const recommendedAction = String(mlDecision.action || "WAIT").toUpperCase();
   const confidencePct = channel.hasData
-    ? (winningChannel === "EMAIL" ? emailPct : winningChannel === "WAIT" ? waitPct : callPct)
+    ? (recommendedAction === "EMAIL" ? emailPct : recommendedAction === "WAIT" ? waitPct : recommendedAction === "CALL" ? callPct : Math.round(Number(mlDecision.confidence || 0) * (Number(mlDecision.confidence) > 1 ? 1 : 100)))
     : Math.round(Number(mlDecision.confidence != null ? mlDecision.confidence : 0) * (Number(mlDecision.confidence) > 1 ? 1 : 100));
   const conversionSource = mlDecision.conversionPrediction?.probability ?? loggedDecision?.conversionProbability;
   const rawConversion = conversionSource != null
     ? (Number(conversionSource) > 1 ? Number(conversionSource) / 100 : Number(conversionSource))
-    : 0.02;
-  const conversionNeedsLift = rawConversion <= 0.04 && ["INTERESTED", "CALLBACK_SCHEDULED", "QUALIFIED", "ENGAGED"].includes(String(lead.status || "").toUpperCase());
-  const conversionFraction = conversionNeedsLift
-    ? Math.min(
-        0.85,
-        Math.max(
-          0.08,
-          rawConversion
-            + (String(lead.status).toUpperCase() === "QUALIFIED" || String(lead.status).toUpperCase() === "CALLBACK_SCHEDULED" ? 0.16 : String(lead.status).toUpperCase() === "ENGAGED" ? 0.06 : 0.10)
-            + (recommendedAction === "EMAIL" ? 0.045 * Math.max(emailPct / 100, 0.35) : recommendedAction === "CALL" ? 0.035 * Math.max(callPct / 100, 0.35) : -0.012 * Math.max(waitPct / 100, 0.4))
-        )
-      )
-    : rawConversion;
-  const conversionProb = (conversionFraction * 100).toFixed(1);
+    : 0;
+  const conversionProb = (rawConversion * 100).toFixed(1);
   const conversionTone = Number(conversionProb) >= 20
     ? "Promising — prioritize"
     : Number(conversionProb) >= 8
@@ -479,28 +464,24 @@ export default function AseLeadDetail() {
     ? "Start an AI voice call"
     : recommendedAction === "WAIT"
       ? "Wait before the next touch"
-      : "Send a follow-up email";
+      : recommendedAction === "REP_CALLBACK"
+        ? "Human callback is queued"
+        : "Send a follow-up email";
   const recommendedBody = mlDecision.explanation
     || (recommendedAction === "WAIT"
       ? `The model selected wait for ${firstName}. Email and call are weaker than holding the cadence.`
       : recommendedAction === "CALL"
         ? `A voice call is the strongest channel for ${firstName} right now.`
-        : `Email is the strongest channel for ${firstName} right now. Her follow-up cadence is active, and a call is unlikely to land.`);
+        : recommendedAction === "REP_CALLBACK"
+          ? `A salesperson should call ${firstName} back. Autonomous outreach is paused.`
+          : `Email is the strongest channel for ${firstName} right now.`);
 
   const tabs = [
     { id: "overview", label: "Overview", icon: LayoutGrid },
     { id: "timeline", label: "Interaction Timeline", icon: Clock },
     { id: "sequence", label: "Follow-Up Sequence", icon: Send },
     { id: "insights", label: "AI Insights", icon: Sparkles },
-    { id: "notes", label: "Notes (0)", icon: FileText },
-    { id: "tasks", label: "Tasks (0)", icon: CheckSquare },
-    { id: "meetings", label: "Meetings (0)", icon: Calendar },
-    { id: "files", label: "Files (0)", icon: Paperclip },
   ];
-
-  const reasonList = brainDecision?.reasonCodes && brainDecision.reasonCodes.length > 0
-    ? brainDecision.reasonCodes
-    : ["ML_MODEL_DECISION", "FOLLOW_UP_CADENCE_ACTIVE", "AI_RECOMMENDATION"];
 
   return (
     <div className="flex flex-col gap-4 w-full min-w-0">
@@ -517,22 +498,24 @@ export default function AseLeadDetail() {
               <span className="inline-flex items-center rounded-full bg-[#dcfce7] dark:bg-emerald-950/40 px-3 py-0.5 text-xs font-medium text-[#15803d] dark:text-emerald-400">
                 {lead.status === "INTERESTED" ? "Interested" : lead.status?.replace(/_/g, " ")?.toLowerCase()?.replace(/^\w/, (c) => c.toUpperCase())}
               </span>
+              {!["CLOSED_WON", "CLOSED_LOST", "CLOSED_UNQUALIFIED", "SUPPRESSED_DNC"].includes(String(lead.status || "").toUpperCase()) && (
+                <span className="inline-flex items-center rounded-full bg-[#f1f3f5] dark:bg-muted px-3 py-0.5 text-xs font-medium text-[#4b5563] dark:text-muted-foreground">
+                  Active
+                </span>
+              )}
               <span className="inline-flex items-center rounded-full bg-[#f1f3f5] dark:bg-muted px-3 py-0.5 text-xs font-medium text-[#4b5563] dark:text-muted-foreground">
-                Active
-              </span>
-              <span className="inline-flex items-center rounded-full bg-[#f1f3f5] dark:bg-muted px-3 py-0.5 text-xs font-medium text-[#4b5563] dark:text-muted-foreground">
-                Priority {lead.priority ?? 90}
+                Priority {lead.priority ?? "—"}
               </span>
             </div>
             <div className="mt-1.5 flex items-center gap-x-5 gap-y-1 text-sm text-gray-600 dark:text-muted-foreground flex-wrap">
               {lead.company && <span className="font-normal">{lead.company}</span>}
               {lead.email && (
-                <a href={`mailto:${lead.email}`} className="underline hover:text-gray-900 dark:hover:text-foreground">
+                <a href={`mailto:${lead.email}`} className="hover:text-gray-900 dark:hover:text-foreground">
                   {lead.email}
                 </a>
               )}
               {lead.phone && (
-                <a href={`tel:${lead.phone}`} className="underline hover:text-gray-900 dark:hover:text-foreground">
+                <a href={`tel:${lead.phone}`} className="hover:text-gray-900 dark:hover:text-foreground">
                   {lead.phone}
                 </a>
               )}
@@ -599,36 +582,46 @@ export default function AseLeadDetail() {
                 RECOMMENDED NEXT STEP
               </span>
               <span className="text-xs text-gray-500 dark:text-muted-foreground font-normal">
-                AI-assisted · {Number.isFinite(confidencePct) ? confidencePct : 98}% confidence
+                {data?.operatingMode === "AI_RECOMMENDED"
+                  ? "Needs approval"
+                  : data?.operatingMode === "HUMAN_ESCALATION"
+                    ? "Human escalation"
+                    : "Fully automated"}
+                {" · "}
+                {Number.isFinite(confidencePct) ? confidencePct : 98}% confidence
               </span>
+              {data?.pendingApproval?.status === "PENDING" && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-amber-100 text-amber-800">
+                  Pending approval
+                </span>
+              )}
             </div>
             <h2 className="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-foreground">
               {recommendedTitle}
             </h2>
-            <div className="mt-3.5 flex items-center gap-2.5 flex-wrap">
-              <button
-                type="button"
-                disabled={updating || lead.do_not_contact}
-                onClick={handleExecuteNow}
-                className="px-4 py-2 rounded-xl bg-[#c2410c] hover:bg-[#9a3412] text-white text-xs sm:text-sm font-semibold shadow-xs disabled:opacity-50 transition-colors"
-              >
-                {recommendedAction === "CALL" ? "Start AI voice call" : recommendedAction === "WAIT" ? "Hold for now" : "Send follow-up email"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("overview")}
-                className="px-4 py-2 rounded-xl border border-gray-300 dark:border-border bg-white dark:bg-card text-xs sm:text-sm font-medium text-gray-800 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50 shadow-xs transition-colors"
-              >
-                Preview draft
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("insights")}
-                className="text-xs sm:text-sm font-medium text-gray-600 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground underline underline-offset-4 ml-1 cursor-pointer transition-colors"
-              >
-                Choose another action
-              </button>
-            </div>
+            <LeadNextActionButtons
+              leadId={lead.id}
+              recommendedAction={recommendedAction}
+              operatingMode={data?.operatingMode}
+              pendingApproval={data?.pendingApproval}
+              doNotContact={lead.do_not_contact}
+              updating={updating}
+              onBusy={setUpdating}
+              onHold={handleHoldCadence}
+              onPreview={() => setActiveTab("overview")}
+              onExecuted={async () => {
+                success(
+                  data?.operatingMode === "AI_RECOMMENDED" ? "Approved" : "Action Executed",
+                  data?.operatingMode === "AI_RECOMMENDED"
+                    ? "Approved action is running now."
+                    : "Next action has been executed."
+                );
+                await fetchLead();
+              }}
+              onOpenCallbacks={() => navigate("/ase/callbacks")}
+              onChooseAnother={() => setActiveTab("insights")}
+              onError={(err) => toastError("Execution Failed", err.message || "Failed to run next action.")}
+            />
 
             <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
               <div className="rounded-xl bg-gray-50/80 dark:bg-muted/40 p-2.5 border border-gray-100 dark:border-border/60">
@@ -662,12 +655,11 @@ export default function AseLeadDetail() {
             <div className="border-t border-gray-100 dark:border-border/60 mb-3" />
             <div className="flex items-center gap-2.5 flex-wrap text-xs sm:text-sm">
               <span className="font-bold text-gray-900 dark:text-foreground">Why this?</span>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-muted text-gray-600 dark:text-muted-foreground">
-                Model decision
-              </span>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-muted text-gray-600 dark:text-muted-foreground">
-                Follow-up cadence active
-              </span>
+              {(brainDecision?.reasonCodes?.length ? brainDecision.reasonCodes : ["Model decision"]).slice(0, 3).map((code) => (
+                <span key={code} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-muted text-gray-600 dark:text-muted-foreground">
+                  {String(code).replace(/_/g, " ")}
+                </span>
+              ))}
             </div>
           </div>
         </div>
@@ -697,32 +689,23 @@ export default function AseLeadDetail() {
             </div>
             <div className="mt-2 space-y-2">
               {[
-                { key: "EMAIL", label: "Email", value: emailPct },
-                { key: "WAIT", label: "Wait", value: waitPct },
-                { key: "CALL", label: "AI voice call", value: callPct },
+                { key: "EMAIL", label: "Email", value: emailPct, bar: "bg-[#2563eb]", text: "text-[#2563eb]" },
+                { key: "WAIT", label: "Wait", value: waitPct, bar: "bg-[#d97706]", text: "text-[#d97706]" },
+                { key: "CALL", label: "AI voice call", value: callPct, bar: "bg-[#7c3aed]", text: "text-[#7c3aed]" },
               ].map((row) => {
-                const isWinner = winningChannel === row.key && channel.hasData;
+                const isWinner = recommendedAction === row.key && channel.hasData;
                 return (
                   <div key={row.key}>
-                    <div className={`flex items-center justify-between text-xs ${isWinner ? "font-semibold text-gray-800 dark:text-foreground" : "font-normal text-gray-600 dark:text-muted-foreground"}`}>
+                    <div className={`flex items-center justify-between text-xs ${isWinner ? `font-semibold ${row.text}` : "font-normal text-gray-600 dark:text-muted-foreground"}`}>
                       <span>{row.label}</span>
-                      <span className={isWinner ? "font-bold text-gray-900 dark:text-foreground" : ""}>{row.value}%</span>
+                      <span className={isWinner ? `font-bold ${row.text}` : ""}>{row.value}%</span>
                     </div>
-                    {isWinner ? (
-                      <div className="mt-1 h-1.5 w-full bg-gray-100 dark:bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-[#c2410c]"
-                          style={{ width: `${Math.max(2, Math.min(100, row.value))}%` }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="mt-1 h-1 w-full bg-gray-100 dark:bg-muted rounded-full relative">
-                        <div
-                          className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-[#475569]"
-                          style={{ left: `calc(${Math.max(0, Math.min(100, row.value))}% - 3px)` }}
-                        />
-                      </div>
-                    )}
+                    <div className="mt-1 h-1.5 w-full bg-gray-100 dark:bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${row.bar}`}
+                        style={{ width: `${Math.max(row.value > 0 ? 2 : 0, Math.min(100, row.value))}%` }}
+                      />
+                    </div>
                   </div>
                 );
               })}
@@ -791,7 +774,7 @@ export default function AseLeadDetail() {
                 </div>
                 <div className="min-w-0">
                   <span className="text-[11px] font-medium text-muted-foreground block">Company</span>
-                  <span className="text-xs font-bold text-foreground truncate block">{lead.company || "BrightPath Analytics"}</span>
+                  <span className="text-xs font-bold text-foreground truncate block">{lead.company || "—"}</span>
                 </div>
               </div>
               {lead.company_domain ? (
@@ -820,7 +803,7 @@ export default function AseLeadDetail() {
                 </div>
                 <div className="min-w-0">
                   <span className="text-[11px] font-medium text-muted-foreground block">Phone</span>
-                  <span className="text-xs font-bold text-foreground font-mono block">{lead.phone || "+91 9000012004"}</span>
+                  <span className="text-xs font-bold text-foreground font-mono block">{lead.phone || "—"}</span>
                 </div>
               </div>
               {lead.phone && (
@@ -875,9 +858,13 @@ export default function AseLeadDetail() {
                   className="appearance-none bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 rounded-full pl-6 pr-8 py-1.5 text-xs font-bold cursor-pointer focus:outline-none shadow-2xs"
                 >
                   <option value="NEW">New</option>
+                  <option value="QUEUED">Queued</option>
                   <option value="CONTACTED">Contacted</option>
                   <option value="ENGAGED">Engaged</option>
                   <option value="INTERESTED">Interested</option>
+                  <option value="CALLBACK_SCHEDULED">Callback scheduled</option>
+                  <option value="NO_RESPONSE">No response</option>
+                  <option value="SUPPRESSED_DNC">Do not contact</option>
                   <option value="CLOSED_WON">Closed Won</option>
                   <option value="CLOSED_LOST">Closed Lost</option>
                 </select>

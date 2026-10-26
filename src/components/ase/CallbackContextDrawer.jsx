@@ -144,7 +144,7 @@ export function CallbackContextDrawer({ callback, leadId, isOpen, onClose }) {
 
   useEffect(() => {
     if (!isOpen) return;
-    const targetId = leadId || callback?.lead_id || callback?.id;
+    const targetId = leadId || callback?.lead_id;
     if (!targetId) return;
 
     let isMounted = true;
@@ -329,7 +329,7 @@ export function CallbackContextDrawer({ callback, leadId, isOpen, onClose }) {
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="p-2.5 rounded-lg bg-muted/50 border border-border/40">
                     <span className="block text-lg font-bold text-foreground">
-                      {lead.touch_count ?? (lead.email_count || 0) + (lead.call_count || 0)}
+                      {lead.touch_count ?? Number(lead.attempt_counters?.total || (lead.attempt_counters?.email || 0) + (lead.attempt_counters?.voice || 0))}
                     </span>
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
                       Total Touches
@@ -337,7 +337,7 @@ export function CallbackContextDrawer({ callback, leadId, isOpen, onClose }) {
                   </div>
                   <div className="p-2.5 rounded-lg bg-muted/50 border border-border/40">
                     <span className="block text-lg font-bold text-foreground">
-                      {lead.email_count ?? 0}
+                      {lead.email_count ?? lead.attempt_counters?.email ?? 0}
                     </span>
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
                       Emails Sent
@@ -345,7 +345,7 @@ export function CallbackContextDrawer({ callback, leadId, isOpen, onClose }) {
                   </div>
                   <div className="p-2.5 rounded-lg bg-muted/50 border border-border/40">
                     <span className="block text-lg font-bold text-foreground">
-                      {lead.call_count ?? 0}
+                      {lead.call_count ?? lead.attempt_counters?.voice ?? 0}
                     </span>
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
                       Call Attempts

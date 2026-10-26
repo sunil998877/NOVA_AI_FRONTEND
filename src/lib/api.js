@@ -272,6 +272,24 @@ export const leadApi = {
   getBrainStatus: () => api("/api/leads/brain/status"),
   setBrainMode: (mode) => api("/api/leads/brain/mode", { method: "POST", body: { mode } }),
   getBrainEvaluation: () => api("/api/leads/brain/evaluation"),
+  getOperatingMode: () => api("/api/ase/operating-mode"),
+  setOperatingMode: (mode) => api("/api/ase/operating-mode", { method: "PUT", body: { mode } }),
+  getReports: () => api("/api/leads/reports"),
+};
+
+export const aseOperatingApi = {
+  getMode: () => api("/api/ase/operating-mode"),
+  setMode: (mode) => api("/api/ase/operating-mode", { method: "PUT", body: { mode } }),
+  listApprovals: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.status) query.set("status", params.status);
+    if (params.lead_id) query.set("lead_id", String(params.lead_id));
+    if (params.limit) query.set("limit", String(params.limit));
+    return api(`/api/ase/approvals?${query}`);
+  },
+  getLeadApproval: (leadId) => api(`/api/ase/approvals/lead/${leadId}`),
+  approveLead: (leadId, body = {}) => api(`/api/ase/approvals/lead/${leadId}/approve`, { method: "POST", body }),
+  holdLead: (leadId) => api(`/api/ase/approvals/lead/${leadId}/hold`, { method: "POST" }),
 };
 
 export const callbackApi = {

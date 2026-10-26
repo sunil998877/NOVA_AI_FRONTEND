@@ -17,6 +17,7 @@ import {
   X,
   Webhook,
   FileSpreadsheet,
+  RefreshCw,
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Button } from "../../components/ui/button";
@@ -149,6 +150,16 @@ export default function AseLeads() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => fetchLeads(currentPage)}
+            disabled={loading}
+            title="Refresh leads"
+            aria-label="Refresh leads"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
           <Button variant="outline" onClick={() => setApiWebhookOpen(true)}>
             <Webhook className="w-4 h-4 mr-2 text-purple-600" /> API / Webhook
           </Button>

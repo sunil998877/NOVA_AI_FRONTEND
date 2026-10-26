@@ -25,7 +25,7 @@ import { Button } from "../ui/button";
 function getEventDate(ev) {
   const ts = ev.created_at || ev.timestamp || ev.payload?.timestamp || ev.payload?.recordedAt;
   const d = new Date(ts);
-  return isNaN(d.getTime()) ? new Date() : d;
+  return isNaN(d.getTime()) ? null : d;
 }
 
 function formatIndianDateTime(val) {
@@ -75,6 +75,7 @@ function isDateKey(key) {
 }
 
 function getDateKey(d) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "unknown";
   return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
@@ -131,6 +132,9 @@ function formatCadenceLine(steps) {
 }
 
 function formatDateGroupHeader(d) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) {
+    return { label: "Unknown date", sub: "" };
+  }
   const now = new Date();
   const isSameDay = (d1, d2) => {
     const s1 = d1.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
@@ -264,7 +268,7 @@ function normalizeEventDisplay(ev, lead = {}, followUpTasks = []) {
     type = "scheduled";
     title = `Outreach Scheduled (${p.action || channel || "EMAIL"})`;
     const isPastDue = p.scheduled_time && new Date(p.scheduled_time) <= new Date();
-    const isCompleted = Boolean(lead.status && lead.status !== "NEW" && lead.status !== "QUEUED");
+    const isCompleted = Boolean(p.status === "SUCCEEDED" || p.dispatched || p.completed);
 
     if (isCompleted) {
       badgeText = "Completed";
@@ -392,8 +396,9 @@ function normalizeEventDisplay(ev, lead = {}, followUpTasks = []) {
     );
     const cadenceLine = formatCadenceLine(cadenceSteps);
     const firstDate = formatFollowUpCalendarDate(cadenceSteps[0]?.scheduledAt || p.firstScheduledAt);
+    const firstDay = cadenceSteps[0]?.dayOffset ?? p.scheduledSteps?.[0]?.dayOffset ?? 2;
     primary = cadenceLine || "Date-wise cadence: Day 2, Day 7, Day 14, Day 28, Day 42";
-    secondary = firstDate ? `Day 2 first touch: ${firstDate}` : "Automated multi-touch outreach";
+    secondary = firstDate ? `Day ${firstDay} first touch: ${firstDate}` : "Automated multi-touch outreach";
     rightTop = `Enrollment #${p.enrollmentId || ""}`;
     rightBottom = "Follow-Up Engine";
   } else if (t === "FOLLOW_UP_TOUCH_SCHEDULED") {
@@ -520,7 +525,8 @@ function normalizeEventDisplay(ev, lead = {}, followUpTasks = []) {
     primary = enrolledLine || (p.enrollmentId || p.enrollment_id
       ? `Enrolled in automated cadence (Enrollment #${p.enrollmentId || p.enrollment_id})`
       : "Enrolled in automated cadence");
-    secondary = enrolledFirst ? `Day 2 first touch: ${enrolledFirst}` : "Cadence scheduled relative to initial email";
+    const enrolledDay = enrolledSteps[0]?.dayOffset ?? p.scheduledSteps?.[0]?.dayOffset ?? 2;
+    secondary = enrolledFirst ? `Day ${enrolledDay} first touch: ${enrolledFirst}` : "Cadence scheduled relative to initial email";
     rightTop = "Follow-Up Engine";
     rightBottom = `Enrolled at: ${timeFormatted}`;
   } else {
@@ -688,9 +694,7 @@ export default function UnifiedInteractionTimeline({ timeline = [], lead = {} })
   }, [lead?.id]);
 
   const uniqueTimeline = useMemo(() => {
-    const source = (Array.isArray(timeline) ? timeline : []).filter(
-      (item) => item?.event_type !== "FOLLOW_UP_TOUCH_SCHEDULED"
-    );
+    const source = Array.isArray(timeline) ? timeline : [];
     const seen = new Set();
     const result = [];
     for (const item of source) {
@@ -706,7 +710,7 @@ export default function UnifiedInteractionTimeline({ timeline = [], lead = {} })
   const groups = useMemo(() => {
     const map = new Map();
     const sorted = [...uniqueTimeline].sort(
-      (a, b) => getEventDate(b).getTime() - getEventDate(a).getTime()
+      (a, b) => (getEventDate(b)?.getTime() || 0) - (getEventDate(a)?.getTime() || 0)
     );
 
     for (const ev of sorted) {

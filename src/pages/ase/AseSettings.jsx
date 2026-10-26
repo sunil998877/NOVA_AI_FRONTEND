@@ -20,18 +20,21 @@ import { Input } from "../../components/ui/input";
 import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
 import { leadApi } from "../../lib/api";
+import OperatingModePicker from "../../components/ase/OperatingModePicker";
 
 export default function AseSettings() {
   const [apiKey, setApiKey] = useState("");
   const [apiKeyMasked, setApiKeyMasked] = useState("");
   const [captureBaseUrl, setCaptureBaseUrl] = useState("");
   const [operatingMode, setOperatingMode] = useState("FULLY_AUTOMATED");
+  const [modeLoading, setModeLoading] = useState(false);
   const [brainStatus, setBrainStatus] = useState(null);
   const [brainLoading, setBrainLoading] = useState(false);
   const { success, error: toastError } = useToast();
 
   useEffect(() => {
     fetchBrainStatus();
+    fetchOperatingMode();
     leadApi.getApiConfig().then((res) => {
       const config = res?.data || {};
       setCaptureBaseUrl(config.publicBaseUrl || "");
@@ -48,6 +51,29 @@ export default function AseSettings() {
       }
     } catch (_) {}
   }
+
+  async function fetchOperatingMode() {
+    try {
+      const res = await aseService.getOperatingMode();
+      if (res?.mode) setOperatingMode(res.mode);
+    } catch (_) {}
+  }
+
+  const handleOperatingModeChange = async (mode) => {
+    if (mode === operatingMode || modeLoading) return;
+    try {
+      setModeLoading(true);
+      const res = await aseService.setOperatingMode(mode);
+      if (res?.success || res?.mode) {
+        setOperatingMode(res.mode || mode);
+        success("Operating mode updated", `Outreach now runs as ${res.mode || mode}`);
+      }
+    } catch (err) {
+      toastError("Error", err.message || "Failed to update operating mode");
+    } finally {
+      setModeLoading(false);
+    }
+  };
 
   const handleBrainModeChange = async (mode) => {
     try {
@@ -176,13 +202,13 @@ export default function AseSettings() {
             <div>
               <span className="text-muted-foreground block">Model Accuracy:</span>
               <span className="font-semibold text-foreground block mt-0.5 font-mono">
-                {brainStatus?.accuracy ? `${(brainStatus.accuracy * 100).toFixed(1)}%` : "84.3%"}
+                {brainStatus?.accuracy != null ? `${(brainStatus.accuracy * 100).toFixed(1)}%` : "—"}
               </span>
             </div>
             <div>
               <span className="text-muted-foreground block">Total Samples:</span>
               <span className="font-semibold text-foreground block mt-0.5 font-mono">
-                {brainStatus?.totalSamples ? brainStatus.totalSamples.toLocaleString() : "1,400"}
+                {brainStatus?.totalSamples ? brainStatus.totalSamples.toLocaleString() : "—"}
               </span>
             </div>
             <div>
@@ -203,49 +229,11 @@ export default function AseSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div
-              onClick={() => setOperatingMode("FULLY_AUTOMATED")}
-              className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                operatingMode === "FULLY_AUTOMATED"
-                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                  : "hover:bg-muted/50"
-              }`}
-            >
-              <div className="font-semibold text-sm">FULLY_AUTOMATED</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Engine automatically executes allowed actions per cadence rules without manual intervention.
-              </p>
-            </div>
-
-            <div
-              onClick={() => setOperatingMode("AI_RECOMMENDED")}
-              className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                operatingMode === "AI_RECOMMENDED"
-                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                  : "hover:bg-muted/50"
-              }`}
-            >
-              <div className="font-semibold text-sm">AI_RECOMMENDED</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Engine evaluates cadence and queues actions for human sales rep approval.
-              </p>
-            </div>
-
-            <div
-              onClick={() => setOperatingMode("HUMAN_ESCALATION")}
-              className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                operatingMode === "HUMAN_ESCALATION"
-                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                  : "hover:bg-muted/50"
-              }`}
-            >
-              <div className="font-semibold text-sm">HUMAN_ESCALATION</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Outbound pauses; all interested prospects immediately routed to human callback queues.
-              </p>
-            </div>
-          </div>
+          <OperatingModePicker
+            value={operatingMode}
+            disabled={modeLoading}
+            onChange={handleOperatingModeChange}
+          />
         </CardContent>
       </Card>
 
