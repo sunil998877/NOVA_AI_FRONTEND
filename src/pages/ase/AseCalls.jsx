@@ -354,9 +354,12 @@ export default function AseCalls() {
 
     setCallingState(true);
     try {
+      const selectedLead = leadsList.find((l) => String(l.id) === String(selectedLeadId));
+      const matchingLeadId = selectedLead && (!selectedLead.phone || selectedLead.phone === phoneToCall) ? Number(selectedLeadId) : null;
+
       const payload = {
         phone: phoneToCall,
-        leadId: selectedLeadId ? Number(selectedLeadId) : null,
+        leadId: matchingLeadId,
         name: recipientName || "Prospect",
         message: callMessage,
       };

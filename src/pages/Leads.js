@@ -471,6 +471,7 @@ export default function Leads() {
                       const healthDot = HEALTH_COLORS[lead.health] || HEALTH_COLORS.GREEN;
                       const statusClass = STATUS_VARIANTS[lead.status] || "bg-secondary text-secondary-foreground";
                       const rowNumber = (currentPage - 1) * pageSize + index + 1;
+                      const nextAction = lead.next_action || ((lead.status === "QUEUED" || lead.status === "NEW") && !lead.do_not_contact ? "EMAIL" : null);
 
                       return (
                         <TableRow key={lead.id} className="hover:bg-muted/50 cursor-pointer">
@@ -499,11 +500,11 @@ export default function Leads() {
                             </span>
                           </TableCell>
                           <TableCell onClick={() => openLeadDetail(lead.id)}>
-                            {lead.next_action ? (
+                            {nextAction ? (
                               <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-                                {lead.next_action === "EMAIL" && <Mail className="w-3.5 h-3.5 text-blue-500" />}
-                                {lead.next_action === "CALL" && <Phone className="w-3.5 h-3.5 text-green-500" />}
-                                <span>{lead.next_action}</span>
+                                {nextAction === "EMAIL" && <Mail className="w-3.5 h-3.5 text-blue-500" />}
+                                {nextAction === "CALL" && <Phone className="w-3.5 h-3.5 text-green-500" />}
+                                <span>{nextAction}</span>
                                 {lead.next_action_time && (
                                   <span className="text-[10px] text-muted-foreground">
                                     ({new Date(lead.next_action_time).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })} IST)
@@ -601,7 +602,7 @@ export default function Leads() {
       <AddLeadDialog
         open={addOpen}
         onOpenChange={setAddOpen}
-        onSuccess={() => { fetchLeads(); fetchStats(); }}
+        onSuccess={() => { setCurrentPage(1); fetchLeads(1); fetchStats(); }}
       />
 
       <CsvExcelImportDialog
@@ -1011,7 +1012,18 @@ function AddLeadDialog({ open, onOpenChange, onSuccess }) {
     e.preventDefault();
     setLoading(true);
     try {
-      await leadApi.create({ ...formData, source: "MANUAL" });
+      const res = await leadApi.create({
+        ...formData,
+        source: "MANUAL",
+        consentEmail: true,
+        matchDomain: false,
+        updateExisting: false,
+      });
+      if (res?.data?.status === "skipped") {
+        toastError("Already exists", "This email or phone is already in the lead list.");
+        onSuccess();
+        return;
+      }
       success("Lead Added", "Successfully added a new lead.");
       onSuccess();
       onOpenChange(false);

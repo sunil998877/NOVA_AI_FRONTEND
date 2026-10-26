@@ -647,6 +647,7 @@ export default function Chat() {
         className={`${mobileChatView ? "hidden md:flex" : "flex"
           } w-full md:w-80 lg:w-[380px] flex-col h-full bg-card dark:bg-[#111b21] border-r border-border dark:border-[#202c33] shrink-0 min-h-0 select-text`}
       >
+        
         <div className="h-16 bg-card dark:bg-[#111b21] px-4 flex items-center justify-between shrink-0 border-b border-border dark:border-[#1f2c34]">
           <div className="flex items-center gap-2">
             <Button
