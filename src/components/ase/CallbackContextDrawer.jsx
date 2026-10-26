@@ -26,27 +26,142 @@ import {
   Briefcase,
 } from "lucide-react";
 
-export function CallbackContextDrawer({ leadId, isOpen, onClose }) {
+function renderEventCard(event) {
+  let p = event.payload;
+  if (!p) return null;
+  if (typeof p === "string") {
+    try {
+      p = JSON.parse(p);
+    } catch {
+      p = { notes: p };
+    }
+  }
+  if (typeof p !== "object" || p === null) {
+    return (
+      <div className="mt-1.5 p-2 rounded-lg bg-muted/40 text-[11px] text-foreground">
+        {String(p)}
+      </div>
+    );
+  }
+
+  const stepLabels = {
+    1: "Step 1 • Helpful in-thread follow-up",
+    2: "Step 2 • Insight & practical benchmark",
+    3: "Step 3 • Addressing objections",
+    4: "Step 4 • Personalized video concept",
+    5: "Step 5 • Polite final check-in",
+  };
+
+  const stepLabel = p.stepNumber ? stepLabels[p.stepNumber] || `Follow-up Step ${p.stepNumber}` : null;
+  const reasonText = p.reason ? String(p.reason).replace(/_/g, " ") : null;
+
+  return (
+    <div className="mt-1.5 space-y-1.5 rounded-lg border border-border/70 bg-muted/30 p-2.5 text-[11px]">
+      {stepLabel && (
+        <div className="flex items-center justify-between pb-1 border-b border-border/40">
+          <div className="flex items-center gap-1.5 font-semibold text-foreground">
+            <Mail className="w-3 h-3 text-primary" />
+            <span>{stepLabel}</span>
+          </div>
+          {p.mode && (
+            <Badge variant="outline" className="text-[9px] uppercase font-mono">
+              {p.mode === "REPLY_THREAD" ? "Reply Thread" : "New Thread"}
+            </Badge>
+          )}
+        </div>
+      )}
+
+      {p.subject && (
+        <div className="flex items-start gap-1">
+          <span className="text-muted-foreground font-medium shrink-0">Subject:</span>
+          <span className="font-semibold text-foreground">"{p.subject}"</span>
+        </div>
+      )}
+
+      {reasonText && (
+        <div className="flex items-start gap-1">
+          <span className="text-muted-foreground font-medium shrink-0">Reason:</span>
+          <span className="font-medium text-foreground capitalize">{reasonText}</span>
+        </div>
+      )}
+
+      {p.resumedBy && (
+        <div className="flex items-center gap-1">
+          <span className="text-muted-foreground font-medium">Resumed by:</span>
+          <span className="font-mono text-foreground font-medium">{p.resumedBy}</span>
+        </div>
+      )}
+
+      {p.notes && !reasonText && (
+        <div className="text-muted-foreground leading-relaxed">{p.notes}</div>
+      )}
+
+      {p.template && (
+        <div className="flex items-center gap-1">
+          <span className="text-muted-foreground">Template:</span>
+          <Badge variant="outline" className="text-[9px] font-mono">{p.template}</Badge>
+        </div>
+      )}
+
+      {p.from && p.to && (
+        <div className="flex items-center gap-1">
+          <span className="text-muted-foreground">State:</span>
+          <Badge variant="secondary" className="text-[9px]">{p.from}</Badge>
+          <span>→</span>
+          <Badge variant="default" className="text-[9px]">{p.to}</Badge>
+        </div>
+      )}
+
+      {p.duration !== undefined && (
+        <div className="flex items-center gap-1">
+          <span className="text-muted-foreground">Duration:</span>
+          <span className="font-medium text-foreground">{p.duration}s</span>
+        </div>
+      )}
+
+      {p.outcome && (
+        <div className="flex items-center gap-1">
+          <span className="text-muted-foreground">Outcome:</span>
+          <Badge variant="outline" className="text-[9px] font-bold">{p.outcome}</Badge>
+        </div>
+      )}
+
+      {(p.taskId || p.enrollmentId) && (
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70 font-mono pt-1 border-t border-border/30">
+          {p.taskId && <span>Task #{p.taskId}</span>}
+          {p.taskId && p.enrollmentId && <span>•</span>}
+          {p.enrollmentId && <span>Enrollment #{p.enrollmentId}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function CallbackContextDrawer({ callback, leadId, isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const [leadData, setLeadData] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!isOpen || !leadId) return;
+    if (!isOpen) return;
+    const targetId = leadId || callback?.lead_id || callback?.id;
+    if (!targetId) return;
 
     let isMounted = true;
     setLoading(true);
     setError(null);
 
     leadApi
-      .get(leadId)
+      .get(targetId)
       .then((res) => {
         if (!isMounted) return;
         setLeadData(res.data || null);
       })
       .catch((err) => {
         if (!isMounted) return;
-        setError(err.message || "Failed to load lead context");
+        if (!callback) {
+          setError(err.message || "Failed to load lead context");
+        }
       })
       .finally(() => {
         if (isMounted) setLoading(false);
@@ -55,10 +170,48 @@ export function CallbackContextDrawer({ leadId, isOpen, onClose }) {
     return () => {
       isMounted = false;
     };
-  }, [isOpen, leadId]);
+  }, [isOpen, leadId, callback]);
 
-  const lead = leadData?.lead;
-  const timeline = leadData?.timeline || [];
+  const fallbackLead = callback
+    ? {
+        id: callback.lead_id || callback.id,
+        name: callback.lead_name || "Prospective Client",
+        company: callback.lead_company || "Company not specified",
+        email: callback.lead_email || null,
+        phone: callback.lead_phone || null,
+        priority: callback.priority ?? callback.lead_priority ?? 50,
+        health: callback.lead_health || "GREEN",
+        status: callback.lead_status || "OPEN",
+        source: callback.lead_source || "Automated Outreach",
+        callback: {
+          id: callback.id,
+          due_at: callback.due_at,
+          status: callback.status,
+          notes: callback.notes,
+          rep_name: callback.rep_name || callback.assigned_rep_name,
+        },
+      }
+    : null;
+
+  const lead = leadData?.lead || fallbackLead;
+
+  const timeline = leadData?.timeline?.length
+    ? leadData.timeline
+    : callback
+    ? [
+        {
+          id: `cb-${callback.id}`,
+          channel: "VOICE",
+          event_type: "CALLBACK_REQUESTED",
+          created_at: callback.due_at || new Date().toISOString(),
+          payload: {
+            notes: callback.notes || "Automated handoff: Prospect showed interest / requested callback.",
+            status: callback.status || "OPEN",
+            rep_name: callback.rep_name || callback.assigned_rep_name,
+          },
+        },
+      ]
+    : [];
 
   const formatDateTime = (val) => {
     if (!val) return "—";
@@ -109,13 +262,13 @@ export function CallbackContextDrawer({ leadId, isOpen, onClose }) {
         </div>
 
         <div className="p-6 space-y-6 flex-1">
-          {loading ? (
+          {loading && !lead ? (
             <div className="space-y-4">
               <Skeleton className="h-20 w-full rounded-xl" />
               <Skeleton className="h-28 w-full rounded-xl" />
               <Skeleton className="h-40 w-full rounded-xl" />
             </div>
-          ) : error ? (
+          ) : error && !lead ? (
             <div className="p-4 rounded-xl border border-rose-200 bg-rose-50/50 text-rose-800 text-xs flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
               <div>
@@ -280,13 +433,7 @@ export function CallbackContextDrawer({ leadId, isOpen, onClose }) {
                           <span>•</span>
                           <span>Status: {event.status}</span>
                         </div>
-                        {event.payload && typeof event.payload === "object" && (
-                          <div className="mt-1 bg-muted/40 p-2 rounded text-[11px] font-mono text-muted-foreground overflow-x-auto">
-                            {event.payload.notes ||
-                              event.payload.subject ||
-                              JSON.stringify(event.payload)}
-                          </div>
-                        )}
+                        {renderEventCard(event)}
                       </div>
                     ))}
                   </div>

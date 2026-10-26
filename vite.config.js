@@ -65,7 +65,6 @@ export default defineConfig(({ mode }) => {
           ws: true,
           configure: (proxy) => {
             proxy.on("error", () => {
-              // Silently handle socket reconnects when backend restarts
             });
           },
         },

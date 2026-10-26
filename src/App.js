@@ -41,6 +41,7 @@ const AseSegments = lazy(() => import("./pages/ase/AseSegments"));
 const AseReports = lazy(() => import("./pages/ase/AseReports"));
 const AseCompliance = lazy(() => import("./pages/ase/AseCompliance"));
 const AseSettings = lazy(() => import("./pages/ase/AseSettings"));
+const AsePlaybook = lazy(() => import("./pages/ase/AsePlaybook"));
 const AseCalls = lazy(() => import("./pages/ase/AseCalls"));
 const FollowUpDashboard = lazy(() => import("./pages/followups/FollowUpDashboard"));
 
@@ -155,6 +156,7 @@ function App() {
           <Route path="/ase/compliance" element={<AseCompliance />} />
           <Route path="/ase/settings" element={<AseSettings />} />
           <Route path="/ase/settings/integrations" element={<AseSettings />} />
+          <Route path="/ase/playbook" element={<AsePlaybook />} />
           <Route path="/follow-ups" element={<FollowUpDashboard />} />
           <Route path="/ase/follow-ups" element={<FollowUpDashboard />} />
         </Route>

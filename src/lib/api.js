@@ -293,6 +293,12 @@ export const suppressionApi = {
   remove: (id) => api(`/api/suppressions/${id}`, { method: "DELETE" }),
 };
 
+export const playbookApi = {
+  get: () => api("/api/playbook"),
+  save: (body) => api("/api/playbook", { method: "PUT", body }),
+  preview: (body) => api("/api/playbook/preview", { method: "POST", body }),
+};
+
 export const voiceApi = {
   dispatch: (body) => api("/api/engine/voice/dispatch", { method: "POST", body }),
   getConfig: () => api("/api/engine/voice/config"),

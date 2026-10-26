@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Mail, Edit3, Copy, Check, RotateCcw, Save, X, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "../ui/card";
 import { Button } from "../ui/button";
@@ -8,31 +8,59 @@ import { Textarea } from "../ui/textarea";
 import { useToast } from "../ui/toast";
 import { aseService } from "../../services/ase.service";
 
+function formatFirstName(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "there";
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+function sanitizeOutreachBody(text, senderName = "NOVA AI") {
+  if (!text) return "";
+  let out = String(text)
+    .replace(/\[Your Name\]/gi, "")
+    .replace(/\[Name\]/gi, "")
+    .replace(/Your Name/g, "")
+    .replace(/NOVVA AI/gi, senderName)
+    .replace(/\r\n/g, "\n");
+
+  out = out.replace(/^(Dear|Hi|Hello)\s+([A-Za-z]+)/i, (_, greeting, name) => {
+    const g = greeting.charAt(0).toUpperCase() + greeting.slice(1).toLowerCase();
+    return `${g} ${formatFirstName(name)}`;
+  });
+
+  if (/Best regards/i.test(out)) {
+    out = out.replace(/\s*Best regards[\s\S]*$/i, `\n\nBest regards,\n${senderName}`);
+  } else {
+    out = `${out.trim()}\n\nBest regards,\n${senderName}`;
+  }
+
+  return out.replace(/\n{3,}/g, "\n\n").trim();
+}
+
 function computeInitialDraft(lead) {
   const meta = lead?.metadata || {};
   const research = meta.company_research || {};
   const rawCompany = research.company || lead?.company || (lead?.email ? lead.email.split("@")[1].split(".")[0] : "your company");
   const company = rawCompany ? rawCompany.charAt(0).toUpperCase() + rawCompany.slice(1) : "Company";
-  const firstName = lead?.first_name || (lead?.name ? lead.name.split(" ")[0] : "there");
-  const senderName = "NOVA Sales";
+  const firstName = formatFirstName(lead?.first_name || (lead?.name ? lead.name.split(" ")[0] : "there"));
+  const senderName = "NOVA AI";
 
   if (meta.outreach_email?.subject && meta.outreach_email?.text) {
     return {
       subject: meta.outreach_email.subject,
-      text: meta.outreach_email.text,
+      text: sanitizeOutreachBody(meta.outreach_email.text, senderName),
       isEdited: Boolean(meta.outreach_email.is_edited),
     };
   }
 
   if (research.summary) {
-    const offering = research.coreServices || research.summary;
-    const subject = `${company}: a note on ${research.industry || "your work"}`;
-    const text = `Hi ${firstName},\n\nI spent some time looking at ${company}. ${research.summary}\n\nThat focus on ${offering} is why I am writing. I would like to share one practical idea for how ${company} reaches ${research.targetAudience || "the customers you already serve"}, and hear whether it is relevant.\n\nWould you be open to a short conversation this week?\n\nBest regards,\n${senderName}`;
+    const subject = `A note for ${company}`;
+    const text = `Dear ${firstName},\n\nI am reaching out from ${senderName} regarding ${company}. ${research.summary}\n\nIf it would be useful, I would welcome a short conversation about whether our work is relevant to your team.\n\nLooking forward to your thoughts.\n\nBest regards,\n${senderName}`;
     return { subject, text, isEdited: false };
   }
 
-  const subject = `${company}: Quick inquiry regarding growth`;
-  const text = `Hi ${firstName},\n\nI was reviewing ${company} and was impressed by your offerings. We help organizations scale and automate outbound sales.\n\nWould you have 10 minutes for a brief conversation this week?\n\nBest regards,\n${senderName}`;
+  const subject = `A note for ${company}`;
+  const text = `Dear ${firstName},\n\nI am reaching out from ${senderName} regarding ${company}. If it would be useful, I would welcome a short conversation about whether our work is relevant to your team.\n\nLooking forward to your thoughts.\n\nBest regards,\n${senderName}`;
   return { subject, text, isEdited: false };
 }
 
@@ -48,32 +76,11 @@ export default function AiGeneratedEmailCard({ lead, onLeadUpdated }) {
   const [bodyText, setBodyText] = useState(initialDraft.text);
   const [isEdited, setIsEdited] = useState(initialDraft.isEdited);
 
-  const persistedRef = useRef(false);
-
   useEffect(() => {
     const draft = computeInitialDraft(lead);
     setSubject(draft.subject);
     setBodyText(draft.text);
     setIsEdited(draft.isEdited);
-
-    if (lead?.id && !lead.metadata?.outreach_email?.subject && !persistedRef.current) {
-      persistedRef.current = true;
-      const htmlContent = `<p>${draft.text.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`;
-      const updatedMetadata = {
-        ...(lead.metadata || {}),
-        outreach_status: "ready",
-        outreach_email: {
-          subject: draft.subject,
-          text: draft.text,
-          html: htmlContent,
-          written_at: new Date().toISOString(),
-          is_edited: false,
-        },
-      };
-      aseService.updateLead(lead.id, { metadata: updatedMetadata }).then(() => {
-        if (onLeadUpdated) onLeadUpdated();
-      }).catch(() => { });
-    }
   }, [lead?.id, lead?.metadata?.outreach_email?.subject, lead?.metadata?.outreach_email?.text]);
 
   const handleGenerate = async () => {
@@ -123,6 +130,7 @@ export default function AiGeneratedEmailCard({ lead, onLeadUpdated }) {
           html: htmlContent,
           updated_at: new Date().toISOString(),
           is_edited: true,
+          approvalStatus: "invalidated",
         },
       };
 
@@ -241,9 +249,17 @@ export default function AiGeneratedEmailCard({ lead, onLeadUpdated }) {
             </div>
           </div>
         ) : (
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90 font-sans">
-            {bodyText}
-          </p>
+          <div className="space-y-2">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90 font-sans">
+              {bodyText}
+            </p>
+            {lead?.metadata?.outreach_email?.qualityChecks && (
+              <p className="text-[11px] text-muted-foreground">
+                Grounding: {lead.metadata.outreach_email.qualityChecks.factualGrounding}
+                {lead.metadata.outreach_email.approvalStatus ? ` · Approval: ${lead.metadata.outreach_email.approvalStatus}` : ""}
+              </p>
+            )}
+          </div>
         )}
       </CardContent>
       {isEditing && (

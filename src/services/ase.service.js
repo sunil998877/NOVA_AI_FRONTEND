@@ -1,4 +1,4 @@
-import { leadApi, callbackApi, suppressionApi } from "../lib/api";
+import { leadApi, callbackApi, suppressionApi, playbookApi } from "../lib/api";
 
 const MOCK_LEADS = [
   {
@@ -154,6 +154,22 @@ const MOCK_CALLBACKS = [
 ];
 
 const MOCK_TIMELINE = [
+  {
+    id: 6,
+    lead_id: 1,
+    event_type: "DECISION_EVALUATED",
+    channel: "SYSTEM",
+    created_at: "2026-10-25T12:20:00Z",
+    payload: {
+      action: "WAIT",
+      confidence: 0.84,
+      isAssistedByMl: true,
+      reasonSummary: "ONNX model selected WAIT at 84% probability. Email 8%, call 8%, wait 84%.",
+      probabilities: { EMAIL: 0.08, CALL: 0.08, WAIT: 0.84 },
+      modelVersion: "2.0.0",
+      conversionProbability: 0.021,
+    },
+  },
   {
     id: 1,
     lead_id: 1,
@@ -363,5 +379,20 @@ export const aseService = {
 
   async getBrainEvaluation() {
     return await leadApi.getBrainEvaluation();
+  },
+
+  async getPlaybook() {
+    const res = await playbookApi.get();
+    return res?.data || res;
+  },
+
+  async savePlaybook(body) {
+    const res = await playbookApi.save(body);
+    return res?.data || res;
+  },
+
+  async previewPlaybook(body) {
+    const res = await playbookApi.preview(body);
+    return res?.data || res;
   },
 };

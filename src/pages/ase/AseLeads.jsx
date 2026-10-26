@@ -287,11 +287,11 @@ export default function AseLeads() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          {lead.next_action ? (
+                          {(lead.next_action || ((lead.status === "QUEUED" || lead.status === "NEW") && !lead.do_not_contact ? "EMAIL" : null)) ? (
                             <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-                              {lead.next_action === "EMAIL" && <Mail className="w-3.5 h-3.5 text-blue-500" />}
+                              {(lead.next_action || "EMAIL") === "EMAIL" && <Mail className="w-3.5 h-3.5 text-blue-500" />}
                               {lead.next_action === "CALL" && <Phone className="w-3.5 h-3.5 text-green-500" />}
-                              <span>{lead.next_action}</span>
+                              <span>{lead.next_action || "EMAIL"}</span>
                             </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">-</span>

@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { User, ChevronDown, Search, Check } from "lucide-react";
 
 const AVATAR_PALETTES = [
@@ -12,37 +13,91 @@ const AVATAR_PALETTES = [
   { bg: "bg-violet-100 dark:bg-violet-950/50", text: "text-violet-700 dark:text-violet-300" },
 ];
 
+const MENU_WIDTH = 288;
+const MENU_MARGIN = 8;
+
+function uniqueReps(reps) {
+  const seen = new Set();
+  return (reps || []).filter((rep) => {
+    const key = String(rep?.id ?? "").trim() || String(rep?.email || "").trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function formatRole(role) {
+  const raw = String(role || "ORG_ADMIN").replace(/_/g, " ").trim();
+  return raw.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getMenuPosition(buttonEl) {
+  const rect = buttonEl.getBoundingClientRect();
+  const width = MENU_WIDTH;
+  let left = rect.right - width;
+  if (left < MENU_MARGIN) left = MENU_MARGIN;
+  if (left + width > window.innerWidth - MENU_MARGIN) {
+    left = Math.max(MENU_MARGIN, window.innerWidth - width - MENU_MARGIN);
+  }
+
+  const spaceBelow = window.innerHeight - rect.bottom - MENU_MARGIN;
+  const spaceAbove = rect.top - MENU_MARGIN;
+  const openUp = spaceBelow < 180 && spaceAbove > spaceBelow;
+  let top = openUp ? MENU_MARGIN : rect.bottom + 4;
+  if (top < MENU_MARGIN) top = MENU_MARGIN;
+  const maxHeight = Math.min(280, Math.max(80, window.innerHeight - top - MENU_MARGIN));
+
+  return { top, left, width, maxHeight };
+}
+
 export default function AssignedRepDropdown({ value, reps = [], onChange, disabled = false }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const containerRef = useRef(null);
+  const [menuPos, setMenuPos] = useState(null);
+  const buttonRef = useRef(null);
+  const menuRef = useRef(null);
 
-  useEffect(() => {
-    const handleOutsideClick = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    if (isOpen) {
-      document.addEventListener("mousedown", handleOutsideClick);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-    };
-  }, [isOpen]);
-
-  const selectedRepIndex = reps.findIndex((r) => r.id === value);
-  const selectedRep = selectedRepIndex >= 0 ? reps[selectedRepIndex] : null;
+  const unique = useMemo(() => uniqueReps(reps), [reps]);
+  const selectedRepIndex = unique.findIndex((r) => r.id === value);
+  const selectedRep = selectedRepIndex >= 0 ? unique[selectedRepIndex] : null;
   const assignedPalette = selectedRepIndex >= 0 ? AVATAR_PALETTES[selectedRepIndex % AVATAR_PALETTES.length] : null;
 
-  const filteredReps = reps.filter((r) => {
+  const filteredReps = unique.filter((r) => {
     if (!search.trim()) return true;
     const term = search.toLowerCase();
     return (
       r.fullName?.toLowerCase().includes(term) ||
+      r.email?.toLowerCase().includes(term) ||
       r.role?.toLowerCase().includes(term)
     );
   });
+
+  const updatePosition = () => {
+    if (!buttonRef.current) return;
+    setMenuPos(getMenuPosition(buttonRef.current));
+  };
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    updatePosition();
+    const handleOutsideClick = (event) => {
+      if (buttonRef.current?.contains(event.target) || menuRef.current?.contains(event.target)) return;
+      setIsOpen(false);
+    };
+    const handleKey = (event) => {
+      if (event.key === "Escape") setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleKey);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleKey);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [isOpen]);
 
   const handleSelect = (repId) => {
     if (disabled) return;
@@ -52,12 +107,9 @@ export default function AssignedRepDropdown({ value, reps = [], onChange, disabl
   };
 
   return (
-    <div className="relative inline-block w-fit max-w-[220px]" ref={containerRef}>
-      <span className="text-xs text-muted-foreground block mb-1">
-        Assigned Rep
-      </span>
-
+    <div className="relative inline-block w-fit max-w-[220px] overflow-visible">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
@@ -80,8 +132,18 @@ export default function AssignedRepDropdown({ value, reps = [], onChange, disabl
         <ChevronDown className={`w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-72 bg-white dark:bg-card border border-slate-200/90 dark:border-border rounded-xl shadow-xl p-2 z-50">
+      {isOpen && menuPos && createPortal(
+        <div
+          ref={menuRef}
+          style={{
+            position: "fixed",
+            top: menuPos.top,
+            left: menuPos.left,
+            width: menuPos.width,
+            zIndex: 80,
+          }}
+          className="bg-white dark:bg-card border border-slate-200/90 dark:border-border rounded-xl shadow-xl p-2"
+        >
           <div className="flex items-center gap-2 bg-slate-50 dark:bg-muted/50 border border-slate-200/80 dark:border-border rounded-lg px-2.5 py-1.5 mb-1.5">
             <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <input
@@ -94,7 +156,7 @@ export default function AssignedRepDropdown({ value, reps = [], onChange, disabl
             />
           </div>
 
-          <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
+          <div className="overflow-y-auto space-y-0.5 pr-1" style={{ maxHeight: menuPos.maxHeight }}>
             <div
               onClick={() => handleSelect(null)}
               className={`rounded-lg px-2 py-1.5 flex items-center justify-between cursor-pointer transition-colors text-xs ${
@@ -133,16 +195,16 @@ export default function AssignedRepDropdown({ value, reps = [], onChange, disabl
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 ${palette.bg} ${palette.text}`}>
                       {rep.fullName?.charAt(0).toUpperCase() || "R"}
                     </div>
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex flex-col min-w-0">
                       <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
                         {rep.fullName}
                       </span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal shrink-0">
-                        ({rep.role || "ORG_ADMIN"})
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate">
+                        {formatRole(rep.role)}
                       </span>
                     </div>
                   </div>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-[#6D28D9] dark:text-purple-300 stroke-[2.5]" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-[#6D28D9] dark:text-purple-300 stroke-[2.5] shrink-0" />}
                 </div>
               );
             })}
@@ -153,7 +215,8 @@ export default function AssignedRepDropdown({ value, reps = [], onChange, disabl
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

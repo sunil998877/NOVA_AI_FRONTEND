@@ -132,7 +132,7 @@ export default function AseCallbacks() {
   }, [callbacks, statusFilter, priorityFilter, searchQuery, sortBy]);
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full p-4 sm:p-6">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
@@ -231,6 +231,7 @@ export default function AseCallbacks() {
 
       {contextCallback && (
         <CallbackContextDrawer
+          callback={contextCallback}
           leadId={contextCallback.lead_id}
           isOpen={Boolean(contextCallback)}
           onClose={() => setContextCallback(null)}

@@ -25,6 +25,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useToast } from "../ui/toast";
 import { followUpService } from "../../services/followUp.service";
 
+function formatFollowUpDate(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 const STEP_DEFINITIONS = [
   {
     step: 1,
@@ -100,7 +111,9 @@ export default function LeadFollowUpSequenceCard({ lead, onUpdated }) {
 
   const completedStepsCount = tasks.filter((t) => t.status === "SENT").length;
   const remainingStepsCount = Math.max(0, 5 - completedStepsCount);
-  const nextScheduledTask = tasks.find((t) => t.status === "SCHEDULED" || t.status === "PENDING" || t.step_number === activeEnrollment?.current_step);
+  const nextScheduledTask = [...tasks]
+    .filter((t) => t.status === "SCHEDULED" || t.status === "PENDING")
+    .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))[0];
   const lastExecutedTask = [...tasks].filter((t) => t.sent_at).sort((a, b) => new Date(b.sent_at) - new Date(a.sent_at))[0];
 
   const handleEnroll = async () => {
@@ -403,13 +416,13 @@ export default function LeadFollowUpSequenceCard({ lead, onUpdated }) {
               <span className="text-[11px] text-muted-foreground block">Next Due Action</span>
               <span className="font-semibold text-foreground flex items-center gap-1 font-mono text-[11px]">
                 <Clock className="w-3 h-3 text-primary inline" />
-                {nextScheduledTask?.scheduled_at ? new Date(nextScheduledTask.scheduled_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : (activeEnrollment?.status === "COMPLETED" ? "Concluded" : "None")}
+                {nextScheduledTask?.scheduled_at ? formatFollowUpDate(nextScheduledTask.scheduled_at) : (activeEnrollment?.status === "COMPLETED" ? "Concluded" : "None")}
               </span>
             </div>
             <div>
               <span className="text-[11px] text-muted-foreground block">Last Successful Execution</span>
               <span className="font-semibold text-foreground font-mono text-[11px]">
-                {lastExecutedTask?.sent_at ? new Date(lastExecutedTask.sent_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "None"}
+                {lastExecutedTask?.sent_at ? formatFollowUpDate(lastExecutedTask.sent_at) : "None"}
               </span>
             </div>
           </div>
@@ -447,8 +460,8 @@ export default function LeadFollowUpSequenceCard({ lead, onUpdated }) {
               const task = tasks.find((t) => t.step_number === def.step);
               const isDone = task?.status === "SENT";
               const isCurrent = activeEnrollment?.current_step === def.step && activeEnrollment?.status === "ACTIVE";
-              const scheduledFormatted = task?.scheduled_at ? new Date(task.scheduled_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
-              const sentFormatted = task?.sent_at ? new Date(task.sent_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
+              const scheduledFormatted = formatFollowUpDate(task?.scheduled_at);
+              const sentFormatted = formatFollowUpDate(task?.sent_at);
 
               return (
                 <div

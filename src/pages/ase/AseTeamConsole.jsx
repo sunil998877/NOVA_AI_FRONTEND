@@ -21,6 +21,163 @@ import { Input } from "../../components/ui/input";
 import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
 
+const STEP_TOUCH_DESCRIPTIONS = {
+  1: "Step 1 • In-Thread Follow-Up",
+  2: "Step 2 • Value Insight & Benchmark",
+  3: "Step 3 • Objection Handling & Case Study",
+  4: "Step 4 • Personalized Solution Concept",
+  5: "Step 5 • Final Polite Check-In",
+};
+
+function getEventBorder(type) {
+  const t = String(type || "").toUpperCase();
+  if (t.includes("BLOCKED") || t.includes("FAILED") || t.includes("BREACHED") || t.includes("STOPPED")) {
+    return "border-rose-500/80";
+  }
+  if (t.includes("PAUSED") || t.includes("AMBIGUOUS")) {
+    return "border-amber-500/80";
+  }
+  if (t.includes("RESUMED") || t.includes("SENT") || t.includes("OPENED") || t.includes("CLICKED") || t.includes("COMPLETED")) {
+    return "border-emerald-500/80";
+  }
+  return "border-primary/50";
+}
+
+function formatEventTitle(type, p) {
+  const t = String(type || "");
+  if (t === "FOLLOW_UP_BLOCKED") return "Follow-Up Blocked";
+  if (t === "FOLLOW_UP_RESUMED") return "Follow-Up Resumed";
+  if (t === "FOLLOW_UP_SENT") return `Follow-Up Step ${p?.stepNumber || 1} Sent`;
+  if (t === "FOLLOW_UP_PAUSED") return "Sequence Paused";
+  if (t === "FOLLOW_UP_SCHEDULED") return "Follow-Up Scheduled";
+  if (t === "FOLLOW_UP_STOPPED") return "Sequence Stopped";
+  if (t === "EMAIL_SENT") return "Outreach Email Sent";
+  if (t === "EMAIL_OPENED") return "Email Opened";
+  if (t === "EMAIL_CLICKED") return "Email Link Clicked";
+  if (t === "EMAIL_DRAFTED") return "Email Drafted";
+  if (t === "CallbackSlaBreached") return "Callback SLA Breached";
+  if (t === "VOICE_CALL") return "Outbound Call";
+  return t.replace(/_/g, " ");
+}
+
+function formatStatusText(type, p) {
+  const t = String(type || "").toUpperCase();
+  if (t === "FOLLOW_UP_BLOCKED") return "BLOCKED";
+  if (t === "FOLLOW_UP_RESUMED") return "ACTIVE";
+  if (t === "FOLLOW_UP_SENT") return "SENT";
+  if (t === "FOLLOW_UP_PAUSED") return "PAUSED";
+  if (t === "FOLLOW_UP_SCHEDULED") return "SCHEDULED";
+  if (t === "CallbackSlaBreached") return "OVERDUE";
+  if (p?.status) return String(p.status).toUpperCase();
+  return null;
+}
+
+function renderTimelineEventCard(ev) {
+  let p = ev.payload;
+  if (typeof p === "string") {
+    try {
+      p = JSON.parse(p);
+    } catch {
+      p = { reason: p };
+    }
+  }
+  if (!p || typeof p !== "object") {
+    p = p ? { details: String(p) } : {};
+  }
+
+  const stepDesc = p.stepNumber ? (STEP_TOUCH_DESCRIPTIONS[p.stepNumber] || `Follow-Up Touch ${p.stepNumber}`) : null;
+  const reasonText = p.reason ? String(p.reason).replace(/_/g, " ") : null;
+  const channel = ev.channel || (String(ev.event_type || "").includes("EMAIL") || String(ev.event_type || "").includes("FOLLOW_UP") ? "EMAIL" : "SYSTEM");
+  const statusBadge = formatStatusText(ev.event_type, p);
+
+  return (
+    <div key={ev.id} className={`text-xs border-l-2 ${getEventBorder(ev.event_type)} pl-3 py-1.5 transition-all`}>
+      <div className="flex items-center justify-between text-[11px] mb-1">
+        <div className="flex items-center gap-1.5 font-bold text-foreground">
+          <span>{formatEventTitle(ev.event_type, p)}</span>
+        </div>
+        <span className="text-[10px] text-muted-foreground font-mono">
+          {new Date(ev.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2 text-[10px] text-muted-foreground mb-1.5">
+        <span className="flex items-center gap-1 font-semibold uppercase tracking-wider text-muted-foreground/80">
+          {channel === "EMAIL" ? <Send className="w-2.5 h-2.5" /> : channel === "VOICE" ? <Phone className="w-2.5 h-2.5" /> : <Activity className="w-2.5 h-2.5" />}
+          {channel}
+        </span>
+        {statusBadge && (
+          <>
+            <span>•</span>
+            <span className="font-semibold text-foreground/90">Status: {statusBadge}</span>
+          </>
+        )}
+      </div>
+
+      <div className="rounded-md border border-border/60 bg-muted/30 p-2 text-[11px] space-y-1.5">
+        {stepDesc && (
+          <div className="flex items-center justify-between font-semibold text-foreground pb-1 border-b border-border/40">
+            <div className="flex items-center gap-1.5 text-primary">
+              <Mail className="w-3.5 h-3.5" />
+              <span>{stepDesc}</span>
+            </div>
+            {p.mode && (
+              <Badge variant="outline" className="text-[9px] uppercase font-mono px-1.5 py-0">
+                {p.mode === "REPLY_THREAD" ? "In-Thread Reply" : "New Thread"}
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {p.subject && (
+          <div className="flex items-start gap-1">
+            <span className="text-muted-foreground font-medium shrink-0">Subject:</span>
+            <span className="font-semibold text-foreground">"{p.subject}"</span>
+          </div>
+        )}
+
+        {reasonText && (
+          <div className="flex items-start gap-1">
+            <span className="text-muted-foreground font-medium shrink-0">Reason:</span>
+            <span className="font-medium text-foreground capitalize">{reasonText}</span>
+          </div>
+        )}
+
+        {p.resumedBy && (
+          <div className="flex items-center gap-1">
+            <span className="text-muted-foreground font-medium">Resumed by:</span>
+            <span className="font-mono text-primary font-medium">{p.resumedBy}</span>
+          </div>
+        )}
+
+        {p.notes && !reasonText && (
+          <div className="text-muted-foreground leading-relaxed">{p.notes}</div>
+        )}
+
+        {p.template && (
+          <div className="flex items-center gap-1">
+            <span className="text-muted-foreground">Template:</span>
+            <Badge variant="outline" className="text-[9px] font-mono">{p.template}</Badge>
+          </div>
+        )}
+
+        {p.details && (
+          <div className="text-muted-foreground font-mono text-[10px]">{p.details}</div>
+        )}
+
+        {(p.taskId || p.enrollmentId || p.stepNumber) && (
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono pt-1 border-t border-border/30">
+            {p.taskId && <span>Task #{p.taskId}</span>}
+            {p.taskId && p.enrollmentId && <span>•</span>}
+            {p.enrollmentId && <span>Enrollment #{p.enrollmentId}</span>}
+            {p.stepNumber && !p.taskId && !p.enrollmentId && <span>Step {p.stepNumber}</span>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AseTeamConsole() {
   const [callbacks, setCallbacks] = useState([]);
   const [selectedCallback, setSelectedCallback] = useState(null);
@@ -79,7 +236,7 @@ export default function AseTeamConsole() {
   };
 
   return (
-    <div className="flex flex-col gap-4 max-w-7xl mx-auto w-full h-[calc(100vh-120px)] min-h-[600px]">
+    <div className="flex flex-col gap-4 w-full min-w-0 h-[calc(100vh-120px)] min-h-[600px]">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Salesperson Team Console</h1>
@@ -169,19 +326,11 @@ export default function AseTeamConsole() {
                 Timeline & Past Touches
               </h4>
               <div className="space-y-3">
-                {leadDetail?.timeline?.map((ev) => (
-                  <div key={ev.id} className="text-xs border-l-2 border-primary/40 pl-3 py-1">
-                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                      <span className="font-semibold text-foreground">{ev.event_type}</span>
-                      <span>{new Date(ev.created_at).toLocaleTimeString()}</span>
-                    </div>
-                    {ev.payload && (
-                      <p className="mt-1 text-[11px] text-muted-foreground bg-muted p-1.5 rounded font-mono">
-                        {JSON.stringify(ev.payload)}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                {leadDetail?.timeline && leadDetail.timeline.length > 0 ? (
+                  leadDetail.timeline.map((ev) => renderTimelineEventCard(ev))
+                ) : (
+                  <p className="text-xs text-muted-foreground italic py-2">No interactions recorded yet.</p>
+                )}
               </div>
             </div>
           </CardContent>

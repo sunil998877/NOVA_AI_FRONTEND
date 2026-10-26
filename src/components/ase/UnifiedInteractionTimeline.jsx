@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { followUpService } from "../../services/followUp.service";
 import {
   Calendar,
   ChevronDown,
@@ -74,10 +75,59 @@ function isDateKey(key) {
 }
 
 function getDateKey(d) {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
+const DAY_OFFSET_BY_STEP = { 1: 2, 2: 7, 3: 14, 4: 28, 5: 42 };
+const STEP_TITLE_BY_NUMBER = {
+  1: "Helpful in-thread follow-up",
+  2: "Insight & practical benchmark",
+  3: "Addressing objections",
+  4: "Personalized video concept",
+  5: "Polite final check-in",
+};
+
+function formatFollowUpCalendarDate(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+function normalizeCadenceSteps(steps) {
+  if (!Array.isArray(steps) || steps.length === 0) return [];
+  return steps
+    .map((s) => {
+      const stepNumber = Number(s.stepNumber || s.step_number || s.step);
+      const dayOffset = Number(
+        s.dayOffset ?? s.day_offset ?? DAY_OFFSET_BY_STEP[stepNumber] ?? stepNumber
+      );
+      return {
+        stepNumber,
+        dayOffset,
+        scheduledAt: s.scheduledAt || s.scheduled_at,
+        title: s.title || STEP_TITLE_BY_NUMBER[stepNumber] || `Follow-up touch ${stepNumber}`,
+        status: s.status,
+        subject: s.subject,
+      };
+    })
+    .filter((s) => s.dayOffset || s.scheduledAt)
+    .sort((a, b) => (a.dayOffset || 0) - (b.dayOffset || 0));
+}
+
+function formatCadenceLine(steps) {
+  const normalized = normalizeCadenceSteps(steps);
+  if (normalized.length === 0) return null;
+  return normalized
+    .map((s) => {
+      const dateLabel = formatFollowUpCalendarDate(s.scheduledAt);
+      return dateLabel ? `Day ${s.dayOffset}: ${dateLabel}` : `Day ${s.dayOffset}`;
+    })
+    .join(" · ");
 }
 
 function formatDateGroupHeader(d) {
@@ -144,7 +194,7 @@ function formatCandidateProbabilities(rawProb) {
     .join(", ");
 }
 
-function normalizeEventDisplay(ev, lead = {}) {
+function normalizeEventDisplay(ev, lead = {}, followUpTasks = []) {
   const p = ev.payload || {};
   const t = String(ev.event_type || "");
   const channel = String(ev.channel || "").toUpperCase();
@@ -337,9 +387,25 @@ function normalizeEventDisplay(ev, lead = {}) {
     title = `Follow-Up Sequence Scheduled (${p.totalSteps || 5} Touches)`;
     badgeText = "Scheduled";
     badgeClass = "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200/60";
-    primary = "Date-wise cadence: Day 2, Day 7, Day 14, Day 28, Day 42 relative to initial email";
-    secondary = p.firstScheduledAt ? `First touch scheduled: ${new Date(p.firstScheduledAt).toLocaleDateString()}` : "Automated multi-touch outreach";
+    const cadenceSteps = normalizeCadenceSteps(
+      p.scheduledSteps?.length ? p.scheduledSteps : followUpTasks
+    );
+    const cadenceLine = formatCadenceLine(cadenceSteps);
+    const firstDate = formatFollowUpCalendarDate(cadenceSteps[0]?.scheduledAt || p.firstScheduledAt);
+    primary = cadenceLine || "Date-wise cadence: Day 2, Day 7, Day 14, Day 28, Day 42";
+    secondary = firstDate ? `Day 2 first touch: ${firstDate}` : "Automated multi-touch outreach";
     rightTop = `Enrollment #${p.enrollmentId || ""}`;
+    rightBottom = "Follow-Up Engine";
+  } else if (t === "FOLLOW_UP_TOUCH_SCHEDULED") {
+    type = "scheduled";
+    const dayOffset = p.dayOffset ?? DAY_OFFSET_BY_STEP[p.stepNumber] ?? p.stepNumber;
+    title = `Day ${dayOffset}: ${p.title || STEP_TITLE_BY_NUMBER[p.stepNumber] || "Follow-up touch"}`;
+    badgeText = "Scheduled";
+    badgeClass = "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200/60";
+    const dateLabel = formatFollowUpCalendarDate(p.scheduledAt);
+    primary = dateLabel ? `Due ${dateLabel}` : `Day ${dayOffset} follow-up queued`;
+    secondary = p.subject ? `Subject: ${p.subject}` : "Automated cadence touch";
+    rightTop = `Step ${p.stepNumber || ""} of 5`;
     rightBottom = "Follow-Up Engine";
   } else if (t === "FOLLOW_UP_SENT") {
     type = "email_sent";
@@ -405,6 +471,15 @@ function normalizeEventDisplay(ev, lead = {}) {
     secondary = p.bodyText ? (p.bodyText.length > 90 ? `${p.bodyText.slice(0, 90)}...` : p.bodyText) : "Prepared based on prospect inquiry";
     rightTop = "Response Crafter";
     rightBottom = `Drafted at: ${timeFormatted}`;
+  } else if (t === "AI_RESPONSE_SENT") {
+    type = "email";
+    title = "AI Reply Sent";
+    badgeText = "Sent";
+    badgeClass = "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200/60";
+    primary = p.subject ? `Subject: ${p.subject}` : "Contextual reply delivered to prospect";
+    secondary = p.bodyText ? (p.bodyText.length > 90 ? `${p.bodyText.slice(0, 90)}...` : p.bodyText) : "Sent in reply to prospect message";
+    rightTop = "Reply dispatched";
+    rightBottom = `Sent at: ${timeFormatted}`;
   } else if (t === "REPLY_MATCH_AMBIGUOUS") {
     type = "outcome";
     title = "Ambiguous Reply Flagged for Review";
@@ -423,12 +498,44 @@ function normalizeEventDisplay(ev, lead = {}) {
     secondary = `From: ${p.from || lead.email}`;
     rightTop = `Detected Intent: ${p.outcome || "INTERESTED"}`;
     rightBottom = `Received at: ${timeFormatted}`;
+  } else if (t === "LEAD_CREATED") {
+    type = "system";
+    title = "Lead Ingested & Validated";
+    badgeText = "Ingested";
+    badgeClass = "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200/60";
+    primary = `Source: ${p.source ? String(p.source).replace(/_/g, " ") : "CSV / API"} • Priority: ${p.priority || lead.priority || 50}`;
+    secondary = p.isSuppressed ? "Lead flagged as suppressed on DNC list" : "Passed deduplication & compliance screening";
+    rightTop = "By: NOVA Ingestion";
+    rightBottom = `State: ${lead.status || "QUEUED"}`;
+  } else if (t === "FOLLOWUP_ENROLLED") {
+    type = "system";
+    title = `Follow-Up Cadence Enrolled (${p.totalSteps || 5} Touches)`;
+    badgeText = "Active Cadence";
+    badgeClass = "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300/60";
+    const enrolledSteps = normalizeCadenceSteps(
+      p.scheduledSteps?.length ? p.scheduledSteps : followUpTasks
+    );
+    const enrolledLine = formatCadenceLine(enrolledSteps);
+    const enrolledFirst = formatFollowUpCalendarDate(enrolledSteps[0]?.scheduledAt || p.firstScheduledAt);
+    primary = enrolledLine || (p.enrollmentId || p.enrollment_id
+      ? `Enrolled in automated cadence (Enrollment #${p.enrollmentId || p.enrollment_id})`
+      : "Enrolled in automated cadence");
+    secondary = enrolledFirst ? `Day 2 first touch: ${enrolledFirst}` : "Cadence scheduled relative to initial email";
+    rightTop = "Follow-Up Engine";
+    rightBottom = `Enrolled at: ${timeFormatted}`;
   } else {
     type = "system";
     title = t.replace(/_/g, " ");
     badgeText = channel || "SYSTEM";
     badgeClass = "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200/60";
-    primary = p.description || p.message || (typeof p === "object" ? JSON.stringify(p) : String(p));
+    if (p.description || p.message) {
+      primary = p.description || p.message;
+    } else if (typeof p === "object" && p !== null) {
+      const keys = Object.keys(p);
+      primary = keys.length > 0 ? keys.map((k) => `${k.replace(/_/g, " ")}: ${p[k]}`).join(" • ") : "System activity logged";
+    } else {
+      primary = String(p);
+    }
     secondary = "";
     rightTop = `By: ${p.by || "NOVA System"}`;
     rightBottom = "";
@@ -564,12 +671,29 @@ function getHeaderTheme(tone) {
 export default function UnifiedInteractionTimeline({ timeline = [], lead = {} }) {
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const [expandedRowIds, setExpandedRowIds] = useState(new Set());
+  const [followUpTasks, setFollowUpTasks] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!lead?.id) {
+      setFollowUpTasks([]);
+      return undefined;
+    }
+    followUpService.getLeadJourney(lead.id).then((data) => {
+      if (!cancelled) setFollowUpTasks(data?.tasks || []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [lead?.id]);
 
   const uniqueTimeline = useMemo(() => {
-    if (!Array.isArray(timeline)) return [];
+    const source = (Array.isArray(timeline) ? timeline : []).filter(
+      (item) => item?.event_type !== "FOLLOW_UP_TOUCH_SCHEDULED"
+    );
     const seen = new Set();
     const result = [];
-    for (const item of timeline) {
+    for (const item of source) {
       if (!item) continue;
       const key = item.id ? `id_${item.id}` : `evt_${item.event_type}_${item.created_at}_${JSON.stringify(item.payload || {})}`;
       if (seen.has(key)) continue;
@@ -594,11 +718,23 @@ export default function UnifiedInteractionTimeline({ timeline = [], lead = {} })
       map.get(key).events.push(ev);
     }
 
-    return Array.from(map.entries()).map(([key, data]) => ({
-      key,
-      dateInfo: formatDateGroupHeader(data.d),
-      events: data.events,
-    }));
+    const todayKey = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    return Array.from(map.entries())
+      .map(([key, data]) => ({
+        key,
+        dateInfo: formatDateGroupHeader(data.d),
+        events: data.events,
+      }))
+      .sort((a, b) => {
+        const aToday = a.key === todayKey;
+        const bToday = b.key === todayKey;
+        if (aToday !== bToday) return aToday ? -1 : 1;
+        const aFuture = a.key > todayKey;
+        const bFuture = b.key > todayKey;
+        if (aFuture !== bFuture) return aFuture ? -1 : 1;
+        if (aFuture && bFuture) return a.key.localeCompare(b.key);
+        return b.key.localeCompare(a.key);
+      });
   }, [uniqueTimeline]);
 
   const toggleGroup = (key) => {
@@ -714,7 +850,7 @@ export default function UnifiedInteractionTimeline({ timeline = [], lead = {} })
                     <div className="absolute left-[78px] top-6 bottom-6 w-0.5 bg-border/70" />
 
                     {events.map((ev) => {
-                      const item = normalizeEventDisplay(ev, lead);
+                      const item = normalizeEventDisplay(ev, lead, followUpTasks);
                       const visuals = getVisuals(item.type);
                       const IconComp = visuals.icon;
                       const isExpanded = expandedRowIds.has(ev.id);
@@ -750,13 +886,13 @@ export default function UnifiedInteractionTimeline({ timeline = [], lead = {} })
                                   </div>
 
                                   {item.primary && (
-                                    <p className="text-xs text-foreground/90 font-medium leading-snug truncate">
+                                    <p className="text-xs text-foreground/90 font-medium leading-snug">
                                       {item.primary}
                                     </p>
                                   )}
 
                                   {item.secondary && (
-                                    <p className="text-xs text-muted-foreground leading-snug truncate">
+                                    <p className="text-xs text-muted-foreground leading-snug">
                                       {item.secondary}
                                     </p>
                                   )}
