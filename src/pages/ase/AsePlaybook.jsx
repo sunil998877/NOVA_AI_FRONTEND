@@ -138,7 +138,7 @@ export default function AsePlaybook() {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Product & Sales Playbook</h1>

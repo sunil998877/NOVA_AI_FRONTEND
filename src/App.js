@@ -4,6 +4,7 @@ import { SidebarInset, SidebarProvider } from "./components/ui/sidebar";
 import AppSidebar from "./components/AppSidebar";
 import SiteHeader from "./components/SiteHeader";
 import { useAuth } from "./lib/AuthContext";
+import { canOpenAdmin } from "./lib/roles";
 import { applyTheme, getTheme } from "./lib/theme";
 import LoadingScreen from "./components/LoadingScreen";
 import TopProgressBar from "./components/TopProgressBar";
@@ -83,6 +84,14 @@ function RequireAuthBare() {
   return <Outlet />;
 }
 
+function RequireAseAdmin() {
+  const { user } = useAuth();
+  if (!canOpenAdmin(user?.role)) {
+    return <Navigate to="/ase/dashboard" replace />;
+  }
+  return <Outlet />;
+}
+
 function App() {
   const isCollab = typeof window !== "undefined" && window.location.pathname.startsWith("/collab/");
   const [initialLoading, setInitialLoading] = useState(true);
@@ -153,10 +162,12 @@ function App() {
           <Route path="/ase/pipeline" element={<AsePipeline />} />
           <Route path="/ase/segments" element={<AseSegments />} />
           <Route path="/ase/reports" element={<AseReports />} />
-          <Route path="/ase/compliance" element={<AseCompliance />} />
-          <Route path="/ase/settings" element={<AseSettings />} />
-          <Route path="/ase/settings/integrations" element={<AseSettings />} />
-          <Route path="/ase/playbook" element={<AsePlaybook />} />
+          <Route element={<RequireAseAdmin />}>
+            <Route path="/ase/compliance" element={<AseCompliance />} />
+            <Route path="/ase/settings" element={<AseSettings />} />
+            <Route path="/ase/settings/integrations" element={<AseSettings />} />
+            <Route path="/ase/playbook" element={<AsePlaybook />} />
+          </Route>
           <Route path="/follow-ups" element={<FollowUpDashboard />} />
           <Route path="/ase/follow-ups" element={<FollowUpDashboard />} />
         </Route>

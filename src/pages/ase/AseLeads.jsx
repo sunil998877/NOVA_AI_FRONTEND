@@ -1,29 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Search,
-  Filter,
-  Plus,
   Upload,
-  Download,
-  Trash2,
   Phone,
   Mail,
   ShieldAlert,
   ChevronRight,
-  MoreHorizontal,
   CheckSquare,
   Square,
-  X,
   Webhook,
-  FileSpreadsheet,
   RefreshCw,
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Card, CardContent } from "../../components/ui/card";
 import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
 import { voiceApi } from "../../lib/api";
@@ -48,11 +41,27 @@ const STATUS_BADGES = {
   SUPPRESSED_DNC: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 font-bold",
 };
 
+function listFiltersFromSearch(searchParams, { q, status, page, limit }) {
+  const filters = { q, status, page, limit };
+  const source = searchParams.get("source");
+  const health = searchParams.get("health");
+  const minPriority = searchParams.get("min_priority");
+  const emailConsent = searchParams.get("email_consent");
+  const doNotContact = searchParams.get("do_not_contact");
+  if (source) filters.source = source;
+  if (health) filters.health = health;
+  if (minPriority) filters.min_priority = minPriority;
+  if (emailConsent) filters.email_consent = emailConsent;
+  if (doNotContact != null && doNotContact !== "") filters.do_not_contact = doNotContact;
+  return filters;
+}
+
 export default function AseLeads() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "");
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [apiWebhookOpen, setApiWebhookOpen] = useState(false);
@@ -62,18 +71,29 @@ export default function AseLeads() {
   const { success, error: toastError } = useToast();
 
   useEffect(() => {
+    setStatusFilter(searchParams.get("status") || "");
+    setSearchTerm(searchParams.get("q") || "");
     setCurrentPage(1);
     fetchLeads(1);
-  }, [statusFilter]);
+  }, [searchParams]);
 
   async function fetchLeads(page = currentPage) {
     setLoading(true);
     try {
-      const data = await aseService.getLeads({ q: searchTerm, status: statusFilter, page, limit: pageSize });
+      const data = await aseService.getLeads(
+        listFiltersFromSearch(searchParams, {
+          q: searchParams.get("q") || searchTerm,
+          status: searchParams.get("status") || statusFilter,
+          page,
+          limit: pageSize,
+        })
+      );
       setLeads(data.items || []);
-      setTotalCount(data.total || (data.items || []).length);
+      setTotalCount(data.total ?? (data.items || []).length);
     } catch (err) {
-      toastError("Error", "Could not load leads");
+      setLeads([]);
+      setTotalCount(0);
+      toastError("Error", err.message || "Could not load leads");
     } finally {
       setLoading(false);
     }
@@ -104,11 +124,21 @@ export default function AseLeads() {
   };
 
   const calculatedPages = Math.ceil(totalCount / pageSize);
-  const totalPages = Math.max(calculatedPages > 0 ? calculatedPages : 4, 1);
+  const totalPages = Math.max(calculatedPages, 1);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    fetchLeads();
+    const next = new URLSearchParams(searchParams);
+    if (searchTerm) next.set("q", searchTerm);
+    else next.delete("q");
+    setSearchParams(next);
+  };
+
+  const handleStatusChange = (value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set("status", value);
+    else next.delete("status");
+    setSearchParams(next);
   };
 
   const toggleSelectAll = () => {
@@ -141,7 +171,7 @@ export default function AseLeads() {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Lead Store</h1>
@@ -190,11 +220,21 @@ export default function AseLeads() {
           <Button type="submit" variant="secondary" size="sm">Search</Button>
         </form>
 
+        {(searchParams.get("source") || searchParams.get("health") || searchParams.get("min_priority") || searchParams.get("email_consent") || searchParams.get("do_not_contact")) && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            {searchParams.get("source") && <Badge variant="outline">Source {searchParams.get("source")}</Badge>}
+            {searchParams.get("health") && <Badge variant="outline">Health {searchParams.get("health")}</Badge>}
+            {searchParams.get("min_priority") && <Badge variant="outline">Priority ≥ {searchParams.get("min_priority")}</Badge>}
+            {searchParams.get("email_consent") && <Badge variant="outline">Consent {searchParams.get("email_consent")}</Badge>}
+            {searchParams.get("do_not_contact") && <Badge variant="outline">DNC {searchParams.get("do_not_contact")}</Badge>}
+          </div>
+        )}
+
         <div className="flex items-center gap-2 w-full md:w-auto">
           <select
             className="border rounded-md px-3 py-2 text-sm bg-background"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => handleStatusChange(e.target.value)}
           >
             <option value="">All Lifecycle States</option>
             <option value="NEW">NEW</option>

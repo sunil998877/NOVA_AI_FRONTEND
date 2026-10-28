@@ -3,22 +3,24 @@ import { aseService } from "../../services/ase.service";
 
 const OUTBOUND = new Set(["EMAIL", "CALL"]);
 
-function primaryLabel(action, mode, pending) {
+function defaultPrimaryLabel(action, mode, due) {
+  if (action === "REP_CALLBACK") return "Open callback queue";
+  if (due === false) return "Hold for now";
   if (action === "CALL") {
-    if (mode === "AI_RECOMMENDED") return pending ? "Approve & call" : "Approve & call";
+    if (mode === "AI_RECOMMENDED") return "Approve & call";
     if (mode === "HUMAN_ESCALATION") return "Send call now";
     return "Start AI voice call";
   }
-  if (action === "WAIT") return "Hold for now";
-  if (action === "REP_CALLBACK") return "Open callback queue";
   if (mode === "AI_RECOMMENDED") return "Approve & send";
   if (mode === "HUMAN_ESCALATION") return "Send now";
-  return "Send follow-up email";
+  return "Send follow-up";
 }
 
 export default function LeadNextActionButtons({
   leadId,
   recommendedAction,
+  due = true,
+  primaryLabel,
   operatingMode = "FULLY_AUTOMATED",
   pendingApproval = null,
   doNotContact = false,
@@ -33,12 +35,12 @@ export default function LeadNextActionButtons({
 }) {
   const action = String(recommendedAction || "").toUpperCase();
   const mode = String(operatingMode || "FULLY_AUTOMATED").toUpperCase();
-  const pending = pendingApproval?.status === "PENDING";
   const canOutbound = OUTBOUND.has(action);
+  const waiting = due === false;
 
   const label = useMemo(
-    () => primaryLabel(action, mode, pending),
-    [action, mode, pending]
+    () => primaryLabel || defaultPrimaryLabel(action, mode, due),
+    [primaryLabel, action, mode, due]
   );
 
   const run = async (fn) => {
@@ -57,8 +59,8 @@ export default function LeadNextActionButtons({
       onOpenCallbacks?.();
       return;
     }
-    if (action === "WAIT" || !canOutbound) {
-      onHold?.();
+    if (waiting || action === "WAIT" || !canOutbound) {
+      handleHold();
       return;
     }
     if (mode === "AI_RECOMMENDED") {
@@ -98,7 +100,7 @@ export default function LeadNextActionButtons({
       >
         {mode === "AI_RECOMMENDED" ? "Preview / Edit" : "Preview draft"}
       </button>
-      {action !== "WAIT" && (
+      {!waiting && action !== "WAIT" && (
         <button
           type="button"
           disabled={updating}

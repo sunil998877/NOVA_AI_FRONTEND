@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -14,6 +14,8 @@ import { useToast } from "../components/ui/toast";
 
 function Signup() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get("invite") || "";
   const { authed, applySession } = useAuth();
   const recaptchaRef = useRef(null);
   const [form, setForm] = useState({
@@ -29,6 +31,7 @@ function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const toast = useToast();
+  const [invite, setInvite] = useState(null);
   const credentialsReady =
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) &&
     form.password.length >= 8 &&
@@ -39,6 +42,25 @@ function Signup() {
       setCaptchaToken("");
     }
   }, [credentialsReady]);
+
+  useEffect(() => {
+    if (!inviteToken) return;
+    let cancelled = false;
+    authApi.previewInvite(inviteToken).then((res) => {
+      const data = res?.data;
+      if (!cancelled && data) {
+        setInvite(data);
+        setForm((prev) => ({
+          ...prev,
+          email: data.email || prev.email,
+          organization: data.organization || prev.organization,
+        }));
+      }
+    }).catch(() => {
+      if (!cancelled) setError("Invite is invalid or expired");
+    });
+    return () => { cancelled = true; };
+  }, [inviteToken]);
 
   if (authed) {
     return <Navigate to="/dashboard" replace />;
@@ -66,6 +88,7 @@ function Signup() {
         password: form.password,
         confirmPassword: form.confirmPassword,
         captchaToken: token,
+        inviteToken: inviteToken || undefined,
       });
       applySession(result.token, result.user);
       toast.success("Account created!", "Welcome to NOVA Email Marketer.");
@@ -93,7 +116,11 @@ function Signup() {
             </svg>
           </div>
           <CardTitle className="text-2xl">Create your account</CardTitle>
-          <CardDescription>Start sending campaigns with NOVA</CardDescription>
+          <CardDescription>
+            {invite
+              ? `Join ${invite.organization || "your team"} as ${String(invite.role || "").replace(/_/g, " ").toLowerCase()}`
+              : "Start sending campaigns with NOVA"}
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           <GoogleSignInButton disabled={busy} />
@@ -116,7 +143,8 @@ function Signup() {
                 placeholder="EvokeAI"
                 value={form.organization}
                 onChange={(e) => setForm({ ...form, organization: e.target.value })}
-                required
+                required={!invite}
+                disabled={Boolean(invite)}
               />
             </div>
             <div className="grid gap-2">
@@ -128,6 +156,7 @@ function Signup() {
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 required
+                disabled={Boolean(invite?.email)}
               />
             </div>
             <div className="grid gap-2">

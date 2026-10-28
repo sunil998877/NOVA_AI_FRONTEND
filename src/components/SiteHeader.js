@@ -25,12 +25,24 @@ import {
 } from "./ui/dropdown-menu";
 import { getInitials } from "../lib/auth";
 import { useAuth } from "../lib/AuthContext";
+import AsePresenceControl from "./ase/AsePresenceControl";
 
 const pageMeta = {
   "/": { title: "Dashboard", section: "Overview" },
   "/dashboard": { title: "Dashboard", section: "Overview" },
   "/dashboard-view": { title: "Dashboard View", section: "Overview" },
   "/leads": { title: "Lead Management", section: "Lead Management" },
+  "/ase/dashboard": { title: "Sales Overview", section: "Sales Engine" },
+  "/ase/leads": { title: "Lead Store", section: "Sales Engine" },
+  "/ase/pipeline": { title: "Pipeline Kanban", section: "Sales Engine" },
+  "/ase/calls": { title: "Calling & Dialer", section: "Sales Engine" },
+  "/ase/segments": { title: "Lead Segments", section: "Sales Engine" },
+  "/ase/reports": { title: "ASE Reports", section: "Sales Engine" },
+  "/ase/compliance": { title: "Compliance & DNC", section: "Sales Engine" },
+  "/ase/playbook": { title: "Sales Playbook", section: "Sales Engine" },
+  "/ase/settings": { title: "ASE Settings", section: "Sales Engine" },
+  "/ase/settings/integrations": { title: "ASE Settings", section: "Sales Engine" },
+  "/calls": { title: "Calling & Dialer", section: "Sales Engine" },
   "/ase/leads/import": { title: "Import Leads", section: "Lead Management" },
   "/campaigns": { title: "Your Campaigns", section: "Marketing" },
   "/campaign-analytics": { title: "Campaign Analytics", section: "Marketing" },
@@ -93,6 +105,7 @@ function SiteHeader() {
         <Button variant="ghost" size="icon" className="md:hidden" aria-label="Search">
           <Search />
         </Button>
+        {location.pathname.startsWith("/ase") ? <AsePresenceControl /> : null}
         <NotificationCenter />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

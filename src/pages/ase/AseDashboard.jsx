@@ -24,6 +24,7 @@ export default function AseDashboard() {
   const [callbacks, setCallbacks] = useState([]);
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -34,12 +35,18 @@ export default function AseDashboard() {
           aseService.getLeads({ limit: 50 }).catch(() => ({ items: [] })),
         ]);
         setMetrics(m);
+        setFailed(false);
         setCallbacks(cb.items || []);
         setLeads(
           [...(l.items || [])]
             .sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0))
             .slice(0, 5)
         );
+      } catch (err) {
+        setMetrics(null);
+        setFailed(true);
+        setCallbacks([]);
+        setLeads([]);
       } finally {
         setLoading(false);
       }
@@ -47,13 +54,22 @@ export default function AseDashboard() {
     loadData();
   }, []);
 
-  if (loading || !metrics) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-2">
           <Activity className="h-6 w-6 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Loading Sales Workspace...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (failed || !metrics) {
+    return (
+      <div className="flex flex-col gap-3 min-h-[400px] justify-center items-center">
+        <AlertCircle className="h-6 w-6 text-rose-500" />
+        <p className="text-sm text-muted-foreground">Dashboard metrics unavailable. No placeholder zeros are shown.</p>
       </div>
     );
   }
@@ -69,7 +85,7 @@ export default function AseDashboard() {
   ];
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">

@@ -12,6 +12,7 @@ import {
   Brain,
   Cpu,
   ShieldCheck,
+  UserPlus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -31,6 +32,10 @@ export default function AseSettings() {
   const [brainStatus, setBrainStatus] = useState(null);
   const [brainLoading, setBrainLoading] = useState(false);
   const { success, error: toastError } = useToast();
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("SALESPERSON");
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [lastInviteUrl, setLastInviteUrl] = useState("");
 
   useEffect(() => {
     fetchBrainStatus();
@@ -110,8 +115,23 @@ export default function AseSettings() {
 
   const captureEndpoint = captureBaseUrl ? `${captureBaseUrl}/api/leads` : "";
 
+  const handleInvite = async (e) => {
+    e.preventDefault();
+    setInviteBusy(true);
+    try {
+      const data = await aseService.createInvite({ email: inviteEmail, role: inviteRole });
+      setLastInviteUrl(data.inviteUrl || "");
+      setInviteEmail("");
+      success("Invite created", `Role ${data.role}. Copy the link before it expires.`);
+    } catch (err) {
+      toastError("Invite failed", err.message);
+    } finally {
+      setInviteBusy(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">ASE System Settings</h1>
         <p className="text-muted-foreground mt-1">
@@ -324,6 +344,58 @@ export default function AseSettings() {
               {apiKey ? " Copy the key before leaving this page if you just rotated it." : " Rotate the key to reveal a new secret."}
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <UserPlus className="w-5 h-5 text-primary" />
+            <div>
+              <CardTitle>Invite teammate</CardTitle>
+              <CardDescription>
+                Teammates join this organization with a role. Salespeople cannot open Settings or Admin.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleInvite} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="space-y-2 flex-1">
+              <span className="text-xs font-medium text-muted-foreground block">Email</span>
+              <Input
+                type="email"
+                required
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="rep@company.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-muted-foreground block">Role</span>
+              <select
+                className="border rounded-md px-3 py-2 text-sm bg-background min-w-[180px]"
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value)}
+              >
+                <option value="SALESPERSON">Salesperson</option>
+                <option value="SALES_MANAGER">Sales Manager</option>
+                <option value="CAMPAIGN_OPERATOR">Campaign Operator</option>
+                <option value="ORG_ADMIN">Org Admin</option>
+              </select>
+            </div>
+            <Button type="submit" disabled={inviteBusy}>
+              {inviteBusy ? "Creating…" : "Create invite"}
+            </Button>
+          </form>
+          {lastInviteUrl ? (
+            <div className="mt-3 flex gap-2">
+              <Input readOnly value={lastInviteUrl} className="font-mono text-xs" />
+              <Button variant="outline" size="sm" onClick={() => handleCopyEndpoint(lastInviteUrl)}>
+                <Copy className="w-4 h-4 mr-1.5" /> Copy
+              </Button>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>

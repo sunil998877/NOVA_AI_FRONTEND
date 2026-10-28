@@ -85,7 +85,8 @@ export const authApi = {
   config: () => api("/api/auth/config", { auth: false }),
   signup: (body) => api("/api/auth/signup", { method: "POST", body, auth: false }),
   signin: (body) => api("/api/auth/signin", { method: "POST", body, auth: false }),
-  google: (idToken) => api("/api/auth/google", { method: "POST", body: { idToken }, auth: false }),
+  google: (idToken, inviteToken) => api("/api/auth/google", { method: "POST", body: { idToken, inviteToken }, auth: false }),
+  previewInvite: (token) => api(`/api/auth/invite/${encodeURIComponent(token)}`, { auth: false }),
   resetPassword: (body) => api("/api/auth/reset-password", { method: "POST", body, auth: false }),
   completeReset: (body) => api("/api/auth/complete-reset", { method: "POST", body, auth: false }),
   updateUser: (attributes) => api("/api/auth/update-user", { method: "POST", body: { attributes } }),
@@ -253,7 +254,11 @@ export const leadApi = {
     if (params.q) query.set("q", params.q);
     if (params.source) query.set("source", params.source);
     if (params.status) query.set("status", params.status);
-    if (params.priority) query.set("priority", params.priority);
+    if (params.priority) query.set("priority", String(params.priority));
+    if (params.health) query.set("health", params.health);
+    if (params.min_priority != null && params.min_priority !== "") query.set("min_priority", String(params.min_priority));
+    if (params.email_consent) query.set("email_consent", params.email_consent);
+    if (params.do_not_contact != null && params.do_not_contact !== "") query.set("do_not_contact", String(params.do_not_contact));
     return api(`/api/leads?${query}`);
   },
   get: (id) => api(`/api/leads/${id}`),
@@ -275,6 +280,13 @@ export const leadApi = {
   getOperatingMode: () => api("/api/ase/operating-mode"),
   setOperatingMode: (mode) => api("/api/ase/operating-mode", { method: "PUT", body: { mode } }),
   getReports: () => api("/api/leads/reports"),
+  getSegments: () => api("/api/leads/segments"),
+  getComplianceLog: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.limit) query.set("limit", String(params.limit));
+    const qs = query.toString();
+    return api(`/api/leads/reports/compliance${qs ? `?${qs}` : ""}`);
+  },
 };
 
 export const aseOperatingApi = {
@@ -290,6 +302,10 @@ export const aseOperatingApi = {
   getLeadApproval: (leadId) => api(`/api/ase/approvals/lead/${leadId}`),
   approveLead: (leadId, body = {}) => api(`/api/ase/approvals/lead/${leadId}/approve`, { method: "POST", body }),
   holdLead: (leadId) => api(`/api/ase/approvals/lead/${leadId}/hold`, { method: "POST" }),
+  listInvites: () => api("/api/ase/invites"),
+  createInvite: (body) => api("/api/ase/invites", { method: "POST", body }),
+  getPresence: () => api("/api/ase/presence"),
+  setPresence: (body) => api("/api/ase/presence", { method: "POST", body }),
 };
 
 export const callbackApi = {

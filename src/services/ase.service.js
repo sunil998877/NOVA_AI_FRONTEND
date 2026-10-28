@@ -2,39 +2,24 @@ import { leadApi, callbackApi, suppressionApi, playbookApi, aseOperatingApi } fr
 
 export const aseService = {
   async getDashboardMetrics() {
-    try {
-      const res = await leadApi.stats();
-      if (res?.data?.total !== undefined) {
-        return {
-          totalLeads: res.data.total,
-          newLeads: res.data.byStatus?.NEW || 0,
-          contacted: res.data.byStatus?.CONTACTED || 0,
-          engaged: res.data.byStatus?.ENGAGED || 0,
-          interested: res.data.byStatus?.INTERESTED || 0,
-          callbacksRequired: res.data.callbacks?.open_count || 0,
-          overdueCallbacks: res.data.callbacks?.overdue_count || 0,
-          won: res.data.byStatus?.CLOSED_WON || 0,
-          lost: res.data.byStatus?.CLOSED_LOST || 0,
-          dnc: res.data.byStatus?.SUPPRESSED_DNC || 0,
-          conversionRate: res.data.total
-            ? `${((Number(res.data.byStatus?.CLOSED_WON || 0) / Number(res.data.total)) * 100).toFixed(1)}%`
-            : "0%",
-        };
-      }
-    } catch (_) { }
-
+    const res = await leadApi.stats();
+    if (res?.data?.total === undefined) {
+      throw new Error("Dashboard metrics unavailable");
+    }
     return {
-      totalLeads: 0,
-      newLeads: 0,
-      contacted: 0,
-      engaged: 0,
-      interested: 0,
-      callbacksRequired: 0,
-      overdueCallbacks: 0,
-      won: 0,
-      lost: 0,
-      dnc: 0,
-      conversionRate: "0%",
+      totalLeads: res.data.total,
+      newLeads: res.data.byStatus?.NEW || 0,
+      contacted: res.data.byStatus?.CONTACTED || 0,
+      engaged: res.data.byStatus?.ENGAGED || 0,
+      interested: res.data.byStatus?.INTERESTED || 0,
+      callbacksRequired: res.data.callbacks?.open_count || 0,
+      overdueCallbacks: res.data.callbacks?.overdue_count || 0,
+      won: res.data.byStatus?.CLOSED_WON || 0,
+      lost: res.data.byStatus?.CLOSED_LOST || 0,
+      dnc: res.data.byStatus?.SUPPRESSED_DNC || 0,
+      conversionRate: res.data.total
+        ? `${((Number(res.data.byStatus?.CLOSED_WON || 0) / Number(res.data.total)) * 100).toFixed(1)}%`
+        : "0%",
     };
   },
 
@@ -43,7 +28,7 @@ export const aseService = {
     if (res?.data !== undefined && Array.isArray(res.data)) {
       return { items: res.data, total: res.pagination?.total ?? res.data.length };
     }
-    return { items: [], total: 0 };
+    throw new Error("Leads unavailable");
   },
 
   async getLead(id) {
@@ -146,9 +131,34 @@ export const aseService = {
     return res?.data || res;
   },
 
+  async listInvites() {
+    const res = await aseOperatingApi.listInvites();
+    if (!Array.isArray(res?.data)) throw new Error("Invites unavailable");
+    return res.data;
+  },
+
+  async createInvite(body) {
+    const res = await aseOperatingApi.createInvite(body);
+    if (!res?.data) throw new Error("Could not create invite");
+    return res.data;
+  },
+
   async getReports() {
     const res = await leadApi.getReports();
-    return res?.data || res;
+    if (!res?.data) throw new Error("Reports unavailable");
+    return res.data;
+  },
+
+  async getSegments() {
+    const res = await leadApi.getSegments();
+    if (!Array.isArray(res?.data)) throw new Error("Segments unavailable");
+    return res.data;
+  },
+
+  async getComplianceLog(params = {}) {
+    const res = await leadApi.getComplianceLog(params);
+    if (!Array.isArray(res?.data)) throw new Error("Compliance log unavailable");
+    return res.data;
   },
 
   async getPlaybook() {

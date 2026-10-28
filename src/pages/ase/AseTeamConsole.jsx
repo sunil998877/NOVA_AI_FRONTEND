@@ -20,6 +20,8 @@ import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
+import AsePresenceRoster from "../../components/ase/AsePresenceRoster";
+import AseTransferAlert from "../../components/ase/AseTransferAlert";
 
 const STEP_TOUCH_DESCRIPTIONS = {
   1: "Step 1 • In-Thread Follow-Up",
@@ -248,6 +250,9 @@ export default function AseTeamConsole() {
           <Link to="/ase/callbacks">View All Callbacks</Link>
         </Button>
       </div>
+
+      <AseTransferAlert />
+      <AsePresenceRoster />
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1 min-h-0">
         <Card className="md:col-span-3 flex flex-col min-h-0">

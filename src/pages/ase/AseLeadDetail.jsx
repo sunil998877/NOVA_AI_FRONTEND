@@ -15,8 +15,6 @@ import {
   FileText,
   CheckSquare,
   Paperclip,
-  Copy,
-  Check,
   Link2,
   User,
   Users,
@@ -35,7 +33,7 @@ import UnifiedInteractionTimeline from "../../components/ase/UnifiedInteractionT
 import AiGeneratedEmailCard from "../../components/ase/AiGeneratedEmailCard";
 import LeadFollowUpSequenceCard from "../../components/ase/LeadFollowUpSequenceCard";
 import AssignedRepDropdown from "../../components/ase/AssignedRepDropdown";
-import LeadNextActionButtons from "../../components/ase/LeadNextActionButtons";
+import NextBestActionCard from "../../components/ase/NextBestActionCard";
 
 const BRAIN_EVENT_TYPES = new Set([
   "NOVA_BRAIN_DECISION",
@@ -43,175 +41,25 @@ const BRAIN_EVENT_TYPES = new Set([
   "ORCHESTRATOR_DECISION",
 ]);
 
-function parseEventPayload(event) {
-  const raw = event?.payload;
-  if (!raw) return {};
-  if (typeof raw === "string") {
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return {};
-    }
-  }
-  return typeof raw === "object" ? raw : {};
+function consentStatus(consent) {
+  const status = String(consent?.status || "UNKNOWN").toUpperCase();
+  if (status === "GRANTED" || status === "DENIED") return status;
+  return "UNKNOWN";
 }
 
-function getLatestLoggedDecision(timeline) {
-  const events = Array.isArray(timeline) ? timeline : [];
-  const latest = events
-    .filter((event) => BRAIN_EVENT_TYPES.has(String(event.event_type || event.type || "").toUpperCase()))
-    .sort((a, b) => {
-      const left = new Date(a.created_at || a.createdAt || a.timestamp || 0).getTime();
-      const right = new Date(b.created_at || b.createdAt || b.timestamp || 0).getTime();
-      return right - left;
-    })[0];
-  return latest ? parseEventPayload(latest) : null;
-}
-
-function toFraction(value) {
-  const number = Number(value);
-  if (!Number.isFinite(number) || number < 0) return null;
-  return number > 1 ? number / 100 : number;
-}
-
-function readProbability(source, keys) {
-  if (!source || typeof source !== "object") return null;
-  const normalized = Object.fromEntries(
-    Object.entries(source).map(([key, value]) => [String(key).toUpperCase(), value])
+function ConsentChip({ label, consent }) {
+  const status = consentStatus(consent);
+  const tone =
+    status === "GRANTED"
+      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+      : status === "DENIED"
+        ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+        : "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide ${tone}`}>
+      {label} {status}
+    </span>
   );
-  for (const key of keys) {
-    const value = toFraction(normalized[String(key).toUpperCase()]);
-    if (value != null) return value;
-  }
-  return null;
-}
-
-function rankedToMap(ranked) {
-  if (!Array.isArray(ranked)) return {};
-  return Object.fromEntries(
-    ranked
-      .filter((item) => item && item.action != null)
-      .map((item) => [item.action, item.probability])
-  );
-}
-
-function probsFromExplanation(text) {
-  if (!text) return null;
-  const email = text.match(/email\s+(\d+(?:\.\d+)?)%/i);
-  const call = text.match(/call\s+(\d+(?:\.\d+)?)%/i);
-  const wait = text.match(/wait\s+(\d+(?:\.\d+)?)%/i);
-  if (!email && !call && !wait) return null;
-  return {
-    EMAIL: email ? Number(email[1]) / 100 : 0,
-    CALL: call ? Number(call[1]) / 100 : 0,
-    WAIT: wait ? Number(wait[1]) / 100 : 0,
-  };
-}
-
-function actionFromExplanation(text) {
-  const match = String(text || "").match(/selected\s+(EMAIL|CALL|WAIT)\b/i);
-  return match ? match[1].toUpperCase() : null;
-}
-
-function formatClock(date, timeZone) {
-  return new Date(date).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone,
-  });
-}
-
-function hourInTimeZone(date, timeZone) {
-  return Number(new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hour: "numeric",
-    hour12: false,
-  }).format(date)) % 24;
-}
-
-function snapToBusinessHours(date, timeZone, action) {
-  if (action === "WAIT") return date;
-  const hour = hourInTimeZone(date, timeZone);
-  if (hour >= 9 && hour < 20) return date;
-  const hoursToAdd = hour < 9 ? (9 - hour) : (24 - hour + 9);
-  return new Date(date.getTime() + hoursToAdd * 3600 * 1000);
-}
-
-function formatOptimalSendWindow(mlDecision, lead, action) {
-  const tz = mlDecision?.sendWindow?.timezone || lead?.metadata?.timezone || lead?.timezone || "Asia/Kolkata";
-  const hasExactWindow = mlDecision?.sendWindow?.start && mlDecision?.sendWindow?.end;
-  const startRaw = mlDecision?.sendWindow?.start || mlDecision?.scheduledTime;
-  const delayHours = Number(mlDecision?.delayHours ?? mlDecision?.delay_hours);
-  let start = startRaw ? new Date(startRaw) : null;
-  if (!start || Number.isNaN(start.getTime())) {
-    start = new Date(Date.now() + (Number.isFinite(delayHours) ? delayHours : 0) * 3600 * 1000);
-  }
-  let end = hasExactWindow ? new Date(mlDecision.sendWindow.end) : null;
-  if (!hasExactWindow) {
-    start = snapToBusinessHours(start, tz, action);
-    const spanHours = action === "CALL" ? 1 : 2.5;
-    end = new Date(start.getTime() + spanHours * 3600 * 1000);
-  }
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "Updating…";
-  const soon = start.getTime() - Date.now() < 12 * 3600 * 1000;
-  const day = soon ? "" : `${start.toLocaleDateString("en-US", { weekday: "short", timeZone: tz })} `;
-  const zone = tz === "Asia/Kolkata" ? "IST" : tz.split("/").pop().replace(/_/g, " ");
-  return `${day}${formatClock(start, tz)} – ${formatClock(end, tz)} (${zone})`;
-}
-
-function countTouchpoints(lead, timeline, metrics) {
-  const rawCounters = lead?.attempt_counters;
-  const counters = typeof rawCounters === "string"
-    ? (() => { try { return JSON.parse(rawCounters); } catch { return {}; } })()
-    : (rawCounters || {});
-  const events = Array.isArray(timeline) ? timeline : [];
-  const emailsFromTimeline = events.filter((event) => {
-    const type = String(event.event_type || "");
-    const channel = String(event.channel || "").toUpperCase();
-    return type === "EMAIL_SENT" || type === "DELIVERY_CONFIRMED" || (type === "ActionCompleted" && channel === "EMAIL");
-  }).length;
-  const callsFromTimeline = events.filter((event) => {
-    const type = String(event.event_type || "");
-    const channel = String(event.channel || "").toUpperCase();
-    return channel === "VOICE" || type === "VOICE_CALL" || type === "OUTBOUND_CALL" || type === "CallDispatched" || type === "CALL_COMPLETED";
-  }).length;
-  const emails = Math.max(Number(counters.email || 0), Number(metrics?.emailAttempts || 0), emailsFromTimeline);
-  const calls = Math.max(Number(counters.voice || 0), Number(metrics?.voiceAttempts || 0), callsFromTimeline);
-  return { emails, calls };
-}
-
-function intentFromDecision(lead, action, conversionPct, engagement) {
-  const status = String(lead?.status || "").toUpperCase();
-  if (status === "QUALIFIED" || status === "CALLBACK_SCHEDULED") return "High intent — handoff";
-  if (status === "INTERESTED") return "High intent";
-  if (status === "ENGAGED" || Number(engagement) >= 50) return "Receptive";
-  if (action === "WAIT") return "Cooling — wait";
-  if (Number(conversionPct) >= 8) return "Warm";
-  return "Low intent";
-}
-
-function channelPercents(decision) {
-  const source = {
-    ...probsFromExplanation(decision?.explanation || decision?.reasonSummary),
-    ...rankedToMap(decision?.rankedActions || decision?.ranked_actions),
-    ...(decision?.probabilities && typeof decision.probabilities === "object" ? decision.probabilities : {}),
-  };
-  const email = readProbability(source, ["EMAIL"]) ?? 0;
-  const wait = readProbability(source, ["WAIT"]) ?? 0;
-  const call = readProbability(source, ["CALL", "VOICE"]) ?? 0;
-  const sum = email + wait + call;
-  if (sum <= 0) {
-    return { email: 0, wait: 0, call: 0, hasData: false };
-  }
-  const raw = {
-    email: Math.round((email / sum) * 100),
-    wait: Math.round((wait / sum) * 100),
-    call: Math.round((call / sum) * 100),
-  };
-  const drift = 100 - (raw.email + raw.wait + raw.call);
-  const winner = email >= wait && email >= call ? "email" : wait >= call ? "wait" : "call";
-  raw[winner] += drift;
-  return { ...raw, hasData: true };
 }
 
 export default function AseLeadDetail() {
@@ -226,7 +74,6 @@ export default function AseLeadDetail() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-  const [copiedField, setCopiedField] = useState(null);
   const [loadError, setLoadError] = useState(null);
 
   const fetchLead = useCallback(async (isInitial = false) => {
@@ -375,14 +222,6 @@ export default function AseLeadDetail() {
     }
   };
 
-  const handleCopy = (text, field) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-    success("Copied", `${field === "email" ? "Email" : "Phone"} copied to clipboard`);
-  };
-
   const getInitials = (name) => {
     if (!name) return "LD";
     const parts = name.trim().split(/\s+/);
@@ -411,70 +250,7 @@ export default function AseLeadDetail() {
   }
 
   const initials = getInitials(lead.name);
-  const firstName = (lead.name || "this lead").trim().split(/\s+/)[0];
   const locationText = lead.location || (lead.city ? `${lead.city}${lead.state ? `, ${lead.state}` : ""}` : "");
-  const loggedDecision = getLatestLoggedDecision(timeline);
-  const mlDecision = {
-    ...(loggedDecision || {}),
-    ...(brainDecision || {}),
-    probabilities: brainDecision?.probabilities || loggedDecision?.probabilities,
-    rankedActions: brainDecision?.rankedActions || brainDecision?.ranked_actions || loggedDecision?.rankedActions || loggedDecision?.ranked_actions,
-    action: lead.next_action
-      || brainDecision?.action
-      || brainDecision?.recommendedAction
-      || loggedDecision?.action,
-    confidence: brainDecision?.confidence ?? loggedDecision?.confidence,
-    explanation: brainDecision?.explanation || loggedDecision?.reasonSummary || loggedDecision?.explanation,
-    conversionPrediction: brainDecision?.conversionPrediction,
-    delayHours: brainDecision?.delayHours ?? loggedDecision?.delayHours,
-    scheduledTime: brainDecision?.scheduledTime ?? loggedDecision?.scheduledTime,
-    sendWindow: brainDecision?.sendWindow ?? loggedDecision?.sendWindow,
-    supportingMetrics: brainDecision?.supportingMetrics || {
-      emailAttempts: loggedDecision?.emailAttempts,
-      voiceAttempts: loggedDecision?.voiceAttempts,
-    },
-  };
-  const channel = channelPercents(mlDecision);
-  const emailPct = channel.email;
-  const waitPct = channel.wait;
-  const callPct = channel.call;
-  const recommendedAction = String(mlDecision.action || "WAIT").toUpperCase();
-  const confidencePct = channel.hasData
-    ? (recommendedAction === "EMAIL" ? emailPct : recommendedAction === "WAIT" ? waitPct : recommendedAction === "CALL" ? callPct : Math.round(Number(mlDecision.confidence || 0) * (Number(mlDecision.confidence) > 1 ? 1 : 100)))
-    : Math.round(Number(mlDecision.confidence != null ? mlDecision.confidence : 0) * (Number(mlDecision.confidence) > 1 ? 1 : 100));
-  const conversionSource = mlDecision.conversionPrediction?.probability ?? loggedDecision?.conversionProbability;
-  const rawConversion = conversionSource != null
-    ? (Number(conversionSource) > 1 ? Number(conversionSource) / 100 : Number(conversionSource))
-    : 0;
-  const conversionProb = (rawConversion * 100).toFixed(1);
-  const conversionTone = Number(conversionProb) >= 20
-    ? "Promising — prioritize"
-    : Number(conversionProb) >= 8
-      ? "Moderate — stay on it"
-      : "Low — keep nurturing";
-  const sendWindowLabel = formatOptimalSendWindow(mlDecision, lead, recommendedAction);
-  const touchpoints = countTouchpoints(lead, timeline, mlDecision.supportingMetrics);
-  const intentLabel = intentFromDecision(
-    lead,
-    recommendedAction,
-    conversionProb,
-    mlDecision.supportingMetrics?.engagementScore
-  );
-  const recommendedTitle = recommendedAction === "CALL"
-    ? "Start an AI voice call"
-    : recommendedAction === "WAIT"
-      ? "Wait before the next touch"
-      : recommendedAction === "REP_CALLBACK"
-        ? "Human callback is queued"
-        : "Send a follow-up email";
-  const recommendedBody = mlDecision.explanation
-    || (recommendedAction === "WAIT"
-      ? `The model selected wait for ${firstName}. Email and call are weaker than holding the cadence.`
-      : recommendedAction === "CALL"
-        ? `A voice call is the strongest channel for ${firstName} right now.`
-        : recommendedAction === "REP_CALLBACK"
-          ? `A salesperson should call ${firstName} back. Autonomous outreach is paused.`
-          : `Email is the strongest channel for ${firstName} right now.`);
 
   const tabs = [
     { id: "overview", label: "Overview", icon: LayoutGrid },
@@ -574,149 +350,30 @@ export default function AseLeadDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 w-full items-stretch">
-        <div className="lg:col-span-7 xl:col-span-8 rounded-2xl border border-gray-200/90 dark:border-border bg-white dark:bg-card p-5 sm:p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-[#ffedd5] text-[#c2410c]">
-                RECOMMENDED NEXT STEP
-              </span>
-              <span className="text-xs text-gray-500 dark:text-muted-foreground font-normal">
-                {data?.operatingMode === "AI_RECOMMENDED"
-                  ? "Needs approval"
-                  : data?.operatingMode === "HUMAN_ESCALATION"
-                    ? "Human escalation"
-                    : "Fully automated"}
-                {" · "}
-                {Number.isFinite(confidencePct) ? confidencePct : 98}% confidence
-              </span>
-              {data?.pendingApproval?.status === "PENDING" && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-amber-100 text-amber-800">
-                  Pending approval
-                </span>
-              )}
-            </div>
-            <h2 className="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-foreground">
-              {recommendedTitle}
-            </h2>
-            <LeadNextActionButtons
-              leadId={lead.id}
-              recommendedAction={recommendedAction}
-              operatingMode={data?.operatingMode}
-              pendingApproval={data?.pendingApproval}
-              doNotContact={lead.do_not_contact}
-              updating={updating}
-              onBusy={setUpdating}
-              onHold={handleHoldCadence}
-              onPreview={() => setActiveTab("overview")}
-              onExecuted={async () => {
-                success(
-                  data?.operatingMode === "AI_RECOMMENDED" ? "Approved" : "Action Executed",
-                  data?.operatingMode === "AI_RECOMMENDED"
-                    ? "Approved action is running now."
-                    : "Next action has been executed."
-                );
-                await fetchLead();
-              }}
-              onOpenCallbacks={() => navigate("/ase/callbacks")}
-              onChooseAnother={() => setActiveTab("insights")}
-              onError={(err) => toastError("Execution Failed", err.message || "Failed to run next action.")}
-            />
-
-            <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-              <div className="rounded-xl bg-gray-50/80 dark:bg-muted/40 p-2.5 border border-gray-100 dark:border-border/60">
-                <span className="text-[10px] uppercase font-semibold tracking-wider text-gray-400 block">
-                  Optimal Send Window
-                </span>
-                <span className="font-semibold text-gray-800 dark:text-foreground mt-0.5 block truncate">
-                  {sendWindowLabel}
-                </span>
-              </div>
-              <div className="rounded-xl bg-gray-50/80 dark:bg-muted/40 p-2.5 border border-gray-100 dark:border-border/60">
-                <span className="text-[10px] uppercase font-semibold tracking-wider text-gray-400 block">
-                  Touchpoint History
-                </span>
-                <span className="font-semibold text-gray-800 dark:text-foreground mt-0.5 block truncate">
-                  {touchpoints.emails} {touchpoints.emails === 1 ? "Email" : "Emails"} · {touchpoints.calls} {touchpoints.calls === 1 ? "Call" : "Calls"}
-                </span>
-              </div>
-              <div className="rounded-xl bg-gray-50/80 dark:bg-muted/40 p-2.5 border border-gray-100 dark:border-border/60">
-                <span className="text-[10px] uppercase font-semibold tracking-wider text-gray-400 block">
-                  Lead Intent Signal
-                </span>
-                <span className={`font-semibold mt-0.5 block truncate ${intentLabel === "Low intent" || intentLabel === "Cooling — wait" ? "text-gray-600 dark:text-muted-foreground" : "text-emerald-600 dark:text-emerald-400"}`}>
-                  {intentLabel}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-3">
-            <div className="border-t border-gray-100 dark:border-border/60 mb-3" />
-            <div className="flex items-center gap-2.5 flex-wrap text-xs sm:text-sm">
-              <span className="font-bold text-gray-900 dark:text-foreground">Why this?</span>
-              {(brainDecision?.reasonCodes?.length ? brainDecision.reasonCodes : ["Model decision"]).slice(0, 3).map((code) => (
-                <span key={code} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-muted text-gray-600 dark:text-muted-foreground">
-                  {String(code).replace(/_/g, " ")}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-5 xl:col-span-4 rounded-2xl border border-gray-200/90 dark:border-border bg-white dark:bg-card p-5 sm:p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="text-xs font-medium text-gray-500 dark:text-muted-foreground">
-              Conversion chance, next 14 days
-            </div>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-3xl sm:text-[34px] font-bold tracking-tight text-gray-900 dark:text-foreground leading-none">
-                {conversionProb}%
-              </span>
-              <span className="text-xs text-gray-500 dark:text-muted-foreground font-normal">
-                {conversionTone}
-              </span>
-            </div>
-            <div className="mt-2.5 h-1.5 w-full bg-gray-100 dark:bg-muted rounded-full relative overflow-hidden">
-              <div
-                className="h-full rounded-full bg-[#ea580c]"
-                style={{ width: `${Math.max(2, Math.min(100, Number(conversionProb)))}%` }}
-              />
-            </div>
-
-            <div className="mt-4 text-xs font-semibold text-gray-700 dark:text-foreground">
-              Model&apos;s channel preference
-            </div>
-            <div className="mt-2 space-y-2">
-              {[
-                { key: "EMAIL", label: "Email", value: emailPct, bar: "bg-[#2563eb]", text: "text-[#2563eb]" },
-                { key: "WAIT", label: "Wait", value: waitPct, bar: "bg-[#d97706]", text: "text-[#d97706]" },
-                { key: "CALL", label: "AI voice call", value: callPct, bar: "bg-[#7c3aed]", text: "text-[#7c3aed]" },
-              ].map((row) => {
-                const isWinner = recommendedAction === row.key && channel.hasData;
-                return (
-                  <div key={row.key}>
-                    <div className={`flex items-center justify-between text-xs ${isWinner ? `font-semibold ${row.text}` : "font-normal text-gray-600 dark:text-muted-foreground"}`}>
-                      <span>{row.label}</span>
-                      <span className={isWinner ? `font-bold ${row.text}` : ""}>{row.value}%</span>
-                    </div>
-                    <div className="mt-1 h-1.5 w-full bg-gray-100 dark:bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${row.bar}`}
-                        style={{ width: `${Math.max(row.value > 0 ? 2 : 0, Math.min(100, row.value))}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-3.5 text-[11px] text-gray-400 font-normal">
-            Updated automatically by the ML pipeline
-          </div>
-        </div>
-      </div>
+      <NextBestActionCard
+        lead={lead}
+        brainDecision={brainDecision}
+        timeline={timeline}
+        operatingMode={data?.operatingMode}
+        pendingApproval={data?.pendingApproval}
+        nbaFromApi={data?.nba}
+        updating={updating}
+        onBusy={setUpdating}
+        onHold={handleHoldCadence}
+        onPreview={() => setActiveTab("overview")}
+        onExecuted={async () => {
+          success(
+            data?.operatingMode === "AI_RECOMMENDED" ? "Approved" : "Action Executed",
+            data?.operatingMode === "AI_RECOMMENDED"
+              ? "Approved action is running now."
+              : "Next action has been executed."
+          );
+          await fetchLead();
+        }}
+        onOpenCallbacks={() => navigate("/ase/callbacks")}
+        onChooseAnother={() => setActiveTab("insights")}
+        onError={(err) => toastError("Execution Failed", err.message || "Failed to run next action.")}
+      />
 
       <div className="border-b border-border/70 flex items-center gap-1 overflow-x-auto no-scrollbar w-full">
         {tabs.map((tab) => {
@@ -758,13 +415,7 @@ export default function AseLeadDetail() {
                   <span className="text-xs font-bold text-foreground truncate block">{lead.email}</span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => handleCopy(lead.email, "email")}
-                className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-muted/50 transition-colors shrink-0"
-              >
-                {copiedField === "email" ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-              </button>
+              <ConsentChip label="Email" consent={lead.email_consent} />
             </div>
 
             <div className="rounded-2xl border border-border/80 bg-card p-3.5 flex items-center justify-between shadow-2xs">
@@ -806,15 +457,7 @@ export default function AseLeadDetail() {
                   <span className="text-xs font-bold text-foreground font-mono block">{lead.phone || "—"}</span>
                 </div>
               </div>
-              {lead.phone && (
-                <button
-                  type="button"
-                  onClick={() => handleCopy(lead.phone, "phone")}
-                  className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-muted/50 transition-colors shrink-0"
-                >
-                  {copiedField === "phone" ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                </button>
-              )}
+              <ConsentChip label="Voice" consent={lead.voice_consent} />
             </div>
 
             <div className="rounded-2xl border border-border/80 bg-card p-3.5 flex items-center justify-between shadow-2xs">

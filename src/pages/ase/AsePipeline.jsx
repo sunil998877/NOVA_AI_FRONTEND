@@ -225,7 +225,7 @@ export default function AsePipeline() {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Pipeline Kanban</h1>
@@ -260,7 +260,7 @@ export default function AsePipeline() {
           return (
             <div
               key={col.key}
-              className={`flex-shrink-0 w-80 rounded-lg border bg-muted/20 flex flex-col max-h-[780px] border-t-4 ${col.color}`}
+              className={`min-w-[260px] flex-1 rounded-lg border bg-muted/20 flex flex-col max-h-[780px] border-t-4 ${col.color}`}
             >
               <div className="p-3 border-b flex items-center justify-between bg-card rounded-t">
                 <div className="flex items-center gap-1.5">

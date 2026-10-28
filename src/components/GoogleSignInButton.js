@@ -79,7 +79,8 @@ export function GoogleSignInButton({ disabled }) {
       setBusy(true);
       setError("");
       try {
-        const result = await authApi.google(credential);
+        const inviteToken = new URLSearchParams(window.location.search).get("invite") || "";
+        const result = await authApi.google(credential, inviteToken);
         applySession(result.token, result.user);
         navigate("/dashboard");
       } catch (err) {

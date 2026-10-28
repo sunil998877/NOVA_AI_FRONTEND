@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from "react";
 import {
-  ShieldAlert,
-  ShieldCheck,
   Plus,
   Trash2,
-  Lock,
-  AlertTriangle,
   Sliders,
+  Download,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -17,17 +14,33 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "../../components/ui/label";
 import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
+import { complianceToCsv, downloadCsv } from "../../lib/aseReports";
 
 export default function AseCompliance() {
   const [suppressions, setSuppressions] = useState([]);
+  const [complianceLog, setComplianceLog] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [logFailed, setLogFailed] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [newEntry, setNewEntry] = useState({ type: "EMAIL", value: "", reason: "Opt-out request" });
   const { success, error: toastError } = useToast();
 
   useEffect(() => {
     fetchSuppressions();
+    fetchComplianceLog();
   }, []);
+
+  async function fetchComplianceLog() {
+    try {
+      const rows = await aseService.getComplianceLog({ limit: 200 });
+      setComplianceLog(rows);
+      setLogFailed(false);
+    } catch (err) {
+      setComplianceLog([]);
+      setLogFailed(true);
+      toastError("Compliance log unavailable", err.message || "Could not load consent / DNC / cap events");
+    }
+  }
 
   async function fetchSuppressions() {
     setLoading(true);
@@ -65,7 +78,7 @@ export default function AseCompliance() {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Compliance & Governance</h1>
@@ -73,9 +86,22 @@ export default function AseCompliance() {
             Global DNC suppression, per-channel consent policies, and frequency fatigue safeguards.
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" /> Add Suppression
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (!complianceLog.length) return;
+              downloadCsv(`ase-compliance-${new Date().toISOString().slice(0, 10)}.csv`, complianceToCsv(complianceLog));
+              success("Export started", "Consent, DNC, and cap-breach log downloaded");
+            }}
+            disabled={!complianceLog.length || logFailed}
+          >
+            <Download className="w-4 h-4 mr-2" /> Export compliance log
+          </Button>
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" /> Add Suppression
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -105,6 +131,68 @@ export default function AseCompliance() {
               <span className="text-xl font-bold text-foreground">24 Hours Minimum</span>
               <span className="text-[11px] text-muted-foreground block mt-1">Durable timer backoff</span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Compliance log</CardTitle>
+              <CardDescription>
+                Consent grants/denials, DNC / suppression, and capacity-cap blocks from live events.
+              </CardDescription>
+            </div>
+            <Badge variant="outline" className="text-xs">
+              {logFailed ? "Unavailable" : `${complianceLog.length} events`}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Kind</TableHead>
+                  <TableHead>When</TableHead>
+                  <TableHead>Lead</TableHead>
+                  <TableHead>Channel</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Reason</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {logFailed ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Compliance log could not be loaded. No placeholder rows.
+                    </TableCell>
+                  </TableRow>
+                ) : complianceLog.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No consent, DNC, or cap-breach events yet.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  complianceLog.map((row) => (
+                    <TableRow key={`${row.kind}-${row.id}-${row.created_at}`}>
+                      <TableCell>
+                        <Badge variant="outline">{row.kind}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {row.created_at ? new Date(row.created_at).toLocaleString() : "—"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{row.lead_id ?? "—"}</TableCell>
+                      <TableCell className="text-xs">{row.channel || "—"}</TableCell>
+                      <TableCell className="text-xs">{row.status || "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{row.reason || row.source || "—"}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>

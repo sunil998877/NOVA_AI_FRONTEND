@@ -185,7 +185,7 @@ export default function Leads() {
     (stats.byStatus?.ENGAGED || 0);
 
   return (
-    <div className="flex flex-col gap-6 max-w-[1650px] mx-auto w-full">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -728,7 +728,7 @@ function LeadDetailModal({ open, onOpenChange, data, onRefresh }) {
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Email Address</span>
             <span className="text-sm font-semibold truncate block text-foreground">{lead.email}</span>
             <span className="text-xs text-muted-foreground block">
-              Consent: <strong className="text-emerald-600 font-medium">{lead.email_consent?.status || "GRANTED"}</strong>
+              Consent: <strong className="text-emerald-600 font-medium">{lead.email_consent?.status || "UNKNOWN"}</strong>
             </span>
           </div>
 
@@ -736,7 +736,7 @@ function LeadDetailModal({ open, onOpenChange, data, onRefresh }) {
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Phone Number</span>
             <span className="text-sm font-semibold font-mono truncate block text-foreground">{lead.phone || "Not configured"}</span>
             <span className="text-xs text-muted-foreground block">
-              Voice: <strong className="text-emerald-600 font-medium">{lead.voice_consent?.status || "GRANTED"}</strong>
+              Voice: <strong className="text-emerald-600 font-medium">{lead.voice_consent?.status || "UNKNOWN"}</strong>
             </span>
           </div>
 

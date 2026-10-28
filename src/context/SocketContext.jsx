@@ -19,7 +19,7 @@ export function SocketProvider({ children }) {
 
   useEffect(() => {
     const effectiveToken =
-      token || (typeof window !== "undefined" ? localStorage.getItem("nova_jwt_token") || localStorage.getItem("token") : "");
+      token || (typeof window !== "undefined" ? localStorage.getItem("nova-token") || localStorage.getItem("nova_jwt_token") || localStorage.getItem("token") : "");
 
     const s = initSocket({ token: effectiveToken });
     setSocket(s);
