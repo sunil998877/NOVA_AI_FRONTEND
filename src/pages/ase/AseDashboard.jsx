@@ -18,25 +18,29 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { aseService } from "../../services/ase.service";
+import { getSocket } from "../../services/socket";
 
 export default function AseDashboard() {
   const [metrics, setMetrics] = useState(null);
   const [callbacks, setCallbacks] = useState([]);
   const [leads, setLeads] = useState([]);
+  const [queueStatus, setQueueStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [m, cb, l] = await Promise.all([
+        const [m, cb, l, q] = await Promise.all([
           aseService.getDashboardMetrics(),
           aseService.getCallbacks({ overdue: true }).catch(() => ({ items: [] })),
           aseService.getLeads({ limit: 50 }).catch(() => ({ items: [] })),
+          aseService.getQueueStatus().catch(() => null),
         ]);
         setMetrics(m);
         setFailed(false);
         setCallbacks(cb.items || []);
+        setQueueStatus(q);
         setLeads(
           [...(l.items || [])]
             .sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0))
@@ -52,6 +56,20 @@ export default function AseDashboard() {
       }
     }
     loadData();
+    const socket = getSocket();
+    const onQueueEvent = () => {
+      aseService.getQueueStatus().then(setQueueStatus).catch(() => {});
+    };
+    socket.on("lead_import_progress", onQueueEvent);
+    socket.on("lead_import_completed", onQueueEvent);
+    socket.on("company_research_completed", onQueueEvent);
+    socket.on("email_personalization_completed", onQueueEvent);
+    return () => {
+      socket.off("lead_import_progress", onQueueEvent);
+      socket.off("lead_import_completed", onQueueEvent);
+      socket.off("company_research_completed", onQueueEvent);
+      socket.off("email_personalization_completed", onQueueEvent);
+    };
   }, []);
 
   if (loading) {
@@ -197,6 +215,31 @@ export default function AseDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {queueStatus && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Background Jobs</CardTitle>
+            <CardDescription>
+              Redis {queueStatus.redis?.ok ? "connected" : queueStatus.redis?.mode || "disabled"}.
+              Cache hit rate {Math.round((queueStatus.cache?.hitRate || 0) * 100)}%.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {(queueStatus.queues || []).map((queue) => (
+                <div key={queue.name} className="p-3 border rounded-lg">
+                  <div className="text-xs text-muted-foreground truncate">{queue.name.replace("nova-", "")}</div>
+                  <div className="text-lg font-semibold">{queue.counts?.wait || 0} waiting</div>
+                  <div className="text-xs text-muted-foreground">
+                    {queue.counts?.active || 0} active · {queue.counts?.failed || 0} failed
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card className={callbacks.length > 0 ? "border-amber-300 dark:border-amber-800" : ""}>

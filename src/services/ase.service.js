@@ -131,6 +131,11 @@ export const aseService = {
     return res?.data || res;
   },
 
+  async unholdLeadAction(leadId) {
+    const res = await aseOperatingApi.unholdLead(leadId);
+    return res?.data || res;
+  },
+
   async listInvites() {
     const res = await aseOperatingApi.listInvites();
     if (!Array.isArray(res?.data)) throw new Error("Invites unavailable");
@@ -174,5 +179,10 @@ export const aseService = {
   async previewPlaybook(body) {
     const res = await playbookApi.preview(body);
     return res?.data || res;
+  },
+
+  async getQueueStatus() {
+    const res = await aseOperatingApi.getQueueStatus();
+    return res?.data || null;
   },
 };

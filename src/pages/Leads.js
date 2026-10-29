@@ -1004,7 +1004,7 @@ function CompleteCallbackDialog({ open, onOpenChange, callback, onSuccess }) {
 }
 
 function AddLeadDialog({ open, onOpenChange, onSuccess }) {
-  const [formData, setFormData] = useState({ name: "", email: "", company: "", phone: "", priority: 50 });
+  const [formData, setFormData] = useState({ name: "", email: "", company: "", phone: "", priority: 50, consentVoice: false });
   const [loading, setLoading] = useState(false);
   const { success, error: toastError } = useToast();
 
@@ -1013,9 +1013,14 @@ function AddLeadDialog({ open, onOpenChange, onSuccess }) {
     setLoading(true);
     try {
       const res = await leadApi.create({
-        ...formData,
+        name: formData.name,
+        email: formData.email,
+        company: formData.company,
+        phone: formData.phone,
+        priority: formData.priority,
         source: "MANUAL",
         consentEmail: true,
+        consentVoice: Boolean(formData.consentVoice && formData.phone),
         matchDomain: false,
         updateExisting: false,
       });
@@ -1027,7 +1032,7 @@ function AddLeadDialog({ open, onOpenChange, onSuccess }) {
       success("Lead Added", "Successfully added a new lead.");
       onSuccess();
       onOpenChange(false);
-      setFormData({ name: "", email: "", company: "", phone: "", priority: 50 });
+      setFormData({ name: "", email: "", company: "", phone: "", priority: 50, consentVoice: false });
     } catch (err) {
       toastError("Error", err.message);
     } finally {
@@ -1069,6 +1074,21 @@ function AddLeadDialog({ open, onOpenChange, onSuccess }) {
               onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
             />
           </div>
+          <label className="flex items-start gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={Boolean(formData.consentVoice)}
+              disabled={!formData.phone}
+              onChange={(e) => setFormData({ ...formData, consentVoice: e.target.checked })}
+            />
+            <span>
+              Lead consented to voice calls
+              {!formData.phone ? (
+                <span className="block text-xs text-muted-foreground">Add a phone number first</span>
+              ) : null}
+            </span>
+          </label>
           <DialogFooter>
             <Button type="submit" disabled={loading}>{loading ? "Adding..." : "Add Lead"}</Button>
           </DialogFooter>

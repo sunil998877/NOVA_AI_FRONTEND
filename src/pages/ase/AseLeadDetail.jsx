@@ -177,9 +177,14 @@ export default function AseLeadDetail() {
     }
   };
 
-  const handleHoldCadence = () => {
-    success("Holding cadence", "No email or call will go out for the next 24 hours unless you send it yourself.");
-    fetchLead();
+  const handleHoldCadence = async () => {
+    success("On hold", "Automated email and calls are paused until you click Unhold.");
+    await fetchLead();
+  };
+
+  const handleUnholdCadence = async () => {
+    success("Hold cleared", "This lead is active again. ASE will not send a duplicate of a completed action.");
+    await fetchLead();
   };
 
   const handleQuickCall = async () => {
@@ -360,6 +365,7 @@ export default function AseLeadDetail() {
         updating={updating}
         onBusy={setUpdating}
         onHold={handleHoldCadence}
+        onUnhold={handleUnholdCadence}
         onPreview={() => setActiveTab("overview")}
         onExecuted={async () => {
           success(
@@ -372,7 +378,7 @@ export default function AseLeadDetail() {
         }}
         onOpenCallbacks={() => navigate("/ase/callbacks")}
         onChooseAnother={() => setActiveTab("insights")}
-        onError={(err) => toastError("Execution Failed", err.message || "Failed to run next action.")}
+        onError={(err) => toastError("Couldn't update", err.message || "Please try again.")}
       />
 
       <div className="border-b border-border/70 flex items-center gap-1 overflow-x-auto no-scrollbar w-full">

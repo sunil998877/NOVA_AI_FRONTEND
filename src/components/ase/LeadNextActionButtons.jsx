@@ -3,8 +3,9 @@ import { aseService } from "../../services/ase.service";
 
 const OUTBOUND = new Set(["EMAIL", "CALL"]);
 
-function defaultPrimaryLabel(action, mode, due) {
+function defaultPrimaryLabel(action, mode, due, held) {
   if (action === "REP_CALLBACK") return "Open callback queue";
+  if (held) return "Unhold";
   if (due === false) return "Hold for now";
   if (action === "CALL") {
     if (mode === "AI_RECOMMENDED") return "Approve & call";
@@ -20,12 +21,14 @@ export default function LeadNextActionButtons({
   leadId,
   recommendedAction,
   due = true,
+  held = false,
   primaryLabel,
   operatingMode = "FULLY_AUTOMATED",
   pendingApproval = null,
   doNotContact = false,
   updating = false,
   onHold,
+  onUnhold,
   onPreview,
   onExecuted,
   onOpenCallbacks,
@@ -36,11 +39,11 @@ export default function LeadNextActionButtons({
   const action = String(recommendedAction || "").toUpperCase();
   const mode = String(operatingMode || "FULLY_AUTOMATED").toUpperCase();
   const canOutbound = OUTBOUND.has(action);
-  const waiting = due === false;
+  const waiting = due === false && !held;
 
   const label = useMemo(
-    () => primaryLabel || defaultPrimaryLabel(action, mode, due),
-    [primaryLabel, action, mode, due]
+    () => primaryLabel || defaultPrimaryLabel(action, mode, due, held),
+    [primaryLabel, action, mode, due, held]
   );
 
   const run = async (fn) => {
@@ -54,9 +57,27 @@ export default function LeadNextActionButtons({
     }
   };
 
+  const handleHold = () => {
+    run(async () => {
+      await aseService.holdLeadAction(leadId);
+      await onHold?.();
+    });
+  };
+
+  const handleUnhold = () => {
+    run(async () => {
+      await aseService.unholdLeadAction(leadId);
+      await onUnhold?.();
+    });
+  };
+
   const handlePrimary = () => {
     if (action === "REP_CALLBACK") {
       onOpenCallbacks?.();
+      return;
+    }
+    if (held) {
+      handleUnhold();
       return;
     }
     if (waiting || action === "WAIT" || !canOutbound) {
@@ -76,13 +97,6 @@ export default function LeadNextActionButtons({
     });
   };
 
-  const handleHold = () => {
-    run(async () => {
-      await aseService.holdLeadAction(leadId);
-      onHold?.();
-    });
-  };
-
   return (
     <div className="mt-3.5 flex items-center gap-2.5 flex-wrap">
       <button
@@ -91,7 +105,7 @@ export default function LeadNextActionButtons({
         onClick={handlePrimary}
         className="px-4 py-2 rounded-xl bg-[#c2410c] hover:bg-[#9a3412] text-white text-xs sm:text-sm font-semibold shadow-xs disabled:opacity-50 transition-colors"
       >
-        {label}
+        {updating ? "Saving..." : label}
       </button>
       <button
         type="button"
@@ -100,10 +114,10 @@ export default function LeadNextActionButtons({
       >
         {mode === "AI_RECOMMENDED" ? "Preview / Edit" : "Preview draft"}
       </button>
-      {!waiting && action !== "WAIT" && (
+      {!held && !waiting && action !== "WAIT" && (
         <button
           type="button"
-          disabled={updating}
+          disabled={updating || doNotContact}
           onClick={handleHold}
           className="px-4 py-2 rounded-xl border border-gray-300 dark:border-border bg-white dark:bg-card text-xs sm:text-sm font-medium text-gray-800 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50 shadow-xs disabled:opacity-50 transition-colors"
         >

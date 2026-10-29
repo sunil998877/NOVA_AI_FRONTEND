@@ -99,7 +99,27 @@ export default function CsvExcelImportDialog({ open, onOpenChange, onSuccess }) 
         updateExisting: duplicateStrategy === "update",
       });
 
-      const resultData = res.data || { created: 0, updated: 0, skipped: 0, errors: [] };
+      let resultData = res.data || { created: 0, updated: 0, skipped: 0, errors: [] };
+      if (resultData.queued && resultData.jobId) {
+        for (let attempt = 0; attempt < 90; attempt += 1) {
+          const jobRes = await leadApi.getImportJob(resultData.jobId);
+          const job = jobRes.data;
+          if (job?.status === "completed") {
+            resultData = {
+              created: job.created_count || 0,
+              updated: job.updated_count || 0,
+              skipped: job.skipped || 0,
+              failed: job.failed || 0,
+              errors: job.error_summary || [],
+            };
+            break;
+          }
+          if (job?.status === "failed") {
+            throw new Error("Import job failed");
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
       setSummary(resultData);
       setStep(4);
       success(

@@ -268,6 +268,7 @@ export const leadApi = {
   getReps: () => api("/api/leads/team-reps"),
   create: (body) => api("/api/leads", { method: "POST", body }),
   importCsv: (body) => api("/api/leads/import-csv", { method: "POST", body }),
+  getImportJob: (id) => api(`/api/leads/import-jobs/${id}`),
   previewCsv: (body) => api("/api/leads/import-csv/preview", { method: "POST", body }),
   getApiConfig: () => api("/api/leads/api-config"),
   rotateApiKey: () => api("/api/leads/api-key/rotate", { method: "POST" }),
@@ -302,10 +303,12 @@ export const aseOperatingApi = {
   getLeadApproval: (leadId) => api(`/api/ase/approvals/lead/${leadId}`),
   approveLead: (leadId, body = {}) => api(`/api/ase/approvals/lead/${leadId}/approve`, { method: "POST", body }),
   holdLead: (leadId) => api(`/api/ase/approvals/lead/${leadId}/hold`, { method: "POST" }),
+  unholdLead: (leadId) => api(`/api/ase/approvals/lead/${leadId}/unhold`, { method: "POST" }),
   listInvites: () => api("/api/ase/invites"),
   createInvite: (body) => api("/api/ase/invites", { method: "POST", body }),
   getPresence: () => api("/api/ase/presence"),
   setPresence: (body) => api("/api/ase/presence", { method: "POST", body }),
+  getQueueStatus: () => api("/api/ase/queues"),
 };
 
 export const callbackApi = {

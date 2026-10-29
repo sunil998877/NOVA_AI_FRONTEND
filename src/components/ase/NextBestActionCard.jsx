@@ -62,6 +62,7 @@ export default function NextBestActionCard({
   updating = false,
   onBusy,
   onHold,
+  onUnhold,
   onPreview,
   onExecuted,
   onOpenCallbacks,
@@ -105,6 +106,11 @@ export default function NextBestActionCard({
                 Pending approval
               </span>
             )}
+            {nba.held && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                On hold
+              </span>
+            )}
           </div>
           <h2 className="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-foreground">
             {nba.heading}
@@ -116,6 +122,7 @@ export default function NextBestActionCard({
             leadId={lead.id}
             recommendedAction={nba.channel}
             due={nba.due}
+            held={nba.held}
             primaryLabel={nba.primaryLabel}
             operatingMode={operatingMode}
             pendingApproval={pendingApproval}
@@ -123,6 +130,7 @@ export default function NextBestActionCard({
             updating={updating}
             onBusy={onBusy}
             onHold={onHold}
+            onUnhold={onUnhold}
             onPreview={onPreview}
             onExecuted={onExecuted}
             onOpenCallbacks={onOpenCallbacks}
