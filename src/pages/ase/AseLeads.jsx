@@ -19,7 +19,7 @@ import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
 import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
-import { voiceApi } from "../../lib/api";
+import { ClickToCallButton } from "../../components/ase/ClickToCallButton";
 import SegmentedPagination from "../../components/ui/pagination";
 import ApiWebhookCaptureDialog from "../../components/leads/ApiWebhookCaptureDialog";
 
@@ -99,24 +99,6 @@ export default function AseLeads() {
     }
   }
 
-  const handleQuickCall = async (lead) => {
-    if (!lead?.phone) return;
-    try {
-      const res = await voiceApi.callLead({
-        leadId: Number(lead.id),
-        phone: lead.phone,
-        name: lead.name,
-      });
-      if (res?.data?.status === "SUCCEEDED") {
-        success("Call Placed", `Outbound voice call placed to ${lead.phone} via Plivo.`);
-        fetchLeads(currentPage);
-      } else {
-        toastError("Call Failed", res?.data?.error || "Could not place call.");
-      }
-    } catch (err) {
-      toastError("Calling Error", err.message || "Failed to initiate call.");
-    }
-  };
 
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
@@ -358,15 +340,7 @@ export default function AseLeads() {
                         <TableCell>
                           <div className="flex items-center gap-1 justify-end">
                             {lead.phone && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                title="Call with Plivo"
-                                className="text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 h-8 w-8 p-0"
-                                onClick={(e) => { e.stopPropagation(); handleQuickCall(lead); }}
-                              >
-                                <Phone className="w-3.5 h-3.5" />
-                              </Button>
+                              <ClickToCallButton lead={lead} variant="icon" />
                             )}
                             <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0">
                               <Link to={`/ase/leads/${lead.id}`}>

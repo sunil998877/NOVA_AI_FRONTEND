@@ -432,7 +432,7 @@ export default function AseCalls() {
         id: c.id || c.call_uuid || `call_${Math.random()}`,
         internalId: c.call_id || c.id,
         callUuid: c.call_uuid || c.callUuid || c.provider_call_uuid,
-        source: c.initiation_source === "MANUAL" ? "manual" : (c.is_autonomous || c.isAutonomous ? "autonomous" : (c.source || "plivo")),
+        source: c.initiation_source === "MANUAL" || c.initiation_source === "CLICK_TO_CALL" ? "manual" : (c.is_autonomous || c.isAutonomous ? "autonomous" : (c.source || "plivo")),
         direction: c.call_type?.toLowerCase() || c.call_direction || "outbound",
         from: c.from || c.from_number,
         to: c.to || c.phone_number || c.to_number,

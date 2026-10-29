@@ -77,6 +77,16 @@ export const aseService = {
     return res.data;
   },
 
+  async startCallbackCall(id) {
+    const res = await callbackApi.startCall(id);
+    return res?.data || res;
+  },
+
+  async getCallbackCall(id) {
+    const res = await callbackApi.getCall(id);
+    return res?.data || res;
+  },
+
   async getSuppressions() {
     const res = await suppressionApi.list();
     return res?.data || [];

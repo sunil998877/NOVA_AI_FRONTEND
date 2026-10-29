@@ -321,6 +321,8 @@ export const callbackApi = {
     return api(`/api/callbacks?${query}`);
   },
   get: (id) => api(`/api/callbacks/${id}`),
+  startCall: (id) => api(`/api/callbacks/${id}/call`, { method: "POST" }),
+  getCall: (id) => api(`/api/callbacks/${id}/call`),
   update: (id, body) => api(`/api/callbacks/${id}`, { method: "PATCH", body }),
 };
 
@@ -341,6 +343,9 @@ export const voiceApi = {
   getConfig: () => api("/api/engine/voice/config"),
   simulateOutcome: (body) => api("/api/engine/voice/simulate-outcome", { method: "POST", body }),
   getHistory: () => api("/api/engine/voice/history"),
+  clickToCall: (leadId, body = {}) => api(`/api/leads/${leadId}/call`, { method: "POST", body }),
+  getClickToCall: (leadId) => api(`/api/leads/${leadId}/call`),
+  getClickToCallById: (callId) => api(`/api/engine/voice/call/${callId}/click-to-call`),
   callLead: (body) => api("/api/engine/voice/call-lead", { method: "POST", body }),
   callNumber: (body) => api("/api/engine/voice/call-number", { method: "POST", body }),
   triggerAutonomousCall: (body) => api("/api/engine/voice/autonomous-call", { method: "POST", body }),

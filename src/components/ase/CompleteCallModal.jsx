@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,17 +25,87 @@ const OUTCOME_OPTIONS = [
   { value: "invalid_number", label: "Invalid / Disconnected Number" },
 ];
 
+export function toTelHref(phone) {
+  const raw = String(phone || "").trim();
+  if (!raw) return "";
+  let digits = raw.replace(/[^\d+]/g, "");
+  if (digits.startsWith("0") && digits.length === 11) digits = "+91" + digits.slice(1);
+  else if (!digits.startsWith("+") && digits.length === 10 && /^[6-9]/.test(digits)) digits = "+91" + digits;
+  else if (!digits.startsWith("+") && digits.length === 12 && digits.startsWith("91")) digits = "+" + digits;
+  return digits ? `tel:${digits}` : "";
+}
+
+export function openPhoneDialer(phone) {
+  const href = toTelHref(phone);
+  if (!href || typeof document === "undefined") return href;
+  const link = document.createElement("a");
+  link.href = href;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  return href;
+}
+
 export function CompleteCallModal({ callback, isOpen, onClose, onSuccess }) {
   const { success, error: toastError } = useToast();
   const [outcome, setOutcome] = useState("connected_interested");
   const [notes, setNotes] = useState("");
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
+  const [callState, setCallState] = useState("idle");
+  const [callHint, setCallHint] = useState("");
+  const notesTouched = useRef(false);
+  const outcomeTouched = useRef(false);
   const callbackId = Number(callback?.id);
-  if (!callback || !Number.isFinite(callbackId) || callbackId <= 0) return null;
-
   const requiresReschedule = outcome === "callback_requested";
+
+  useEffect(() => {
+    if (!isOpen || !Number.isFinite(callbackId) || callbackId <= 0) return undefined;
+    notesTouched.current = false;
+    outcomeTouched.current = false;
+    setNotes("");
+    setOutcome("connected_interested");
+    setCallState("loading");
+    setCallHint("Loading the recorded conversation…");
+
+    let cancelled = false;
+    let timer = null;
+
+    const applyConversation = (data) => {
+      if (!data) return;
+      if (data.notes && !notesTouched.current) setNotes(data.notes);
+      if (data.suggestedOutcome && !outcomeTouched.current) setOutcome(data.suggestedOutcome);
+      if (data.completed) {
+        setCallState("recorded");
+        setCallHint(data.notes ? "Conversation captured. Review and submit." : "Call finished. Add any extra notes, then submit.");
+      } else if (data.callId) {
+        setCallState("in_call");
+        setCallHint("Waiting for the recording. Notes will fill in when the transcript is ready.");
+      } else {
+        setCallState("idle");
+        setCallHint("No recorded call yet. Use Call on the card first, or type notes here.");
+      }
+    };
+
+    const poll = async () => {
+      try {
+        const data = await aseService.getCallbackCall(callbackId);
+        if (!cancelled) applyConversation(data);
+      } catch {
+        /* keep polling */
+      }
+    };
+
+    poll();
+    timer = setInterval(poll, 4000);
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+    };
+  }, [isOpen, callbackId, callback?.lead_phone]);
+
+  if (!callback || !Number.isFinite(callbackId) || callbackId <= 0) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -80,9 +150,9 @@ export function CompleteCallModal({ callback, isOpen, onClose, onSuccess }) {
               <Phone className="w-5 h-5" />
             </div>
             <div>
-              <DialogTitle className="text-lg font-bold">Complete Call Workflow</DialogTitle>
+              <DialogTitle className="text-lg font-bold">Submit Call Result</DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                Log the outcome, capture notes, and update lead lifecycle.
+                Log the outcome and save the recorded conversation.
               </DialogDescription>
             </div>
           </div>
@@ -114,6 +184,9 @@ export function CompleteCallModal({ callback, isOpen, onClose, onSuccess }) {
                 {callback.rep_name || callback.assigned_rep_name || "Rep"}
               </span>
             </div>
+            <p className="text-[11px] text-orange-800 dark:text-orange-200 pt-1">
+              {callState === "dialing" ? "Connecting…" : callHint}
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -122,7 +195,10 @@ export function CompleteCallModal({ callback, isOpen, onClose, onSuccess }) {
             </label>
             <select
               value={outcome}
-              onChange={(e) => setOutcome(e.target.value)}
+              onChange={(e) => {
+                outcomeTouched.current = true;
+                setOutcome(e.target.value);
+              }}
               className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             >
               {OUTCOME_OPTIONS.map((opt) => (
@@ -155,9 +231,12 @@ export function CompleteCallModal({ callback, isOpen, onClose, onSuccess }) {
             </label>
             <Textarea
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Record details of conversation, buyer objections, or next steps..."
-              rows={3}
+              onChange={(e) => {
+                notesTouched.current = true;
+                setNotes(e.target.value);
+              }}
+              placeholder="Conversation will appear here after the recording is ready. You can edit before submit."
+              rows={4}
               className="text-xs resize-none"
             />
           </div>
