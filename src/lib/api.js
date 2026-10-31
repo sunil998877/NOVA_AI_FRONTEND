@@ -267,6 +267,8 @@ export const leadApi = {
   stats: () => api("/api/leads/stats"),
   getReps: () => api("/api/leads/team-reps"),
   create: (body) => api("/api/leads", { method: "POST", body }),
+  listPhoneCountries: () => api("/api/leads/phone/countries"),
+  parsePhone: (body) => api("/api/leads/phone/parse", { method: "POST", body }),
   importCsv: (body) => api("/api/leads/import-csv", { method: "POST", body }),
   getImportJob: (id) => api(`/api/leads/import-jobs/${id}`),
   previewCsv: (body) => api("/api/leads/import-csv/preview", { method: "POST", body }),
@@ -309,6 +311,30 @@ export const aseOperatingApi = {
   getPresence: () => api("/api/ase/presence"),
   setPresence: (body) => api("/api/ase/presence", { method: "POST", body }),
   getQueueStatus: () => api("/api/ase/queues"),
+};
+
+export const cadenceApi = {
+  listPolicies: () => api("/api/ase/cadence/policies"),
+  getDefaultPolicy: () => api("/api/ase/cadence/policies/default"),
+  updatePolicy: (policyId, body) => api(`/api/ase/cadence/policies/${policyId}`, { method: "PUT", body }),
+  getLead: (leadId) => api(`/api/ase/cadence/leads/${leadId}`),
+  getEligibility: (leadId) => api(`/api/ase/cadence/leads/${leadId}/eligibility`),
+  enroll: (leadId, body = {}) => api(`/api/ase/cadence/leads/${leadId}/enroll`, { method: "POST", body }),
+  pause: (leadId, reason) => api(`/api/ase/cadence/leads/${leadId}/pause`, { method: "POST", body: { reason } }),
+  resume: (leadId, reason) => api(`/api/ase/cadence/leads/${leadId}/resume`, { method: "POST", body: { reason } }),
+  stop: (leadId, reason) => api(`/api/ase/cadence/leads/${leadId}/stop`, { method: "POST", body: { reason } }),
+  approveStep: (stepId, body = {}) => api(`/api/ase/cadence/steps/${stepId}/approve`, { method: "POST", body }),
+  rejectStep: (stepId, reason) => api(`/api/ase/cadence/steps/${stepId}/reject`, { method: "POST", body: { reason } }),
+  resolveReview: (stepId, decision, note = "") => api(`/api/ase/cadence/steps/${stepId}/review`, { method: "POST", body: { decision, note } }),
+  queue: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.filter) query.set("filter", params.filter);
+    if (params.leadId) query.set("leadId", String(params.leadId));
+    if (params.limit) query.set("limit", String(params.limit));
+    if (params.offset) query.set("offset", String(params.offset));
+    const qs = query.toString();
+    return api(`/api/ase/cadence/queue${qs ? `?${qs}` : ""}`);
+  },
 };
 
 export const callbackApi = {

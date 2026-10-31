@@ -7,16 +7,17 @@ import { useSocket } from "../../context/SocketContext";
 import {
   clickToCallLabel,
   isClickToCallActive,
-  isClickToCallTerminal,
 } from "../../lib/clickToCall";
 
 function normalizeSession(payload) {
   const data = payload?.data || payload || {};
+  const state = data.state || "idle";
   return {
     callId: data.callId || null,
     leadId: data.leadId || null,
-    state: data.state || "idle",
-    label: data.label || clickToCallLabel(data.state, "Call"),
+    state,
+    label: clickToCallLabel(state, "Call"),
+    initiatedAt: data.initiatedAt || null,
     failureReason: data.failureReason || null,
     connectedDurationSec: data.connectedDurationSec || 0,
   };
@@ -28,16 +29,15 @@ export function ClickToCallButton({ lead, variant = "header", disabled = false, 
   const [session, setSession] = useState({ state: "idle", label: "Call" });
   const [busy, setBusy] = useState(false);
   const leadId = Number(lead?.id);
-  const active = isClickToCallActive(session.state);
+  const active = isClickToCallActive(session.state, session);
 
   const refresh = useCallback(async () => {
     if (!leadId) return;
     try {
       const res = await voiceApi.getClickToCall(leadId);
-      const next = normalizeSession(res);
-      if (next.state && next.state !== "idle") setSession(next);
+      setSession(normalizeSession(res));
     } catch {
-      /* no prior session */
+      setSession({ state: "idle", label: "Call" });
     }
   }, [leadId]);
 
@@ -61,7 +61,7 @@ export function ClickToCallButton({ lead, variant = "header", disabled = false, 
       if (type === "ClickToCallUpdated" || type === "ClickToCallStarted" || type === "CLICK_TO_CALL_STARTED") {
         const payloadSession = envelope?.payload?.session;
         if (payloadSession?.state) {
-          setSession(normalizeSession({ data: { ...payloadSession, label: clickToCallLabel(payloadSession.state) } }));
+          setSession(normalizeSession({ data: payloadSession }));
         } else {
           refresh();
         }
@@ -76,11 +76,11 @@ export function ClickToCallButton({ lead, variant = "header", disabled = false, 
     if (!leadId || !lead?.phone || busy || active || lead.do_not_contact) return;
     try {
       setBusy(true);
-      setSession({ state: "initiating", label: "Initiating" });
+      setSession({ state: "initiating", label: "Calling..." });
       const res = await voiceApi.clickToCall(leadId);
       const next = normalizeSession(res);
       setSession(next);
-      success("Calling you first", `Answer your phone to connect with ${lead.name || "the lead"}.`);
+      success("Calling...", `Answer your phone to connect with ${lead.name || "the lead"}.`);
     } catch (err) {
       setSession({ state: "failed", label: "Failed", failureReason: err.message });
       toastError("Call failed", err.message || "Could not start click-to-call.");
@@ -91,9 +91,7 @@ export function ClickToCallButton({ lead, variant = "header", disabled = false, 
 
   const label = active || busy
     ? clickToCallLabel(session.state, "Calling...")
-    : isClickToCallTerminal(session.state)
-      ? "Call again"
-      : "Call";
+    : "Call";
   const blocked = Boolean(disabled || busy || active || lead?.do_not_contact || !lead?.phone);
 
   if (variant === "icon") {

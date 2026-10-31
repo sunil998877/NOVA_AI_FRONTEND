@@ -36,8 +36,10 @@ import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { useToast } from "../components/ui/toast";
 import { leadApi, callbackApi, suppressionApi, voiceApi } from "../lib/api";
+import { listNextBestAction } from "../lib/presentNextBestAction";
 import SegmentedPagination from "../components/ui/pagination";
 import CsvExcelImportDialog from "../components/leads/CsvExcelImportDialog";
+import InternationalPhoneInput from "../components/leads/InternationalPhoneInput";
 import ApiWebhookCaptureDialog from "../components/leads/ApiWebhookCaptureDialog";
 
 const HEALTH_COLORS = {
@@ -471,7 +473,7 @@ export default function Leads() {
                       const healthDot = HEALTH_COLORS[lead.health] || HEALTH_COLORS.GREEN;
                       const statusClass = STATUS_VARIANTS[lead.status] || "bg-secondary text-secondary-foreground";
                       const rowNumber = (currentPage - 1) * pageSize + index + 1;
-                      const nextAction = lead.next_action || ((lead.status === "QUEUED" || lead.status === "NEW") && !lead.do_not_contact ? "EMAIL" : null);
+                      const nba = listNextBestAction(lead);
 
                       return (
                         <TableRow key={lead.id} className="hover:bg-muted/50 cursor-pointer">
@@ -500,20 +502,21 @@ export default function Leads() {
                             </span>
                           </TableCell>
                           <TableCell onClick={() => openLeadDetail(lead.id)}>
-                            {nextAction ? (
-                              <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-                                {nextAction === "EMAIL" && <Mail className="w-3.5 h-3.5 text-blue-500" />}
-                                {nextAction === "CALL" && <Phone className="w-3.5 h-3.5 text-green-500" />}
-                                <span>{nextAction}</span>
-                                {lead.next_action_time && (
-                                  <span className="text-[10px] text-muted-foreground">
-                                    ({new Date(lead.next_action_time).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })} IST)
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">-</span>
-                            )}
+                            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+                              {nba.action === "EMAIL" && <Mail className="w-3.5 h-3.5 text-blue-500" />}
+                              {nba.action === "CALL" && <Phone className="w-3.5 h-3.5 text-green-500" />}
+                              {nba.action === "REP_CALLBACK" && <Phone className="w-3.5 h-3.5 text-amber-500" />}
+                              {nba.action === "WAIT" && <Clock className="w-3.5 h-3.5 text-muted-foreground" />}
+                              {nba.action === "DNC" && <ShieldAlert className="w-3.5 h-3.5 text-destructive" />}
+                              <span className={nba.action === "WAIT" || nba.action === "CLOSED" || nba.action === "DNC" ? "text-muted-foreground" : ""}>
+                                {nba.label}
+                              </span>
+                              {lead.next_action_time && (nba.action === "EMAIL" || nba.action === "CALL" || nba.action === "WAIT") && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  ({new Date(lead.next_action_time).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })} IST)
+                                </span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell onClick={() => openLeadDetail(lead.id)}>
                             <div className="text-xs text-muted-foreground flex items-center gap-2">
@@ -1004,7 +1007,16 @@ function CompleteCallbackDialog({ open, onOpenChange, callback, onSuccess }) {
 }
 
 function AddLeadDialog({ open, onOpenChange, onSuccess }) {
-  const [formData, setFormData] = useState({ name: "", email: "", company: "", phone: "", priority: 50, consentVoice: false });
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    company: "",
+    phone: "",
+    phoneCountry: "",
+    confirmConflict: false,
+    priority: 50,
+    consentVoice: true,
+  });
   const [loading, setLoading] = useState(false);
   const { success, error: toastError } = useToast();
 
@@ -1017,10 +1029,12 @@ function AddLeadDialog({ open, onOpenChange, onSuccess }) {
         email: formData.email,
         company: formData.company,
         phone: formData.phone,
+        phoneCountry: formData.phoneCountry || undefined,
+        confirmConflict: Boolean(formData.confirmConflict),
         priority: formData.priority,
         source: "MANUAL",
         consentEmail: true,
-        ...(formData.consentVoice && formData.phone ? { consentVoice: true } : {}),
+        ...(formData.phone ? { consentVoice: Boolean(formData.consentVoice) } : {}),
         matchDomain: false,
         updateExisting: false,
       });
@@ -1032,7 +1046,16 @@ function AddLeadDialog({ open, onOpenChange, onSuccess }) {
       success("Lead Added", "Successfully added a new lead.");
       onSuccess();
       onOpenChange(false);
-      setFormData({ name: "", email: "", company: "", phone: "", priority: 50, consentVoice: false });
+      setFormData({
+        name: "",
+        email: "",
+        company: "",
+        phone: "",
+        phoneCountry: "",
+        confirmConflict: false,
+        priority: 50,
+        consentVoice: true,
+      });
     } catch (err) {
       toastError("Error", err.message);
     } finally {
@@ -1056,16 +1079,18 @@ function AddLeadDialog({ open, onOpenChange, onSuccess }) {
             <Label>Name</Label>
             <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Company</Label>
-              <Input value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-            </div>
+          <div className="space-y-2">
+            <Label>Company</Label>
+            <Input value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} />
           </div>
+          <InternationalPhoneInput
+            value={formData.phone}
+            country={formData.phoneCountry}
+            confirmConflict={formData.confirmConflict}
+            onChange={({ phone, phoneCountry, confirmConflict }) =>
+              setFormData({ ...formData, phone, phoneCountry, confirmConflict })
+            }
+          />
           <div className="space-y-2">
             <Label>Priority (1-100, higher runs first)</Label>
             <Input

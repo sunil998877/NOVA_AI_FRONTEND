@@ -86,6 +86,7 @@ const navGroups = [
       { path: "/follow-ups", label: "Cold Follow-Ups", icon: CalendarClock },
       { path: "/ase/pipeline", label: "Pipeline Kanban", icon: PanelsTopLeft },
       { path: "/ase/calls", label: "Calling & Dialer", icon: PhoneCall },
+      { path: "/ase/cadence", label: "Cadence Queue", icon: History },
       { path: "/ase/callbacks", label: "Callbacks Queue", icon: Flame },
       { path: "/ase/team-console", label: "Team Console", icon: Phone },
       { path: "/ase/segments", label: "Segments", icon: Layers },

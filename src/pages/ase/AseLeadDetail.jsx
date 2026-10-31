@@ -26,7 +26,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Badge } from "../../components/ui/badge";
 import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
-import { voiceApi } from "../../lib/api";
 import { useAuth } from "../../lib/AuthContext";
 import { useSocket } from "../../context/SocketContext";
 import UnifiedInteractionTimeline from "../../components/ase/UnifiedInteractionTimeline";
@@ -35,6 +34,8 @@ import LeadFollowUpSequenceCard from "../../components/ase/LeadFollowUpSequenceC
 import AssignedRepDropdown from "../../components/ase/AssignedRepDropdown";
 import NextBestActionCard from "../../components/ase/NextBestActionCard";
 import { ClickToCallButton } from "../../components/ase/ClickToCallButton";
+import { AutonomousCallButton } from "../../components/ase/AutonomousCallButton";
+import LeadCadenceCard from "../../components/ase/LeadCadenceCard";
 
 const BRAIN_EVENT_TYPES = new Set([
   "NOVA_BRAIN_DECISION",
@@ -189,24 +190,6 @@ export default function AseLeadDetail() {
   };
 
 
-  const handleAutonomousCall = async () => {
-    if (!data?.lead?.phone) return;
-    try {
-      setUpdating(true);
-      const res = await voiceApi.triggerAutonomousCall({ leadId: Number(id) });
-      if (res?.data?.queued) {
-        success("Queued for approval", "AI-Recommended mode will not dial until a rep clicks Approve & call.");
-      } else {
-        success("Autonomous Call Fired", `ASE Engine initiated voice call for ${data.lead.name || data.lead.email}`);
-      }
-      await fetchLead();
-    } catch (err) {
-      toastError("Autonomous Call Failed", err.message || "Failed to trigger call.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
   const getInitials = (name) => {
     if (!name) return "LD";
     const parts = name.trim().split(/\s+/);
@@ -289,14 +272,7 @@ export default function AseLeadDetail() {
           {lead.phone && (
             <>
               <ClickToCallButton lead={lead} disabled={updating} />
-              <button
-                type="button"
-                disabled={updating || lead.do_not_contact}
-                onClick={handleAutonomousCall}
-                className="h-10 px-4 rounded-xl bg-[#f0edff] hover:bg-[#e4ddff] text-[#5b21b6] text-sm font-medium transition-colors disabled:opacity-50"
-              >
-                Autonomous call
-              </button>
+              <AutonomousCallButton lead={lead} variant="header" disabled={updating} onStarted={fetchLead} />
             </>
           )}
           <div className="inline-flex rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card overflow-hidden shadow-xs divide-x divide-gray-200 dark:divide-border">
@@ -525,6 +501,8 @@ export default function AseLeadDetail() {
             </div>
           </div>
 
+          <LeadCadenceCard lead={lead} onUpdated={fetchLead} />
+
           <AiGeneratedEmailCard lead={lead} onLeadUpdated={fetchLead} />
 
           <LeadFollowUpSequenceCard lead={lead} onUpdated={fetchLead} />
@@ -613,6 +591,11 @@ export default function AseLeadDetail() {
                           <a href={source.url} target="_blank" rel="noreferrer" className="text-primary underline-offset-2 hover:underline">
                             {source.title || source.url}
                           </a>
+                          {source.retrievedAt && (
+                            <span className="ml-1.5 text-[10px] text-muted-foreground">
+                              retrieved {new Date(source.retrievedAt).toLocaleString()}
+                            </span>
+                          )}
                         </li>
                       ))}
                     </ul>

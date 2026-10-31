@@ -196,6 +196,7 @@ export default function ApiWebhookCaptureDialog({ open, onOpenChange, onSuccess 
         tags: String(testPayload.tags || "").split(",").map((tag) => tag.trim()).filter(Boolean),
         updateExisting: false,
         consentEmail: true,
+        ...(testPayload.phone ? { consentVoice: true } : {}),
       };
       const created = await postIngest(restUrl, payload, { "x-api-key": secretForCopy });
       checks.push({
@@ -239,6 +240,7 @@ export default function ApiWebhookCaptureDialog({ open, onOpenChange, onSuccess 
     "priority": 85,
     "tags": ["inbound_web", "enterprise"],
     "consentEmail": true,
+    "consentVoice": true,
     "updateExisting": true
   }`;
 
@@ -252,7 +254,7 @@ export default function ApiWebhookCaptureDialog({ open, onOpenChange, onSuccess 
   "updateExisting": false,
   "leads": [
     { "email": "ada@acme.example", "name": "Ada Lovelace", "consentEmail": true },
-    { "email": "grace@acme.example", "name": "Grace Hopper", "phone": "+14155550100" }
+    { "email": "grace@acme.example", "name": "Grace Hopper", "phone": "+14155550100", "consentEmail": true, "consentVoice": true }
   ]
 }`;
 
@@ -270,6 +272,7 @@ export default function ApiWebhookCaptureDialog({ open, onOpenChange, onSuccess 
     priority: 85,
     tags: ["inbound_web", "enterprise"],
     consentEmail: true,
+    consentVoice: true,
     updateExisting: true,
   }),
 });`;
@@ -286,6 +289,7 @@ requests.post(
         "phone": "+14155550144",
         "priority": 85,
         "consentEmail": True,
+        "consentVoice": True,
         "updateExisting": True,
     },
 )`;

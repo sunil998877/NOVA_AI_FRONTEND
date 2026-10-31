@@ -36,6 +36,7 @@ const AseLeads = lazy(() => import("./pages/ase/AseLeads"));
 const AseLeadDetail = lazy(() => import("./pages/ase/AseLeadDetail"));
 const AseLeadImport = lazy(() => import("./pages/ase/AseLeadImport"));
 const AseCallbacks = lazy(() => import("./pages/ase/AseCallbacks"));
+const AseCadenceQueue = lazy(() => import("./pages/ase/AseCadenceQueue"));
 const AseTeamConsole = lazy(() => import("./pages/ase/AseTeamConsole"));
 const AsePipeline = lazy(() => import("./pages/ase/AsePipeline"));
 const AseSegments = lazy(() => import("./pages/ase/AseSegments"));
@@ -156,6 +157,7 @@ function App() {
           <Route path="/ase/leads/import" element={<AseLeadImport />} />
           <Route path="/ase/leads/:id" element={<AseLeadDetail />} />
           <Route path="/ase/callbacks" element={<AseCallbacks />} />
+          <Route path="/ase/cadence" element={<AseCadenceQueue />} />
           <Route path="/ase/calls" element={<AseCalls />} />
           <Route path="/calls" element={<AseCalls />} />
           <Route path="/ase/team-console" element={<AseTeamConsole />} />

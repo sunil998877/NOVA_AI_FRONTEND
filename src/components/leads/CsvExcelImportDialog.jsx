@@ -50,9 +50,37 @@ export default function CsvExcelImportDialog({ open, onOpenChange, onSuccess }) 
   const [parsedData, setParsedData] = useState(null);
   const [mapping, setMapping] = useState({});
   const [duplicateStrategy, setDuplicateStrategy] = useState("update");
+  const [defaultCountry, setDefaultCountry] = useState("");
+  const [countries, setCountries] = useState([]);
+  const [phonePreview, setPhonePreview] = useState([]);
   const [importing, setImporting] = useState(false);
   const [summary, setSummary] = useState(null);
   const { success, error: toastError } = useToast();
+
+  React.useEffect(() => {
+    if (!open) return undefined;
+    let cancelled = false;
+    leadApi
+      .listPhoneCountries()
+      .then((res) => {
+        if (!cancelled) setCountries(res.data || []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!open || !parsedData?.csvText) return undefined;
+    const timer = setTimeout(() => {
+      leadApi
+        .previewCsv({ csv: parsedData.csvText, columnMap: mapping, defaultCountry })
+        .then((res) => setPhonePreview(res.data?.sample || []))
+        .catch(() => setPhonePreview([]));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [open, parsedData, mapping, defaultCountry]);
 
   const handleFileChange = async (e) => {
     const selected = e.target.files?.[0];
@@ -97,6 +125,7 @@ export default function CsvExcelImportDialog({ open, onOpenChange, onSuccess }) 
         csv: parsedData.csvText,
         columnMap: mapping,
         updateExisting: duplicateStrategy === "update",
+        defaultCountry: defaultCountry || undefined,
       });
 
       let resultData = res.data || { created: 0, updated: 0, skipped: 0, errors: [] };
@@ -140,6 +169,8 @@ export default function CsvExcelImportDialog({ open, onOpenChange, onSuccess }) 
     setParsedData(null);
     setMapping({});
     setSummary(null);
+    setDefaultCountry("");
+    setPhonePreview([]);
   };
 
   return (
@@ -320,6 +351,9 @@ export default function CsvExcelImportDialog({ open, onOpenChange, onSuccess }) 
                       <TableHead>Name</TableHead>
                       <TableHead>Company</TableHead>
                       <TableHead>Phone</TableHead>
+                      <TableHead>Country</TableHead>
+                      <TableHead>E.164</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Priority</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -338,6 +372,20 @@ export default function CsvExcelImportDialog({ open, onOpenChange, onSuccess }) 
                           <TableCell>{getMappedVal("name") || `${getMappedVal("firstName")} ${getMappedVal("lastName")}`.trim() || "—"}</TableCell>
                           <TableCell>{getMappedVal("company")}</TableCell>
                           <TableCell>{getMappedVal("phone")}</TableCell>
+                          <TableCell>
+                            {phonePreview[rIdx]?.phoneDetection?.countryName
+                              || phonePreview[rIdx]?.phoneDetection?.country
+                              || getMappedVal("country")}
+                            {phonePreview[rIdx]?.phoneDetection?.callingCode
+                              ? ` +${phonePreview[rIdx].phoneDetection.callingCode}`
+                              : ""}
+                          </TableCell>
+                          <TableCell className="font-mono">
+                            {phonePreview[rIdx]?.phoneDetection?.e164 || "—"}
+                          </TableCell>
+                          <TableCell>
+                            {phonePreview[rIdx]?.phoneDetection?.status || "—"}
+                          </TableCell>
                           <TableCell>{getMappedVal("priority")}</TableCell>
                         </TableRow>
                       );
@@ -355,6 +403,25 @@ export default function CsvExcelImportDialog({ open, onOpenChange, onSuccess }) 
               <h4 className="font-semibold text-sm">Deduplication & Intake Policies</h4>
               <p className="text-xs text-muted-foreground">
                 Configure how matching records are handled upon ingestion.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Default country for national phone numbers</Label>
+              <select
+                value={defaultCountry}
+                onChange={(e) => setDefaultCountry(e.target.value)}
+                className="w-full text-sm rounded-md border px-2.5 py-2 bg-background"
+              >
+                <option value="">None — require + prefix or Country column</option>
+                {countries.map((row) => (
+                  <option key={row.iso} value={row.iso}>
+                    {row.name} (+{row.callingCode})
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-muted-foreground">
+                National numbers without a country code are flagged unless a Country column or this default is set. Ambiguous and invalid numbers are not guessed.
               </p>
             </div>
 

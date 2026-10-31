@@ -22,6 +22,7 @@ import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
 import { leadApi } from "../../lib/api";
 import OperatingModePicker from "../../components/ase/OperatingModePicker";
+import CadencePolicySettings from "../../components/ase/CadencePolicySettings";
 
 export default function AseSettings() {
   const [apiKey, setApiKey] = useState("");
@@ -256,6 +257,8 @@ export default function AseSettings() {
           />
         </CardContent>
       </Card>
+
+      <CadencePolicySettings />
 
       <Card>
         <CardHeader>
