@@ -5,6 +5,7 @@ import {
   Upload,
   Phone,
   Mail,
+  Clock,
   ShieldAlert,
   ChevronRight,
   CheckSquare,
@@ -12,6 +13,7 @@ import {
   Webhook,
   RefreshCw,
 } from "lucide-react";
+import { listNextBestAction } from "../../lib/presentNextBestAction";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -19,7 +21,8 @@ import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
 import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
-import { ClickToCallButton } from "../../components/ase/ClickToCallButton";
+import { AutonomousCallButton } from "../../components/ase/AutonomousCallButton";
+import { ENROLLMENT_META, formatDue, humanize } from "../../lib/cadence";
 import SegmentedPagination from "../../components/ui/pagination";
 import ApiWebhookCaptureDialog from "../../components/leads/ApiWebhookCaptureDialog";
 
@@ -40,6 +43,113 @@ const STATUS_BADGES = {
   CLOSED_LOST: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300",
   SUPPRESSED_DNC: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 font-bold",
 };
+
+function HealthDot({ health }) {
+  return (
+    <div
+      className={`h-2 w-2 shrink-0 rounded-full ${HEALTH_COLORS[health] || HEALTH_COLORS.GREEN}`}
+      title={`Health: ${health}`}
+    />
+  );
+}
+
+function SelectToggle({ checked, onClick, label }) {
+  return (
+    <button type="button" onClick={onClick} className="p-1 shrink-0" aria-label={label} aria-pressed={checked}>
+      {checked ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-muted-foreground" />}
+    </button>
+  );
+}
+
+function StatusPill({ status }) {
+  return (
+    <span className={`inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded text-xs ${STATUS_BADGES[status] || "bg-secondary text-secondary-foreground"}`}>
+      {status}
+    </span>
+  );
+}
+
+function NbaLine({ nba }) {
+  const muted = nba.action === "WAIT" || nba.action === "CLOSED" || nba.action === "DNC";
+  return (
+    <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-primary">
+      {nba.action === "EMAIL" && <Mail className="h-3.5 w-3.5 shrink-0 text-blue-500" />}
+      {nba.action === "CALL" && <Phone className="h-3.5 w-3.5 shrink-0 text-green-500" />}
+      {nba.action === "REP_CALLBACK" && <Phone className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+      {nba.action === "WAIT" && <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+      {nba.action === "DNC" && <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-destructive" />}
+      <span className={muted ? "text-muted-foreground" : ""}>{nba.label}</span>
+    </div>
+  );
+}
+
+function CadenceBlock({ cadence, nowrap = false }) {
+  if (!cadence) return <span className="text-muted-foreground">—</span>;
+  return (
+    <div className="min-w-0">
+      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${ENROLLMENT_META[cadence.status]?.tone || "bg-muted"}`}>
+        {ENROLLMENT_META[cadence.status]?.label || humanize(cadence.status)}
+      </span>
+      <div className={`mt-0.5 text-[11px] text-muted-foreground ${nowrap ? "whitespace-nowrap" : ""}`}>
+        {humanize(cadence.latestOutcome || cadence.stage)}
+        {cadence.nextDueAt ? ` · next ${formatDue(cadence.nextDueAt)}` : ""}
+      </div>
+    </div>
+  );
+}
+
+function LeadIdentity({ lead }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <HealthDot health={lead.health} />
+      <div className="min-w-0">
+        <Link to={`/ase/leads/${lead.id}`} className="block truncate text-sm font-semibold text-primary hover:underline">
+          {lead.name}
+        </Link>
+        <div className="truncate text-xs text-muted-foreground">{lead.email}</div>
+      </div>
+    </div>
+  );
+}
+
+function LeadCard({ lead, selected, onToggle }) {
+  const nba = listNextBestAction(lead);
+  return (
+    <div className={`rounded-xl border border-border bg-card p-3.5 ${selected ? "bg-muted/40" : ""}`}>
+      <div className="flex items-start gap-2">
+        <SelectToggle checked={selected} onClick={() => onToggle(lead.id)} label={`Select ${lead.name || "lead"}`} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <LeadIdentity lead={lead} />
+            <Badge variant="outline" className="shrink-0 font-mono text-xs">P-{lead.priority}</Badge>
+          </div>
+          <div className="mt-2 truncate text-sm font-medium">{lead.company || "—"}</div>
+          <div className="truncate text-xs text-muted-foreground">{lead.industry || lead.location || "—"}</div>
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <StatusPill status={lead.status} />
+            <NbaLine nba={nba} />
+          </div>
+          <div className="mt-2 text-xs">
+            <CadenceBlock cadence={lead.cadence} />
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <span className={`truncate text-xs ${lead.assigned_rep_name ? "font-medium text-foreground" : "italic text-muted-foreground"}`}>
+              {lead.assigned_rep_name || "Unassigned"}
+            </span>
+            <div className="flex shrink-0 items-center gap-1">
+              {lead.phone && <AutonomousCallButton lead={lead} variant="icon" />}
+              <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <Link to={`/ase/leads/${lead.id}`} aria-label={`Open ${lead.name || "lead"}`}>
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function listFiltersFromSearch(searchParams, { q, status, page, limit }) {
   const filters = { q, status, page, limit };
@@ -152,16 +262,18 @@ export default function AseLeads() {
     }
   };
 
+  const allSelected = leads.length > 0 && selectedIds.size === leads.length;
+
   return (
-    <div className="flex flex-col gap-6 w-full min-w-0">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Lead Store</h1>
-          <p className="text-muted-foreground mt-1">
+    <div className="flex w-full min-w-0 flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Lead Store</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">
             Autonomous multi-channel lead records, intent tracking, and priority queues.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="icon"
@@ -170,28 +282,31 @@ export default function AseLeads() {
             title="Refresh leads"
             aria-label="Refresh leads"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
-          <Button variant="outline" onClick={() => setApiWebhookOpen(true)}>
-            <Webhook className="w-4 h-4 mr-2 text-purple-600" /> API / Webhook
+          <Button variant="outline" onClick={() => setApiWebhookOpen(true)} aria-label="API / Webhook">
+            <Webhook className="mr-0 h-4 w-4 text-purple-600 sm:mr-2" />
+            <span className="hidden sm:inline">API / Webhook</span>
           </Button>
           <Button asChild variant="outline">
-            <Link to="/ase/leads/import">
-              <Upload className="w-4 h-4 mr-2" /> Import Leads
+            <Link to="/ase/leads/import" aria-label="Import Leads">
+              <Upload className="mr-0 h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Import Leads</span>
             </Link>
           </Button>
           <Button asChild>
-            <Link to="/ase/team-console">
-              <Phone className="w-4 h-4 mr-2" /> Team Console
+            <Link to="/ase/team-console" aria-label="Team Console">
+              <Phone className="mr-0 h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Team Console</span>
             </Link>
           </Button>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row items-center justify-between gap-3">
-        <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-96">
-          <div className="relative w-full">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <form onSubmit={handleSearch} className="flex w-full min-w-0 items-center gap-2 lg:max-w-md">
+          <div className="relative w-full min-w-0">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -199,7 +314,7 @@ export default function AseLeads() {
               className="pl-9"
             />
           </div>
-          <Button type="submit" variant="secondary" size="sm">Search</Button>
+          <Button type="submit" variant="secondary" size="sm" className="shrink-0">Search</Button>
         </form>
 
         {(searchParams.get("source") || searchParams.get("health") || searchParams.get("min_priority") || searchParams.get("email_consent") || searchParams.get("do_not_contact")) && (
@@ -212,9 +327,9 @@ export default function AseLeads() {
           </div>
         )}
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
           <select
-            className="border rounded-md px-3 py-2 text-sm bg-background"
+            className="w-full min-w-0 rounded-md border bg-background px-3 py-2 text-sm sm:w-auto"
             value={statusFilter}
             onChange={(e) => handleStatusChange(e.target.value)}
           >
@@ -229,122 +344,119 @@ export default function AseLeads() {
           </select>
 
           {selectedIds.size > 0 && (
-            <Button variant="destructive" size="sm" onClick={handleBulkDnc}>
-              <ShieldAlert className="w-4 h-4 mr-1.5" />
+            <Button variant="destructive" size="sm" onClick={handleBulkDnc} className="w-full sm:w-auto">
+              <ShieldAlert className="mr-1.5 h-4 w-4" />
               Suppress Selected ({selectedIds.size})
             </Button>
           )}
         </div>
       </div>
 
-      <Card>
+      <div className="lg:hidden">
+        {leads.length > 0 && (
+          <div className="mb-2 flex items-center gap-2 px-0.5">
+            <SelectToggle checked={allSelected} onClick={toggleSelectAll} label="Select all leads on this page" />
+            <span className="text-xs text-muted-foreground">Select page</span>
+          </div>
+        )}
+        {loading ? (
+          <div className="rounded-xl border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+            Loading Lead Store...
+          </div>
+        ) : leads.length === 0 ? (
+          <div className="rounded-xl border border-border bg-card px-4 py-12 text-center text-sm text-muted-foreground">
+            No leads match your search criteria.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {leads.map((lead) => (
+              <LeadCard
+                key={lead.id}
+                lead={lead}
+                selected={selectedIds.has(lead.id)}
+                onToggle={toggleSelectOne}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Card className="hidden min-w-0 lg:block">
         <CardContent className="p-0">
-          <div className="rounded-md border-0 overflow-x-auto">
-            <Table>
+          <div className="min-w-0 overflow-x-auto">
+            <Table className="min-w-[1180px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10">
-                    <button onClick={toggleSelectAll} className="p-1">
-                      {selectedIds.size > 0 && selectedIds.size === leads.length ? (
-                        <CheckSquare className="w-4 h-4 text-primary" />
-                      ) : (
-                        <Square className="w-4 h-4 text-muted-foreground" />
-                      )}
-                    </button>
+                  <TableHead className="w-10 px-3">
+                    <SelectToggle checked={allSelected} onClick={toggleSelectAll} label="Select all leads on this page" />
                   </TableHead>
-                  <TableHead>Lead</TableHead>
-                  <TableHead>Company & Industry</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Lifecycle State</TableHead>
-                  <TableHead>Next Best Action</TableHead>
-                  <TableHead>Assigned Rep</TableHead>
-                  <TableHead className="w-12"></TableHead>
+                  <TableHead className="min-w-[200px] whitespace-nowrap px-3">Lead</TableHead>
+                  <TableHead className="min-w-[180px] whitespace-nowrap px-3">Company & Industry</TableHead>
+                  <TableHead className="whitespace-nowrap px-3">Priority</TableHead>
+                  <TableHead className="whitespace-nowrap px-3">Lifecycle State</TableHead>
+                  <TableHead className="min-w-[140px] whitespace-nowrap px-3">Next Best Action</TableHead>
+                  <TableHead className="min-w-[220px] whitespace-nowrap px-3">Cadence</TableHead>
+                  <TableHead className="min-w-[140px] whitespace-nowrap px-3">Assigned Rep</TableHead>
+                  <TableHead className="w-16 px-3"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
                       Loading Lead Store...
                     </TableCell>
                   </TableRow>
                 ) : leads.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={9} className="py-12 text-center text-muted-foreground">
                       No leads match your search criteria.
                     </TableCell>
                   </TableRow>
                 ) : (
                   leads.map((lead) => {
                     const isSelected = selectedIds.has(lead.id);
-                    const healthDot = HEALTH_COLORS[lead.health] || HEALTH_COLORS.GREEN;
-                    const statusClass = STATUS_BADGES[lead.status] || "bg-secondary text-secondary-foreground";
+                    const nba = listNextBestAction(lead);
 
                     return (
                       <TableRow key={lead.id} className={isSelected ? "bg-muted/40" : ""}>
-                        <TableCell>
-                          <button onClick={() => toggleSelectOne(lead.id)} className="p-1">
-                            {isSelected ? (
-                              <CheckSquare className="w-4 h-4 text-primary" />
-                            ) : (
-                              <Square className="w-4 h-4 text-muted-foreground" />
-                            )}
-                          </button>
+                        <TableCell className="px-3 py-3">
+                          <SelectToggle checked={isSelected} onClick={() => toggleSelectOne(lead.id)} label={`Select ${lead.name || "lead"}`} />
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${healthDot}`} title={`Health: ${lead.health}`} />
-                            <div>
-                              <Link
-                                to={`/ase/leads/${lead.id}`}
-                                className="font-semibold text-sm hover:underline text-primary"
-                              >
-                                {lead.name}
-                              </Link>
-                              <div className="text-xs text-muted-foreground">{lead.email}</div>
-                            </div>
-                          </div>
+                        <TableCell className="max-w-[260px] px-3 py-3">
+                          <LeadIdentity lead={lead} />
                         </TableCell>
-                        <TableCell>
-                          <div className="text-sm font-medium">{lead.company || "-"}</div>
-                          <div className="text-xs text-muted-foreground">{lead.industry || lead.location || "-"}</div>
+                        <TableCell className="max-w-[220px] px-3 py-3">
+                          <div className="truncate text-sm font-medium">{lead.company || "—"}</div>
+                          <div className="truncate text-xs text-muted-foreground">{lead.industry || lead.location || "—"}</div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-3 py-3">
                           <Badge variant="outline" className="font-mono text-xs">
                             P-{lead.priority}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${statusClass}`}>
-                            {lead.status}
-                          </span>
+                        <TableCell className="px-3 py-3">
+                          <StatusPill status={lead.status} />
                         </TableCell>
-                        <TableCell>
-                          {(lead.next_action || ((lead.status === "QUEUED" || lead.status === "NEW") && !lead.do_not_contact ? "EMAIL" : null)) ? (
-                            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-                              {(lead.next_action || "EMAIL") === "EMAIL" && <Mail className="w-3.5 h-3.5 text-blue-500" />}
-                              {lead.next_action === "CALL" && <Phone className="w-3.5 h-3.5 text-green-500" />}
-                              <span>{lead.next_action || "EMAIL"}</span>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
+                        <TableCell className="whitespace-nowrap px-3 py-3">
+                          <NbaLine nba={nba} />
                         </TableCell>
-                        <TableCell className="text-xs">
+                        <TableCell className="px-3 py-3 text-xs">
+                          <CadenceBlock cadence={lead.cadence} nowrap />
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap px-3 py-3 text-xs">
                           {lead.assigned_rep_name ? (
                             <span className="font-medium text-foreground">{lead.assigned_rep_name}</span>
                           ) : (
-                            <span className="text-muted-foreground italic">Unassigned</span>
+                            <span className="italic text-muted-foreground">Unassigned</span>
                           )}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 justify-end">
-                            {lead.phone && (
-                              <ClickToCallButton lead={lead} variant="icon" />
-                            )}
+                        <TableCell className="px-3 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            {lead.phone && <AutonomousCallButton lead={lead} variant="icon" />}
                             <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <Link to={`/ase/leads/${lead.id}`}>
-                                <ChevronRight className="w-4 h-4" />
+                              <Link to={`/ase/leads/${lead.id}`} aria-label={`Open ${lead.name || "lead"}`}>
+                                <ChevronRight className="h-4 w-4" />
                               </Link>
                             </Button>
                           </div>

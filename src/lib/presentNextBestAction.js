@@ -4,14 +4,19 @@ const BRAIN_EVENT_TYPES = new Set([
     "ORCHESTRATOR_DECISION",
 ]);
 
-const CADENCE_BY_EMAILS = Object.freeze([
-    "First email",
-    "Day 2 follow-up",
-    "Day 7 follow-up",
-    "Day 14 follow-up",
-    "Day 28 follow-up",
-    "Day 42 follow-up",
-]);
+const PURPOSE_LABEL = Object.freeze({
+    FIRST_CALL: "First call",
+    RETRY_CALL: "Retry call",
+    MISSED_CALL: "Missed-call email",
+    MISSED_CALL_EMAIL: "Missed-call email",
+    VALUE: "Value email",
+    VALUE_EMAIL: "Value email",
+    FOLLOW_UP_CALL: "Follow-up call",
+    INSIGHT: "Insight email",
+    INSIGHT_EMAIL: "Insight email",
+    REVIEW: "Human review",
+    CLOSE: "Close / nurture",
+});
 
 const CHANNEL_LABEL = Object.freeze({
     EMAIL: "Email",
@@ -78,10 +83,60 @@ export function loggedDecisionFromTimeline(timeline) {
     return latest ? parseEventPayload(latest) : null;
 }
 
+const HOT_STATUSES = new Set(["INTERESTED", "CALLBACK_SCHEDULED", "WARM_TRANSFER", "HANDED_OFF"]);
+const TERMINAL_STATUSES = new Set(["CLOSED_WON", "CLOSED_LOST", "CLOSED_UNQUALIFIED", "SUPPRESSED_DNC"]);
+
+function attemptCounters(lead = {}) {
+    const raw = typeof lead.attempt_counters === "string"
+        ? (() => { try { return JSON.parse(lead.attempt_counters || "{}"); } catch { return {}; } })()
+        : (lead.attempt_counters || {});
+    return {
+        email: Number(raw.email || 0) || 0,
+        voice: Number(raw.voice || 0) || 0,
+    };
+}
+
+export function listNextBestAction(lead = {}) {
+    const stored = upper(lead.next_action);
+    const status = upper(lead.status);
+    const counters = attemptCounters(lead);
+
+    if (lead.do_not_contact || status === "SUPPRESSED_DNC") {
+        return { action: "DNC", label: "DNC" };
+    }
+    if (TERMINAL_STATUSES.has(status)) {
+        return { action: "CLOSED", label: "Closed" };
+    }
+    if (stored === "REP_CALLBACK" || HOT_STATUSES.has(status)) {
+        return { action: "REP_CALLBACK", label: "Callback" };
+    }
+    if (stored === "CADENCE") {
+        const cadenceAction = upper(lead.cadence?.nextAction || lead.cadence?.action);
+        if (cadenceAction === "EMAIL") return { action: "EMAIL", label: CHANNEL_LABEL.EMAIL };
+        return { action: "CALL", label: CHANNEL_LABEL.CALL };
+    }
+    if (stored === "EMAIL" || stored === "CALL" || stored === "WAIT") {
+        return { action: stored, label: CHANNEL_LABEL[stored] };
+    }
+    if ((status === "NEW" || status === "QUEUED") && !lead.do_not_contact) {
+        if (lead.phone) return { action: "CALL", label: CHANNEL_LABEL.CALL };
+        return { action: "EMAIL", label: CHANNEL_LABEL.EMAIL };
+    }
+    if (counters.voice >= 2 && counters.email >= 3) {
+        return { action: "WAIT", label: "Caps reached" };
+    }
+    if (status === "CONTACTED" || status === "ENGAGED" || status === "NO_RESPONSE") {
+        if (counters.voice < 2 && lead.phone) return { action: "CALL", label: CHANNEL_LABEL.CALL };
+        if (counters.email < 3 && lead.email) return { action: "EMAIL", label: CHANNEL_LABEL.EMAIL };
+        return { action: "WAIT", label: CHANNEL_LABEL.WAIT };
+    }
+    return { action: "WAIT", label: CHANNEL_LABEL.WAIT };
+}
+
 export function channelize(action) {
     const next = upper(action);
     if (next === "EMAIL") return "EMAIL";
-    if (next === "CALL" || next === "VOICE") return "CALL";
+    if (next === "CALL" || next === "VOICE" || next === "CADENCE") return "CALL";
     if (next === "REP_CALLBACK") return "REP_CALLBACK";
     return null;
 }
@@ -124,25 +179,42 @@ export function resolveNbaChannel({ storedAction, decision = {}, lead = {} } = {
     const explained = channelize(actionFromExplanation(decision.explanation || decision.reasonSummary));
     const fromProbs = winnerFromPercents(channelPercents(decision));
     if (stored) return stored;
-    return model || explained || fromProbs || (lead.email ? "EMAIL" : lead.phone ? "CALL" : "WAIT");
+    return model || explained || fromProbs || (lead.phone ? "CALL" : lead.email ? "EMAIL" : "WAIT");
 }
 
-export function cadenceFromCounters(lead = {}, decision = {}, cadenceStep = null) {
-    if (cadenceStep) {
-        if (typeof cadenceStep === "string") return cadenceStep;
-        if (cadenceStep.name) return cadenceStep.name;
-        if (cadenceStep.dayOffset != null) return `Day ${cadenceStep.dayOffset} follow-up`;
-        if (cadenceStep.stepNumber != null) return CADENCE_BY_EMAILS[Number(cadenceStep.stepNumber)] || `Step ${cadenceStep.stepNumber}`;
-    }
+function attemptTotals(lead = {}, decision = {}) {
     const raw = typeof lead.attempt_counters === "string"
         ? (() => { try { return JSON.parse(lead.attempt_counters || "{}"); } catch { return {}; } })()
         : (lead.attempt_counters || {});
-    const emails = Math.max(
-        Number(raw.email || 0) || 0,
-        Number(decision.supportingMetrics?.emailAttempts || decision.emailAttempts || 0) || 0
-    );
-    if (emails <= 0) return CADENCE_BY_EMAILS[0];
-    return CADENCE_BY_EMAILS[Math.min(emails, CADENCE_BY_EMAILS.length - 1)];
+    return {
+        emails: Math.max(Number(raw.email || 0) || 0, Number(decision.supportingMetrics?.emailAttempts || decision.emailAttempts || 0) || 0),
+        calls: Math.max(Number(raw.voice || 0) || 0, Number(decision.supportingMetrics?.voiceAttempts || decision.voiceAttempts || 0) || 0),
+    };
+}
+
+export function cadenceFromCounters(lead = {}, decision = {}, cadenceStep = null, channel = null) {
+    if (cadenceStep && typeof cadenceStep === "object") {
+        if (cadenceStep.purpose && PURPOSE_LABEL[upper(cadenceStep.purpose)]) return PURPOSE_LABEL[upper(cadenceStep.purpose)];
+        if (cadenceStep.name && !/^first email$/i.test(cadenceStep.name)) return cadenceStep.name;
+    }
+    if (typeof cadenceStep === "string" && cadenceStep && !/^first email$/i.test(cadenceStep)) return cadenceStep;
+
+    const next = channel || channelize(lead.next_action) || channelize(decision.action || decision.recommendedAction);
+    const { emails, calls } = attemptTotals(lead, decision);
+    if (next === "CALL") {
+        if (calls <= 0) return "First call";
+        if (calls === 1) return "Retry call";
+        return "Follow-up call";
+    }
+    if (next === "EMAIL") {
+        if (emails <= 0 && calls > 0) return "Missed-call email";
+        if (emails <= 0) return "Email";
+        return "Follow-up email";
+    }
+    if (next === "REP_CALLBACK") return "Callback";
+    if (next === "WAIT") return "Waiting";
+    if (lead.phone && calls === 0) return "First call";
+    return CHANNEL_LABEL[next] || "Current action";
 }
 
 export function formatWaitUntil(value, timeZone = "Asia/Kolkata", now = new Date()) {
@@ -230,7 +302,7 @@ export function presentNba({
     const waitUntil = pickWaitUntil(lead, decision);
     const due = isDueAt(waitUntil, now);
     const held = isLeadOnHold(lead);
-    const cadence = cadenceFromCounters(lead, decision, cadenceStep);
+    const cadence = cadenceFromCounters(lead, decision, cadenceStep, channel);
     const waitLine = held
         ? "On hold"
         : formatWaitUntil(waitUntil, decision.sendWindow?.timezone || lead.timezone || "Asia/Kolkata", now);

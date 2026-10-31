@@ -126,6 +126,7 @@ export const SCHEMA_TARGET_FIELDS = [
   { key: "lastName", label: "Last Name", required: false, icon: "User" },
   { key: "company", label: "Company / Organization", required: false, icon: "Building" },
   { key: "phone", label: "Phone Number", required: false, icon: "Phone" },
+  { key: "country", label: "Phone Country", required: false, icon: "Globe" },
   { key: "whatsapp_number", label: "WhatsApp Number", required: false, icon: "MessageCircle" },
   { key: "priority", label: "Priority Score (1-100)", required: false, icon: "Activity" },
   { key: "tags", label: "Tags / Labels", required: false, icon: "Tag" },
@@ -146,6 +147,8 @@ export function autoDetectMapping(headers) {
       mapping[h] = "name";
     } else if (lower.includes("whatsapp") || lower === "wa") {
       mapping[h] = "whatsapp_number";
+    } else if ((lower.includes("country") || lower === "nation" || lower === "region") && !lower.includes("email")) {
+      mapping[h] = "country";
     } else if (lower.includes("phone") || lower.includes("mobile") || lower.includes("tel") || lower.includes("cell")) {
       mapping[h] = "phone";
     } else if (lower.includes("company") || lower.includes("org") || lower.includes("account") || lower.includes("business")) {
