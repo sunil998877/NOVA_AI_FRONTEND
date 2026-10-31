@@ -185,7 +185,7 @@ export default function Leads() {
     (stats.byStatus?.ENGAGED || 0);
 
   return (
-    <div className="flex flex-col gap-6 max-w-[1650px] mx-auto w-full">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -728,7 +728,7 @@ function LeadDetailModal({ open, onOpenChange, data, onRefresh }) {
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Email Address</span>
             <span className="text-sm font-semibold truncate block text-foreground">{lead.email}</span>
             <span className="text-xs text-muted-foreground block">
-              Consent: <strong className="text-emerald-600 font-medium">{lead.email_consent?.status || "GRANTED"}</strong>
+              Consent: <strong className="text-emerald-600 font-medium">{lead.email_consent?.status || "UNKNOWN"}</strong>
             </span>
           </div>
 
@@ -736,7 +736,7 @@ function LeadDetailModal({ open, onOpenChange, data, onRefresh }) {
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Phone Number</span>
             <span className="text-sm font-semibold font-mono truncate block text-foreground">{lead.phone || "Not configured"}</span>
             <span className="text-xs text-muted-foreground block">
-              Voice: <strong className="text-emerald-600 font-medium">{lead.voice_consent?.status || "GRANTED"}</strong>
+              Voice: <strong className="text-emerald-600 font-medium">{lead.voice_consent?.status || "UNKNOWN"}</strong>
             </span>
           </div>
 
@@ -1004,7 +1004,7 @@ function CompleteCallbackDialog({ open, onOpenChange, callback, onSuccess }) {
 }
 
 function AddLeadDialog({ open, onOpenChange, onSuccess }) {
-  const [formData, setFormData] = useState({ name: "", email: "", company: "", phone: "", priority: 50 });
+  const [formData, setFormData] = useState({ name: "", email: "", company: "", phone: "", priority: 50, consentVoice: false });
   const [loading, setLoading] = useState(false);
   const { success, error: toastError } = useToast();
 
@@ -1013,9 +1013,14 @@ function AddLeadDialog({ open, onOpenChange, onSuccess }) {
     setLoading(true);
     try {
       const res = await leadApi.create({
-        ...formData,
+        name: formData.name,
+        email: formData.email,
+        company: formData.company,
+        phone: formData.phone,
+        priority: formData.priority,
         source: "MANUAL",
         consentEmail: true,
+        consentVoice: Boolean(formData.consentVoice && formData.phone),
         matchDomain: false,
         updateExisting: false,
       });
@@ -1027,7 +1032,7 @@ function AddLeadDialog({ open, onOpenChange, onSuccess }) {
       success("Lead Added", "Successfully added a new lead.");
       onSuccess();
       onOpenChange(false);
-      setFormData({ name: "", email: "", company: "", phone: "", priority: 50 });
+      setFormData({ name: "", email: "", company: "", phone: "", priority: 50, consentVoice: false });
     } catch (err) {
       toastError("Error", err.message);
     } finally {
@@ -1069,6 +1074,21 @@ function AddLeadDialog({ open, onOpenChange, onSuccess }) {
               onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
             />
           </div>
+          <label className="flex items-start gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={Boolean(formData.consentVoice)}
+              disabled={!formData.phone}
+              onChange={(e) => setFormData({ ...formData, consentVoice: e.target.checked })}
+            />
+            <span>
+              Lead consented to voice calls
+              {!formData.phone ? (
+                <span className="block text-xs text-muted-foreground">Add a phone number first</span>
+              ) : null}
+            </span>
+          </label>
           <DialogFooter>
             <Button type="submit" disabled={loading}>{loading ? "Adding..." : "Add Lead"}</Button>
           </DialogFooter>

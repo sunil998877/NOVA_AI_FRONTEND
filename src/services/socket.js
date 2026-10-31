@@ -32,7 +32,7 @@ export function initSocket({ token = "", forceNew = false } = {}) {
   const authToken =
     token ||
     (typeof window !== "undefined"
-      ? localStorage.getItem("nova_jwt_token") || localStorage.getItem("token") || ""
+      ? localStorage.getItem("nova-token") || localStorage.getItem("nova_jwt_token") || localStorage.getItem("token") || ""
       : "");
 
   if (socketInstance && !forceNew) {

@@ -20,6 +20,8 @@ import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
+import AsePresenceRoster from "../../components/ase/AsePresenceRoster";
+import AseTransferAlert from "../../components/ase/AseTransferAlert";
 
 const STEP_TOUCH_DESCRIPTIONS = {
   1: "Step 1 • In-Thread Follow-Up",
@@ -249,6 +251,9 @@ export default function AseTeamConsole() {
         </Button>
       </div>
 
+      <AseTransferAlert />
+      <AsePresenceRoster />
+
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1 min-h-0">
         <Card className="md:col-span-3 flex flex-col min-h-0">
           <CardHeader className="py-3 px-4 border-b">
@@ -346,10 +351,21 @@ export default function AseTeamConsole() {
                 RECOMMENDED ACTION
               </span>
               <p className="text-xs font-semibold">
-                {leadDetail?.lead?.next_action || "Call Prospect"}
+                {{
+                  EMAIL: "Send follow-up email",
+                  CALL: "Place a voice call",
+                  REP_CALLBACK: "Call the prospect back",
+                  WAIT: "Wait before the next touch",
+                }[leadDetail?.lead?.next_action] || leadDetail?.lead?.next_action || "Review this lead"}
               </p>
               <p className="text-[11px] text-muted-foreground mt-1">
-                Hot prospect requested phone callback. Aim to qualify within 30 minutes.
+                {leadDetail?.lead?.next_action === "REP_CALLBACK"
+                  ? "Hot prospect requested a phone callback. Aim to qualify within 30 minutes."
+                  : leadDetail?.lead?.next_action === "CALL"
+                    ? "Place the scheduled voice call when the window opens."
+                    : leadDetail?.lead?.next_action === "EMAIL"
+                      ? "Send the next outreach email for this lead."
+                      : "Review the timeline before taking the next step."}
               </p>
             </div>
 

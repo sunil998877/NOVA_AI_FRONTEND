@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Users,
   Flame,
@@ -81,11 +81,16 @@ function isCallbackLead(lead) {
   return false;
 }
 
+function isPersistedCallbackId(id) {
+  const numeric = Number(id);
+  return Number.isFinite(numeric) && numeric > 0 && !String(id).startsWith("cb-");
+}
+
 function getCallbackObject(lead) {
-  if (lead.callback) {
+  if (lead.callback && isPersistedCallbackId(lead.callback.id)) {
     return {
       ...lead.callback,
-      id: lead.callback.id || `cb-${lead.id}`,
+      id: Number(lead.callback.id),
       lead_id: lead.id,
       lead_name: lead.name,
       lead_company: lead.company,
@@ -94,26 +99,15 @@ function getCallbackObject(lead) {
       due_at: lead.callback.due_at || lead.callback_due || lead.next_action_time,
       status: lead.callback.status || "OPEN",
       sla_status: lead.callback.sla_status || "ON_TRACK",
-      notes: lead.callback.notes || lead.notes || "Inbound callback requested during outreach.",
+      notes: lead.callback.notes || lead.notes || "Human callback queued.",
       rep_name: lead.callback.rep_name || lead.assigned_rep_name || "Unassigned",
     };
   }
-  return {
-    id: `cb-${lead.id}`,
-    lead_id: lead.id,
-    lead_name: lead.name,
-    lead_company: lead.company,
-    lead_phone: lead.phone,
-    lead_email: lead.email,
-    due_at: lead.callback_due || lead.next_action_time || new Date().toISOString(),
-    status: "OPEN",
-    sla_status: lead.callback_due && new Date(lead.callback_due).getTime() < Date.now() ? "BREACHED" : "ON_TRACK",
-    notes: lead.notes || "Callback requested during outreach.",
-    rep_name: lead.assigned_rep_name || "Unassigned",
-  };
+  return null;
 }
 
 export default function AsePipeline() {
+  const navigate = useNavigate();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [completingCallback, setCompletingCallback] = useState(null);
@@ -231,7 +225,7 @@ export default function AsePipeline() {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Pipeline Kanban</h1>
@@ -266,7 +260,7 @@ export default function AsePipeline() {
           return (
             <div
               key={col.key}
-              className={`flex-shrink-0 w-80 rounded-lg border bg-muted/20 flex flex-col max-h-[780px] border-t-4 ${col.color}`}
+              className={`min-w-[260px] flex-1 rounded-lg border bg-muted/20 flex flex-col max-h-[780px] border-t-4 ${col.color}`}
             >
               <div className="p-3 border-b flex items-center justify-between bg-card rounded-t">
                 <div className="flex items-center gap-1.5">
@@ -393,7 +387,11 @@ export default function AsePipeline() {
                               <Button
                                 size="sm"
                                 className="h-7 text-[10px] px-2 font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
-                                onClick={() => setCompletingCallback(getCallbackObject(lead))}
+                                onClick={() => {
+                                  const cb = getCallbackObject(lead);
+                                  if (cb) setCompletingCallback(cb);
+                                  else navigate(`/ase/leads/${lead.id}`);
+                                }}
                               >
                                 <PhoneCall className="w-3 h-3 mr-1" />
                                 Connect
@@ -493,7 +491,10 @@ export default function AsePipeline() {
                               <Button
                                 size="sm"
                                 className="h-7 text-[10px] px-2 font-medium bg-amber-600 hover:bg-amber-700 text-white"
-                                onClick={() => setCompletingCallback(cbObj)}
+                                onClick={() => {
+                                  if (cbObj && isPersistedCallbackId(cbObj.id)) setCompletingCallback(cbObj);
+                                  else navigate(`/ase/leads/${lead.id}`);
+                                }}
                               >
                                 <PhoneCall className="w-3 h-3 mr-1" />
                                 Resolve

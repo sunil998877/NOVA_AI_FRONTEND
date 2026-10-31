@@ -12,6 +12,7 @@ import {
   Brain,
   Cpu,
   ShieldCheck,
+  UserPlus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -20,18 +21,25 @@ import { Input } from "../../components/ui/input";
 import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
 import { leadApi } from "../../lib/api";
+import OperatingModePicker from "../../components/ase/OperatingModePicker";
 
 export default function AseSettings() {
   const [apiKey, setApiKey] = useState("");
   const [apiKeyMasked, setApiKeyMasked] = useState("");
   const [captureBaseUrl, setCaptureBaseUrl] = useState("");
   const [operatingMode, setOperatingMode] = useState("FULLY_AUTOMATED");
+  const [modeLoading, setModeLoading] = useState(false);
   const [brainStatus, setBrainStatus] = useState(null);
   const [brainLoading, setBrainLoading] = useState(false);
   const { success, error: toastError } = useToast();
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("SALESPERSON");
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [lastInviteUrl, setLastInviteUrl] = useState("");
 
   useEffect(() => {
     fetchBrainStatus();
+    fetchOperatingMode();
     leadApi.getApiConfig().then((res) => {
       const config = res?.data || {};
       setCaptureBaseUrl(config.publicBaseUrl || "");
@@ -48,6 +56,29 @@ export default function AseSettings() {
       }
     } catch (_) {}
   }
+
+  async function fetchOperatingMode() {
+    try {
+      const res = await aseService.getOperatingMode();
+      if (res?.mode) setOperatingMode(res.mode);
+    } catch (_) {}
+  }
+
+  const handleOperatingModeChange = async (mode) => {
+    if (mode === operatingMode || modeLoading) return;
+    try {
+      setModeLoading(true);
+      const res = await aseService.setOperatingMode(mode);
+      if (res?.success || res?.mode) {
+        setOperatingMode(res.mode || mode);
+        success("Operating mode updated", `Outreach now runs as ${res.mode || mode}`);
+      }
+    } catch (err) {
+      toastError("Error", err.message || "Failed to update operating mode");
+    } finally {
+      setModeLoading(false);
+    }
+  };
 
   const handleBrainModeChange = async (mode) => {
     try {
@@ -84,8 +115,23 @@ export default function AseSettings() {
 
   const captureEndpoint = captureBaseUrl ? `${captureBaseUrl}/api/leads` : "";
 
+  const handleInvite = async (e) => {
+    e.preventDefault();
+    setInviteBusy(true);
+    try {
+      const data = await aseService.createInvite({ email: inviteEmail, role: inviteRole });
+      setLastInviteUrl(data.inviteUrl || "");
+      setInviteEmail("");
+      success("Invite created", `Role ${data.role}. Copy the link before it expires.`);
+    } catch (err) {
+      toastError("Invite failed", err.message);
+    } finally {
+      setInviteBusy(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">ASE System Settings</h1>
         <p className="text-muted-foreground mt-1">
@@ -176,13 +222,13 @@ export default function AseSettings() {
             <div>
               <span className="text-muted-foreground block">Model Accuracy:</span>
               <span className="font-semibold text-foreground block mt-0.5 font-mono">
-                {brainStatus?.accuracy ? `${(brainStatus.accuracy * 100).toFixed(1)}%` : "84.3%"}
+                {brainStatus?.accuracy != null ? `${(brainStatus.accuracy * 100).toFixed(1)}%` : "—"}
               </span>
             </div>
             <div>
               <span className="text-muted-foreground block">Total Samples:</span>
               <span className="font-semibold text-foreground block mt-0.5 font-mono">
-                {brainStatus?.totalSamples ? brainStatus.totalSamples.toLocaleString() : "1,400"}
+                {brainStatus?.totalSamples ? brainStatus.totalSamples.toLocaleString() : "—"}
               </span>
             </div>
             <div>
@@ -203,49 +249,11 @@ export default function AseSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div
-              onClick={() => setOperatingMode("FULLY_AUTOMATED")}
-              className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                operatingMode === "FULLY_AUTOMATED"
-                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                  : "hover:bg-muted/50"
-              }`}
-            >
-              <div className="font-semibold text-sm">FULLY_AUTOMATED</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Engine automatically executes allowed actions per cadence rules without manual intervention.
-              </p>
-            </div>
-
-            <div
-              onClick={() => setOperatingMode("AI_RECOMMENDED")}
-              className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                operatingMode === "AI_RECOMMENDED"
-                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                  : "hover:bg-muted/50"
-              }`}
-            >
-              <div className="font-semibold text-sm">AI_RECOMMENDED</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Engine evaluates cadence and queues actions for human sales rep approval.
-              </p>
-            </div>
-
-            <div
-              onClick={() => setOperatingMode("HUMAN_ESCALATION")}
-              className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                operatingMode === "HUMAN_ESCALATION"
-                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                  : "hover:bg-muted/50"
-              }`}
-            >
-              <div className="font-semibold text-sm">HUMAN_ESCALATION</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Outbound pauses; all interested prospects immediately routed to human callback queues.
-              </p>
-            </div>
-          </div>
+          <OperatingModePicker
+            value={operatingMode}
+            disabled={modeLoading}
+            onChange={handleOperatingModeChange}
+          />
         </CardContent>
       </Card>
 
@@ -336,6 +344,58 @@ export default function AseSettings() {
               {apiKey ? " Copy the key before leaving this page if you just rotated it." : " Rotate the key to reveal a new secret."}
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <UserPlus className="w-5 h-5 text-primary" />
+            <div>
+              <CardTitle>Invite teammate</CardTitle>
+              <CardDescription>
+                Teammates join this organization with a role. Salespeople cannot open Settings or Admin.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleInvite} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="space-y-2 flex-1">
+              <span className="text-xs font-medium text-muted-foreground block">Email</span>
+              <Input
+                type="email"
+                required
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="rep@company.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-muted-foreground block">Role</span>
+              <select
+                className="border rounded-md px-3 py-2 text-sm bg-background min-w-[180px]"
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value)}
+              >
+                <option value="SALESPERSON">Salesperson</option>
+                <option value="SALES_MANAGER">Sales Manager</option>
+                <option value="CAMPAIGN_OPERATOR">Campaign Operator</option>
+                <option value="ORG_ADMIN">Org Admin</option>
+              </select>
+            </div>
+            <Button type="submit" disabled={inviteBusy}>
+              {inviteBusy ? "Creating…" : "Create invite"}
+            </Button>
+          </form>
+          {lastInviteUrl ? (
+            <div className="mt-3 flex gap-2">
+              <Input readOnly value={lastInviteUrl} className="font-mono text-xs" />
+              <Button variant="outline" size="sm" onClick={() => handleCopyEndpoint(lastInviteUrl)}>
+                <Copy className="w-4 h-4 mr-1.5" /> Copy
+              </Button>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>

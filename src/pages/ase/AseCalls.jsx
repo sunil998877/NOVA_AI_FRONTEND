@@ -491,7 +491,7 @@ export default function AseCalls() {
   }, [combinedCalls, searchQuery, statusFilter, sourceFilter]);
 
   return (
-    <div className="space-y-6 max-w-7xl w-full min-w-0 mx-auto pb-12">
+    <div className="space-y-6 w-full min-w-0 pb-12">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border/60 pb-5 min-w-0">
         <div className="min-w-0">
           <div className="flex items-center gap-3 min-w-0">

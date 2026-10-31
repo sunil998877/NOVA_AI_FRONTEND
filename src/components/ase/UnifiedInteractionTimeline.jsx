@@ -25,7 +25,7 @@ import { Button } from "../ui/button";
 function getEventDate(ev) {
   const ts = ev.created_at || ev.timestamp || ev.payload?.timestamp || ev.payload?.recordedAt;
   const d = new Date(ts);
-  return isNaN(d.getTime()) ? new Date() : d;
+  return isNaN(d.getTime()) ? null : d;
 }
 
 function formatIndianDateTime(val) {
@@ -75,6 +75,7 @@ function isDateKey(key) {
 }
 
 function getDateKey(d) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "unknown";
   return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
@@ -131,6 +132,9 @@ function formatCadenceLine(steps) {
 }
 
 function formatDateGroupHeader(d) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) {
+    return { label: "Unknown date", sub: "" };
+  }
   const now = new Date();
   const isSameDay = (d1, d2) => {
     const s1 = d1.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
@@ -264,7 +268,7 @@ function normalizeEventDisplay(ev, lead = {}, followUpTasks = []) {
     type = "scheduled";
     title = `Outreach Scheduled (${p.action || channel || "EMAIL"})`;
     const isPastDue = p.scheduled_time && new Date(p.scheduled_time) <= new Date();
-    const isCompleted = Boolean(lead.status && lead.status !== "NEW" && lead.status !== "QUEUED");
+    const isCompleted = Boolean(p.status === "SUCCEEDED" || p.dispatched || p.completed);
 
     if (isCompleted) {
       badgeText = "Completed";
@@ -373,6 +377,49 @@ function normalizeEventDisplay(ev, lead = {}, followUpTasks = []) {
     secondary = `Recipient: ${p.recipient || lead.email || "recipient"}`;
     rightTop = `Channel: ${channel}`;
     rightBottom = "Status: Permanent Error";
+  } else if (t === "ROUTING_ASSIGNED" || t === "ROUTING_UNASSIGNED") {
+    type = t === "ROUTING_UNASSIGNED" ? "failed" : "email_sent";
+    title = t === "ROUTING_UNASSIGNED" ? "Hot lead unassigned" : "Hot lead routed";
+    badgeText = t === "ROUTING_UNASSIGNED" ? "Unassigned" : "Routed";
+    badgeClass = t === "ROUTING_UNASSIGNED"
+      ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300/60"
+      : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200/60";
+    primary = t === "ROUTING_UNASSIGNED"
+      ? "No free rep matched team/territory — needs manual assign"
+      : `Assigned via ${String(p.strategy || "round-robin").toLowerCase().replace(/_/g, " ")}`;
+    secondary = p.assigned_rep_id ? `Rep #${p.assigned_rep_id}` : "Unassigned fallback";
+    rightTop = "Routing: FR-29";
+    rightBottom = p.reason || "hot lead";
+  } else if (t === "LIFECYCLE_CLOSED" || t === "LIFECYCLE_NO_RESPONSE" || t === "LIFECYCLE_RE_ENGAGE" || t === "OUTREACH_HALTED" || t === "ILLEGAL_STATE_SANITIZED") {
+    type = t === "LIFECYCLE_RE_ENGAGE" ? "email_sent" : "failed";
+    title = t === "LIFECYCLE_RE_ENGAGE"
+      ? "Moved to re-engage pool"
+      : t === "ILLEGAL_STATE_SANITIZED"
+        ? "Illegal ATTEMPTED state cleared"
+        : t === "OUTREACH_HALTED"
+          ? "All pending outreach cancelled"
+          : t === "LIFECYCLE_NO_RESPONSE"
+            ? "No response — caps exhausted"
+            : "Lead closed, outreach stopped";
+    badgeText = t === "LIFECYCLE_RE_ENGAGE" ? "Re-engage" : t === "ILLEGAL_STATE_SANITIZED" ? "Sanitized" : "Closed";
+    badgeClass = t === "LIFECYCLE_RE_ENGAGE"
+      ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200/60"
+      : "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border-rose-300/60";
+    primary = p.reason || "Terminal status cancelled pending ASE jobs and follow-ups";
+    secondary = p.to_state ? `Now ${p.to_state}` : (p.to_action ? `Next action ${p.to_action}` : "Scheduler will not email or call");
+    rightTop = "Lifecycle: FR-30";
+    rightBottom = p.from_state ? `From ${p.from_state}` : "Outreach halted";
+  } else if (t === "CAPACITY_DEFERRED") {
+    type = "failed";
+    title = "Call deferred for capacity";
+    badgeText = "Deferred";
+    badgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300/60";
+    primary = p.reason === "CALLBACK_QUEUE_DEEP"
+      ? "Hot callback queue is deep — no new autonomous calls"
+      : (p.reason || "Dialling paced against free reps and hourly caps");
+    secondary = p.shifted_to ? `Shifted to ${p.shifted_to}` : "Waiting for capacity";
+    rightTop = "Pacing: FR-16";
+    rightBottom = p.overdue_callbacks != null ? `Overdue callbacks: ${p.overdue_callbacks}` : "Capacity gate";
   } else if (t === "ACTION_BLOCKED_BY_COMPLIANCE" || t === "LEAD_SUPPRESSED") {
     type = "failed";
     title = "Blocked by Compliance Guard";
@@ -392,8 +439,9 @@ function normalizeEventDisplay(ev, lead = {}, followUpTasks = []) {
     );
     const cadenceLine = formatCadenceLine(cadenceSteps);
     const firstDate = formatFollowUpCalendarDate(cadenceSteps[0]?.scheduledAt || p.firstScheduledAt);
+    const firstDay = cadenceSteps[0]?.dayOffset ?? p.scheduledSteps?.[0]?.dayOffset ?? 2;
     primary = cadenceLine || "Date-wise cadence: Day 2, Day 7, Day 14, Day 28, Day 42";
-    secondary = firstDate ? `Day 2 first touch: ${firstDate}` : "Automated multi-touch outreach";
+    secondary = firstDate ? `Day ${firstDay} first touch: ${firstDate}` : "Automated multi-touch outreach";
     rightTop = `Enrollment #${p.enrollmentId || ""}`;
     rightBottom = "Follow-Up Engine";
   } else if (t === "FOLLOW_UP_TOUCH_SCHEDULED") {
@@ -520,7 +568,8 @@ function normalizeEventDisplay(ev, lead = {}, followUpTasks = []) {
     primary = enrolledLine || (p.enrollmentId || p.enrollment_id
       ? `Enrolled in automated cadence (Enrollment #${p.enrollmentId || p.enrollment_id})`
       : "Enrolled in automated cadence");
-    secondary = enrolledFirst ? `Day 2 first touch: ${enrolledFirst}` : "Cadence scheduled relative to initial email";
+    const enrolledDay = enrolledSteps[0]?.dayOffset ?? p.scheduledSteps?.[0]?.dayOffset ?? 2;
+    secondary = enrolledFirst ? `Day ${enrolledDay} first touch: ${enrolledFirst}` : "Cadence scheduled relative to initial email";
     rightTop = "Follow-Up Engine";
     rightBottom = `Enrolled at: ${timeFormatted}`;
   } else {
@@ -688,9 +737,7 @@ export default function UnifiedInteractionTimeline({ timeline = [], lead = {} })
   }, [lead?.id]);
 
   const uniqueTimeline = useMemo(() => {
-    const source = (Array.isArray(timeline) ? timeline : []).filter(
-      (item) => item?.event_type !== "FOLLOW_UP_TOUCH_SCHEDULED"
-    );
+    const source = Array.isArray(timeline) ? timeline : [];
     const seen = new Set();
     const result = [];
     for (const item of source) {
@@ -706,7 +753,7 @@ export default function UnifiedInteractionTimeline({ timeline = [], lead = {} })
   const groups = useMemo(() => {
     const map = new Map();
     const sorted = [...uniqueTimeline].sort(
-      (a, b) => getEventDate(b).getTime() - getEventDate(a).getTime()
+      (a, b) => (getEventDate(b)?.getTime() || 0) - (getEventDate(a)?.getTime() || 0)
     );
 
     for (const ev of sorted) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -52,6 +52,7 @@ import {
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { getInitials } from "../lib/auth";
 import { useAuth } from "../lib/AuthContext";
+import { canOpenAdmin } from "../lib/roles";
 import { collabApi } from "../lib/api";
 import { useSocket } from "../context/SocketContext";
 import { cn } from "../lib/utils";
@@ -89,9 +90,9 @@ const navGroups = [
       { path: "/ase/team-console", label: "Team Console", icon: Phone },
       { path: "/ase/segments", label: "Segments", icon: Layers },
       { path: "/ase/reports", label: "ASE Reports", icon: ChartBar },
-      { path: "/ase/compliance", label: "Compliance & DNC", icon: ShieldCheck },
-      { path: "/ase/playbook", label: "Sales Playbook", icon: BookOpen },
-      { path: "/ase/settings", label: "ASE Settings", icon: Settings },
+      { path: "/ase/compliance", label: "Compliance & DNC", icon: ShieldCheck, adminOnly: true },
+      { path: "/ase/playbook", label: "Sales Playbook", icon: BookOpen, adminOnly: true },
+      { path: "/ase/settings", label: "ASE Settings", icon: Settings, adminOnly: true },
     ],
   },
   {
@@ -130,7 +131,9 @@ const navGroups = [
 function AppSidebar(props) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, authed } = useAuth();
+  const chatPollQuietUntil = useRef(0);
+  const isAdmin = canOpenAdmin(user?.role);
   const { socket } = useSocket();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -194,8 +197,11 @@ function AppSidebar(props) {
   }, [location.pathname, isItemActive]);
 
   const fetchChatCount = useCallback(async () => {
+    if (!authed) return;
+    if (Date.now() < chatPollQuietUntil.current) return;
     try {
       const res = await collabApi.getChatCount();
+      chatPollQuietUntil.current = 0;
       if (res) {
         setChatStats({
           unreadCount: Number(res.unreadCount || 0),
@@ -204,10 +210,14 @@ function AppSidebar(props) {
           count: Number(res.count ?? (res.unreadCount > 0 ? res.unreadCount : res.totalMessages) ?? 0),
         });
       }
-    } catch (_) { }
-  }, []);
+    } catch (err) {
+      const down = !err?.status || err.status === 502 || err.status === 503;
+      if (down) chatPollQuietUntil.current = Date.now() + 30000;
+    }
+  }, [authed]);
 
   useEffect(() => {
+    if (!authed) return undefined;
     fetchChatCount();
     const interval = setInterval(fetchChatCount, 15000);
     const onChatEvent = () => fetchChatCount();
@@ -216,7 +226,7 @@ function AppSidebar(props) {
       clearInterval(interval);
       window.removeEventListener("nova-chat-updated", onChatEvent);
     };
-  }, [fetchChatCount, location.pathname]);
+  }, [fetchChatCount, authed, location.pathname]);
 
   useEffect(() => {
     if (!socket) return;
@@ -254,8 +264,10 @@ function AppSidebar(props) {
 
       <SidebarContent className="gap-1 px-1 py-2">
         {navGroups.map((group) => {
+          const items = group.items.filter((item) => !item.adminOnly || isAdmin);
+          if (!items.length) return null;
           const isOpen = openGroups[group.id] ?? true;
-          const hasActiveItem = group.items.some((item) => isItemActive(item.path));
+          const hasActiveItem = items.some((item) => isItemActive(item.path));
 
           if (isCollapsed) {
             return (
@@ -263,7 +275,7 @@ function AppSidebar(props) {
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      tooltip={`${group.label} (${group.items.length})`}
+                      tooltip={`${group.label} (${items.length})`}
                       isActive={hasActiveItem}
                       onClick={() => toggleGroup(group.id)}
                     >
@@ -297,7 +309,7 @@ function AppSidebar(props) {
 
               {isOpen && (
                 <div className="flex flex-col gap-0.5 mt-0.5 animate-in fade-in-50 duration-150">
-                  {group.items.map((item) => {
+                  {items.map((item) => {
                     const isActive = isItemActive(item.path);
 
                     return (

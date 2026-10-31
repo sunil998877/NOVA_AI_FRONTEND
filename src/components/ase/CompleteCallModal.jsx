@@ -32,7 +32,8 @@ export function CompleteCallModal({ callback, isOpen, onClose, onSuccess }) {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  if (!callback) return null;
+  const callbackId = Number(callback?.id);
+  if (!callback || !Number.isFinite(callbackId) || callbackId <= 0) return null;
 
   const requiresReschedule = outcome === "callback_requested";
 
@@ -59,7 +60,7 @@ export function CompleteCallModal({ callback, isOpen, onClose, onSuccess }) {
         nextCallbackNotes: requiresReschedule ? `Follow-up: ${notes.trim() || "Lead requested callback"}` : undefined,
       };
 
-      await aseService.updateCallback(callback.id, payload);
+      await aseService.updateCallback(callbackId, payload);
       success("Call Logged", `Callback for ${callback.lead_name || "Lead"} marked as completed.`);
       onSuccess?.();
       onClose();

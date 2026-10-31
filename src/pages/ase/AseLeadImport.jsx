@@ -66,6 +66,26 @@ export default function AseLeadImport() {
     }
   };
 
+  const waitForImportJob = async (jobId) => {
+    for (let attempt = 0; attempt < 90; attempt += 1) {
+      const res = await leadApi.getImportJob(jobId);
+      const job = res.data;
+      if (job?.status === "completed") {
+        return {
+          created: job.created_count || 0,
+          updated: job.updated_count || 0,
+          skipped: job.skipped || 0,
+          failed: job.failed || 0,
+        };
+      }
+      if (job?.status === "failed") {
+        throw new Error("Import job failed");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    throw new Error("Import is still processing. Check the dashboard shortly.");
+  };
+
   const handleExecuteImport = async () => {
     setLoading(true);
     try {
@@ -74,7 +94,12 @@ export default function AseLeadImport() {
         columnMap: mapping,
         updateExisting: duplicateStrategy === "update",
       });
-      setSummary(res.data || { created: 12, updated: 3, skipped: 0, failed: 0 });
+      let result = res.data || { created: 0, updated: 0, skipped: 0, failed: 0 };
+      if (result.queued && result.jobId) {
+        success("Import queued", "Processing leads in the background.");
+        result = await waitForImportJob(result.jobId);
+      }
+      setSummary(result);
       setCurrentStep(5);
       success("Import Complete", "Leads imported into ASE Lead Store successfully.");
     } catch (err) {
@@ -85,7 +110,7 @@ export default function AseLeadImport() {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-4xl mx-auto w-full">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Import Leads</h1>
