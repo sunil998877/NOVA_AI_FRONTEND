@@ -32,8 +32,9 @@ export default function AseCallbacks() {
 
   const [completingCallback, setCompletingCallback] = useState(null);
   const [contextCallback, setContextCallback] = useState(null);
+  const [callingId, setCallingId] = useState(null);
 
-  const { error: toastError } = useToast();
+  const { success, error: toastError } = useToast();
 
   const fetchCallbacks = useCallback(async () => {
     setLoading(true);
@@ -213,7 +214,23 @@ export default function AseCallbacks() {
             <CallbackCard
               key={cb.id}
               callback={cb}
-              onComplete={(item) => setCompletingCallback(item)}
+              calling={callingId === cb.id}
+              onCall={async (item) => {
+                try {
+                  setCallingId(item.id);
+                  await aseService.startCallbackCall(item.id);
+                  success(
+                    "Your phone is ringing",
+                    `Answer to talk to ${item.lead_name || "the lead"}. This is not the AI assistant.`
+                  );
+                  fetchCallbacks();
+                } catch (err) {
+                  toastError("Call failed", err.message || "Could not ring your transfer number.");
+                } finally {
+                  setCallingId(null);
+                }
+              }}
+              onSubmit={(item) => setCompletingCallback(item)}
               onOpenContext={(item) => setContextCallback(item)}
             />
           ))}

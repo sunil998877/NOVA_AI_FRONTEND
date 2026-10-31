@@ -400,7 +400,7 @@ export default function Leads() {
                                 variant="default"
                                 onClick={() => setCompleteCallbackTarget(cb)}
                               >
-                                Complete Call
+                                Call
                               </Button>
                             ) : (
                               <Badge variant="outline" className="text-emerald-600">Completed</Badge>
@@ -1020,7 +1020,7 @@ function AddLeadDialog({ open, onOpenChange, onSuccess }) {
         priority: formData.priority,
         source: "MANUAL",
         consentEmail: true,
-        consentVoice: Boolean(formData.consentVoice && formData.phone),
+        ...(formData.consentVoice && formData.phone ? { consentVoice: true } : {}),
         matchDomain: false,
         updateExisting: false,
       });

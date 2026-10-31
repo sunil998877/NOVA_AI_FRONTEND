@@ -34,6 +34,7 @@ import AiGeneratedEmailCard from "../../components/ase/AiGeneratedEmailCard";
 import LeadFollowUpSequenceCard from "../../components/ase/LeadFollowUpSequenceCard";
 import AssignedRepDropdown from "../../components/ase/AssignedRepDropdown";
 import NextBestActionCard from "../../components/ase/NextBestActionCard";
+import { ClickToCallButton } from "../../components/ase/ClickToCallButton";
 
 const BRAIN_EVENT_TYPES = new Set([
   "NOVA_BRAIN_DECISION",
@@ -187,27 +188,6 @@ export default function AseLeadDetail() {
     await fetchLead();
   };
 
-  const handleQuickCall = async () => {
-    if (!data?.lead?.phone) return;
-    try {
-      setUpdating(true);
-      const res = await voiceApi.callLead({
-        leadId: Number(id),
-        phone: data.lead.phone,
-        name: data.lead.name,
-      });
-      if (res?.data?.status === "SUCCEEDED") {
-        success("Call Placed", `Outbound voice call placed to ${data.lead.phone} via Plivo.`);
-        await fetchLead();
-      } else {
-        toastError("Call Failed", res?.data?.error || "Could not place call.");
-      }
-    } catch (err) {
-      toastError("Calling Error", err.message || "Failed to initiate call.");
-    } finally {
-      setUpdating(false);
-    }
-  };
 
   const handleAutonomousCall = async () => {
     if (!data?.lead?.phone) return;
@@ -308,14 +288,7 @@ export default function AseLeadDetail() {
         <div className="flex items-center gap-3 flex-wrap lg:flex-nowrap shrink-0">
           {lead.phone && (
             <>
-              <button
-                type="button"
-                disabled={updating || lead.do_not_contact}
-                onClick={handleQuickCall}
-                className="h-10 px-5 rounded-xl bg-[#0d5e54] hover:bg-[#09473f] text-white text-sm font-semibold shadow-xs disabled:opacity-50 transition-colors"
-              >
-                Call lead (Plivo)
-              </button>
+              <ClickToCallButton lead={lead} disabled={updating} />
               <button
                 type="button"
                 disabled={updating || lead.do_not_contact}

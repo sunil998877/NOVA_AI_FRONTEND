@@ -6,14 +6,14 @@ import {
   User,
   MessageSquare,
   CheckCircle2,
-  Calendar,
+  FileCheck,
 } from "lucide-react";
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { CallbackStatusBadge, getCallbackUrgency } from "./CallbackStatusBadge";
 
-export function CallbackCard({ callback, onComplete, onOpenContext }) {
+export function CallbackCard({ callback, onCall, onSubmit, onOpenContext, calling = false }) {
   const urgency = getCallbackUrgency(callback.due_at, callback.status);
   const isBreached = urgency === "SLA BREACHED";
   const isCompleted = callback.status === "COMPLETED";
@@ -98,14 +98,26 @@ export function CallbackCard({ callback, onComplete, onOpenContext }) {
 
           <div className="grid grid-cols-2 gap-2 pt-1">
             {!isCompleted ? (
-              <Button
-                size="sm"
-                className="bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white font-medium shadow-sm transition-colors"
-                onClick={() => onComplete(callback)}
-              >
-                <Phone className="w-3.5 h-3.5 mr-1.5" />
-                Complete Call
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  disabled={calling}
+                  className="bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white font-medium shadow-sm transition-colors"
+                  onClick={() => onCall?.(callback)}
+                >
+                  <Phone className="w-3.5 h-3.5 mr-1.5" />
+                  {calling ? "Calling..." : "Call"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="hover:bg-muted/80 text-foreground font-medium"
+                  onClick={() => onSubmit?.(callback)}
+                >
+                  <FileCheck className="w-3.5 h-3.5 mr-1.5" />
+                  Submit
+                </Button>
+              </>
             ) : (
               <Button size="sm" variant="ghost" disabled className="text-emerald-600 font-medium">
                 <CheckCircle2 className="w-4 h-4 mr-1.5" />
@@ -116,7 +128,7 @@ export function CallbackCard({ callback, onComplete, onOpenContext }) {
             <Button
               size="sm"
               variant="outline"
-              className="hover:bg-muted/80 text-foreground font-medium"
+              className={`hover:bg-muted/80 text-foreground font-medium ${isCompleted ? "" : "col-span-2"}`}
               onClick={() => onOpenContext(callback)}
             >
               Context
