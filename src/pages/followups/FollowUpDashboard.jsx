@@ -207,6 +207,8 @@ export default function FollowUpDashboard() {
       case "stopped_manual":
       case "STOPPED":
         return <Badge variant="outline" className="text-rose-500 border-rose-500/40 text-[10px]">Stopped</Badge>;
+      case "stopped_handoff":
+        return <Badge className="bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30 text-[10px]">Handed to Rep</Badge>;
       case "stopped_meeting_booked":
       case "MEETING_BOOKED":
         return <Badge className="bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30 text-[10px]">Meeting Booked</Badge>;

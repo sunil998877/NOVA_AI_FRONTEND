@@ -337,6 +337,32 @@ export const cadenceApi = {
   },
 };
 
+export const replyDraftApi = {
+  list: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.status) query.set("status", params.status);
+    if (params.leadId) query.set("lead_id", String(params.leadId));
+    if (params.limit) query.set("limit", String(params.limit));
+    const qs = query.toString();
+    return api(`/api/ase/reply-drafts${qs ? `?${qs}` : ""}`);
+  },
+  get: (id) => api(`/api/ase/reply-drafts/${id}`),
+  edit: (id, body) => api(`/api/ase/reply-drafts/${id}`, { method: "PATCH", body }),
+  approve: (id, body = {}) => api(`/api/ase/reply-drafts/${id}/approve`, { method: "POST", body }),
+  reject: (id, reason) => api(`/api/ase/reply-drafts/${id}/reject`, { method: "POST", body: { reason } }),
+  send: (id, body = {}) => api(`/api/ase/reply-drafts/${id}/send`, { method: "POST", body }),
+};
+
+export const meetingApi = {
+  list: (status) => api(`/api/ase/meetings${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  forLead: (leadId) => api(`/api/ase/leads/${leadId}/meetings`),
+  request: (leadId, body = {}) => api(`/api/ase/leads/${leadId}/meetings`, { method: "POST", body }),
+  setPreferences: (id, body) => api(`/api/ase/meetings/${id}`, { method: "PATCH", body }),
+  book: (id) => api(`/api/ase/meetings/${id}/book`, { method: "POST" }),
+  reschedule: (id, body) => api(`/api/ase/meetings/${id}/reschedule`, { method: "POST", body }),
+  cancel: (id, reason) => api(`/api/ase/meetings/${id}/cancel`, { method: "POST", body: { reason } }),
+};
+
 export const callbackApi = {
   list: (params = {}) => {
     const query = new URLSearchParams();
