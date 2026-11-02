@@ -36,6 +36,7 @@ import NextBestActionCard from "../../components/ase/NextBestActionCard";
 import { ClickToCallButton } from "../../components/ase/ClickToCallButton";
 import { AutonomousCallButton } from "../../components/ase/AutonomousCallButton";
 import LeadCadenceCard from "../../components/ase/LeadCadenceCard";
+import LeadMeetingCard from "../../components/ase/LeadMeetingCard";
 
 const BRAIN_EVENT_TYPES = new Set([
   "NOVA_BRAIN_DECISION",
@@ -502,6 +503,8 @@ export default function AseLeadDetail() {
           </div>
 
           <LeadCadenceCard lead={lead} onUpdated={fetchLead} />
+
+          <LeadMeetingCard lead={lead} />
 
           <AiGeneratedEmailCard lead={lead} onLeadUpdated={fetchLead} />
 
