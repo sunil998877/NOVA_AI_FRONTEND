@@ -40,11 +40,12 @@ function sanitizeOutreachBody(text, senderName = "NOVA AI") {
 function isDraftPreparing(lead) {
   const meta = lead?.metadata || {};
   if (meta.outreach_email?.subject && meta.outreach_email?.text) return false;
+  if (meta.outreach_status === "failed" || meta.outreach_status === "blocked") return false;
+  if (meta.company_research_status === "failed" && meta.outreach_status !== "writing") return false;
   if (meta.outreach_status === "writing") return true;
   if (meta.company_research_status === "pending") return true;
-  if (meta.company_research_status === "failed") return false;
-  if (lead?.company && !meta.company_research?.summary) return true;
-  if (meta.company_research?.summary) return true;
+  if (lead?.company && !meta.company_research?.summary && meta.company_research_status !== "failed") return true;
+  if (meta.company_research?.summary && !meta.outreach_email?.subject) return true;
   return false;
 }
 
