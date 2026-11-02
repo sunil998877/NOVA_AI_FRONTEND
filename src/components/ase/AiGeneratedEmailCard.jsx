@@ -41,7 +41,8 @@ function isDraftPreparing(lead) {
   const meta = lead?.metadata || {};
   if (meta.outreach_email?.subject && meta.outreach_email?.text) return false;
   if (meta.outreach_status === "failed" || meta.outreach_status === "blocked") return false;
-  if (meta.company_research_status === "failed" && meta.outreach_status !== "writing") return false;
+  // Failed research + no draft → stop infinite spinner so Regenerate is available
+  if (meta.company_research_status === "failed" && !meta.outreach_email?.subject) return false;
   if (meta.outreach_status === "writing") return true;
   if (meta.company_research_status === "pending") return true;
   if (lead?.company && !meta.company_research?.summary && meta.company_research_status !== "failed") return true;

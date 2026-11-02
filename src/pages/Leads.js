@@ -695,8 +695,8 @@ function LeadDetailModal({ open, onOpenChange, data, onRefresh }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl lg:max-w-6xl xl:max-w-7xl w-[96vw] max-h-[90vh] overflow-y-auto p-6 md:p-8 sm:max-w-5xl lg:sm:max-w-6xl xl:sm:max-w-7xl">
         <DialogHeader className="border-b border-border/80 pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-10">
+            <div className="min-w-0">
               <DialogTitle className="text-2xl font-bold flex items-center gap-2.5 text-foreground">
                 {lead.name || lead.email}
                 <Badge variant="outline" className="text-xs px-2.5 py-0.5 border-border font-semibold">
@@ -715,7 +715,7 @@ function LeadDetailModal({ open, onOpenChange, data, onRefresh }) {
               </DialogDescription>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Link
                 to={`/ase/leads/${lead.id}`}
                 className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/30"

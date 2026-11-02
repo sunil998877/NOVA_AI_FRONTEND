@@ -212,12 +212,12 @@ export function CampaignRecipientsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-6">
         <DialogHeader className="pb-3 border-b border-border/60">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-4 pr-10">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary shrink-0">
                 <Users className="size-5" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <DialogTitle className="text-xl font-bold">
                   {campaign?.name || campaign?.title || "Campaign"} Recipients & Tracking
                 </DialogTitle>
@@ -227,7 +227,7 @@ export function CampaignRecipientsDialog({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 type="button"
                 size="sm"

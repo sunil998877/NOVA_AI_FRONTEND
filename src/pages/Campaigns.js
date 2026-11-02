@@ -228,10 +228,11 @@ function Campaigns() {
       const result = await campaignApi.send(row.id, {
         force: isResend,
       }, controller.signal);
-      const sent = result.sentCount ?? result.totalRecipients ?? 0;
+      const sent = result.eligibleCount ?? result.sentCount ?? result.totalRecipients ?? 0;
+      const channel = result.deliveryMethod || (result.inSendingWindow === false ? "scheduled window" : "delivery queue");
       toast.success(
-        isResend ? "Campaign resent" : "Campaign sent",
-        `${sent} email${sent === 1 ? "" : "s"} via ${result.deliveryMethod || "SMTP"}`
+        isResend ? "Campaign resent" : result.inSendingWindow === false ? "Campaign scheduled" : "Campaign queued",
+        result.message || `${sent} email${sent === 1 ? "" : "s"} via ${channel}`
       );
       await reload();
     } catch (err) {
@@ -643,8 +644,10 @@ function Campaigns() {
         campaign={viewRecipientsCampaign}
         mails={mails}
         onAddRecipients={(c) => {
+          const next = c || viewRecipientsCampaign;
           setViewRecipientsOpen(false);
-          openAddRecipients(c || viewRecipientsCampaign);
+          // Defer so Radix can release pointer-events/scroll-lock before opening the next dialog
+          window.setTimeout(() => openAddRecipients(next), 0);
         }}
       />
     </div>
