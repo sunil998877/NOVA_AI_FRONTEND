@@ -106,7 +106,7 @@ export const campaignApi = {
   update: (id, body) => api(`/api/campaigns/${id}`, { method: "PATCH", body }),
   updateStatus: (id, body) => api(`/api/campaigns/${id}/status`, { method: "PATCH", body }),
   send: (id, body = {}, signal) => api(`/api/campaigns/${id}/send`, { method: "POST", body, signal }),
-  preview: (id) => api(`/api/campaigns/${id}/preview`),
+  preview: (id, opts = {}) => api(`/api/campaigns/${id}/preview`, opts),
   analytics: (id) => api(`/api/campaigns/${id}/analytics`),
   complete: (id, body = {}) => api(`/api/campaigns/${id}/complete`, { method: "POST", body }),
   remove: (id) => api(`/api/campaigns/${id}`, { method: "DELETE" }),

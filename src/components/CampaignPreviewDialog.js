@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,9 @@ import {
   FileText,
   ExternalLink,
   Sparkles,
+  Loader2,
 } from "lucide-react";
+import { campaignApi } from "../lib/api";
 
 function resolvePlaceholders(text, recipient, campaign) {
   if (!text) return "";
@@ -200,8 +202,61 @@ export function CampaignPreviewDialog({
 }) {
   const [viewMode, setViewMode] = useState("desktop");
   const [copied, setCopied] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const [serverPreview, setServerPreview] = useState(null);
+
+  useEffect(() => {
+    if (!open || !campaign?.id) {
+      setServerPreview(null);
+      setPreviewError("");
+      setLoadingPreview(false);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    let cancelled = false;
+
+    const loadPreview = async () => {
+      setLoadingPreview(true);
+      setPreviewError("");
+      setServerPreview(null);
+      try {
+        const data = await campaignApi.preview(campaign.id, { signal: controller.signal });
+        if (cancelled || controller.signal.aborted) return;
+        setServerPreview(data || null);
+      } catch (err) {
+        if (cancelled || controller.signal.aborted || err?.name === "AbortError") return;
+        setPreviewError(err?.message || "Could not load campaign preview");
+        setServerPreview(null);
+      } finally {
+        if (!cancelled && !controller.signal.aborted) {
+          setLoadingPreview(false);
+        }
+      }
+    };
+
+    loadPreview();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [open, campaign?.id]);
 
   const effectiveRecipient = useMemo(() => {
+    if (serverPreview?.sampleRecipient) {
+      return {
+        full_name:
+          serverPreview.sampleRecipient.full_name ||
+          serverPreview.sampleRecipient.recipientName ||
+          "Valued Recipient",
+        email:
+          serverPreview.sampleRecipient.email ||
+          serverPreview.sampleRecipient.recipientEmail ||
+          "recipient@example.com",
+      };
+    }
     return (
       recipient || {
         full_name: campaign?.isOutreach
@@ -210,24 +265,37 @@ export function CampaignPreviewDialog({
         email: "recipient@example.com",
       }
     );
-  }, [recipient, campaign]);
+  }, [recipient, campaign, serverPreview]);
 
   const effectiveSubject = useMemo(() => {
+    if (serverPreview?.subject) return serverPreview.subject;
     return resolvePlaceholders(
       campaign?.subject || campaign?.name || campaign?.title || "Campaign Preview",
       effectiveRecipient,
       campaign
     );
-  }, [campaign, effectiveRecipient]);
+  }, [campaign, effectiveRecipient, serverPreview]);
 
-  const effectiveSenderName = campaign?.sender_name || "NOVA AI";
-  const effectiveSenderEmail = campaign?.sender_email || "skp66235@gmail.com";
+  const effectiveSenderName =
+    serverPreview?.sampleSender?.senderName ||
+    campaign?.sender_name ||
+    campaign?.senderName ||
+    "NOVA AI";
+  const effectiveSenderEmail =
+    serverPreview?.sampleSender?.senderEmail ||
+    campaign?.sender_email ||
+    campaign?.senderEmail ||
+    "skp66235@gmail.com";
 
   const effectiveHtml = useMemo(() => {
+    if (serverPreview?.html) return serverPreview.html;
     return buildNovaEmailHtml(campaign, effectiveRecipient);
-  }, [campaign, effectiveRecipient]);
+  }, [campaign, effectiveRecipient, serverPreview]);
 
   const effectivePlainText = useMemo(() => {
+    if (serverPreview?.text) {
+      return `Subject: ${effectiveSubject}\n\n${serverPreview.text}`;
+    }
     const resolvedBody = resolvePlaceholders(
       campaign?.body ||
         `Hello ${effectiveRecipient.full_name},\n\nThis is your preview for ${campaign?.name || campaign?.title || "Campaign"}.\n\nBest regards,\n${effectiveSenderName}`,
@@ -235,7 +303,7 @@ export function CampaignPreviewDialog({
       campaign
     );
     return `Subject: ${effectiveSubject}\n\n${resolvedBody}`;
-  }, [campaign, effectiveRecipient, effectiveSubject, effectiveSenderName]);
+  }, [campaign, effectiveRecipient, effectiveSubject, effectiveSenderName, serverPreview]);
 
   const handleCopySubject = () => {
     navigator.clipboard.writeText(effectiveSubject);
@@ -252,14 +320,14 @@ export function CampaignPreviewDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} modal>
       <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 overflow-hidden bg-background border-border/80 shadow-2xl">
         <DialogHeader className="p-4 md:p-5 pb-3 border-b bg-muted/20">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pr-6">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <DialogTitle className="text-lg md:text-xl font-bold">
-                  {campaign?.name || campaign?.title || "Campaign"} Preview
+                  {campaign?.name || campaign?.title || serverPreview?.title || "Campaign"} Preview
                 </DialogTitle>
                 <Badge
                   variant={campaign?.isOutreach ? "secondary" : "outline"}
@@ -280,6 +348,7 @@ export function CampaignPreviewDialog({
                 size="sm"
                 className="h-7 px-2.5 text-xs gap-1.5"
                 onClick={() => setViewMode("desktop")}
+                disabled={loadingPreview}
               >
                 <Monitor className="size-3.5" /> Desktop
               </Button>
@@ -288,6 +357,7 @@ export function CampaignPreviewDialog({
                 size="sm"
                 className="h-7 px-2.5 text-xs gap-1.5"
                 onClick={() => setViewMode("mobile")}
+                disabled={loadingPreview}
               >
                 <Smartphone className="size-3.5" /> Mobile
               </Button>
@@ -296,6 +366,7 @@ export function CampaignPreviewDialog({
                 size="sm"
                 className="h-7 px-2.5 text-xs gap-1.5"
                 onClick={() => setViewMode("text")}
+                disabled={loadingPreview}
               >
                 <FileText className="size-3.5" /> Plain Text
               </Button>
@@ -306,12 +377,15 @@ export function CampaignPreviewDialog({
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-start gap-2 flex-1 min-w-0">
                 <span className="font-semibold text-muted-foreground w-16 shrink-0">Subject:</span>
-                <span className="font-medium text-foreground truncate select-all">{effectiveSubject}</span>
+                <span className="font-medium text-foreground truncate select-all">
+                  {loadingPreview ? "Loading…" : effectiveSubject}
+                </span>
               </div>
               <button
                 type="button"
                 onClick={handleCopySubject}
-                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground shrink-0 transition"
+                disabled={loadingPreview}
+                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground shrink-0 transition disabled:opacity-50"
                 title="Copy subject line"
               >
                 {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
@@ -336,7 +410,12 @@ export function CampaignPreviewDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-auto bg-muted/40 p-3 md:p-6 flex justify-center items-start min-h-[420px]">
-          {viewMode === "text" ? (
+          {loadingPreview ? (
+            <div className="flex flex-col items-center justify-center gap-3 min-h-[420px] text-muted-foreground">
+              <Loader2 className="size-8 animate-spin text-primary" />
+              <p className="text-sm">Loading campaign preview…</p>
+            </div>
+          ) : viewMode === "text" ? (
             <div className="w-full max-w-[680px] bg-card rounded-xl border p-5 shadow font-mono text-xs whitespace-pre-wrap text-foreground leading-relaxed">
               {effectivePlainText}
             </div>
@@ -366,9 +445,16 @@ export function CampaignPreviewDialog({
                 </button>
               </div>
 
+              {previewError ? (
+                <div className="p-4 text-xs text-amber-700 bg-amber-50 border-b border-amber-100">
+                  {previewError}. Showing local preview fallback.
+                </div>
+              ) : null}
+
               <iframe
                 title="Email Preview"
                 srcDoc={effectiveHtml}
+                sandbox="allow-same-origin"
                 className="w-full h-[520px] border-0 bg-white"
               />
             </div>
@@ -386,6 +472,7 @@ export function CampaignPreviewDialog({
               size="sm"
               className="gap-1.5 text-xs"
               onClick={handleOpenRaw}
+              disabled={loadingPreview}
             >
               <ExternalLink className="size-3.5" /> Full Screen
             </Button>
@@ -394,6 +481,7 @@ export function CampaignPreviewDialog({
               <Button
                 size="sm"
                 className="gap-1.5 text-xs"
+                disabled={loadingPreview}
                 onClick={() => {
                   onOpenChange(false);
                   onSend(campaign);
