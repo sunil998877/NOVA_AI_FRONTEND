@@ -49,6 +49,16 @@ export const aseService = {
     return res.data;
   },
 
+  async saveLeadEmailDraft(id, { subject, text }) {
+    const res = await leadApi.saveDraftEmail(id, { subject, text });
+    return res.data;
+  },
+
+  async approveAndSendLeadEmail(id) {
+    const res = await leadApi.approveDraftEmail(id);
+    return res.data;
+  },
+
   async getTeamReps() {
     try {
       const res = await leadApi.getReps();
@@ -194,5 +204,10 @@ export const aseService = {
   async getQueueStatus() {
     const res = await aseOperatingApi.getQueueStatus();
     return res?.data || null;
+  },
+
+  async refreshIntelligence(leadId) {
+    const res = await aseOperatingApi.refreshIntelligence(leadId);
+    return res?.data || res;
   },
 };

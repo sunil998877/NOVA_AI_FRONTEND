@@ -264,6 +264,8 @@ export const leadApi = {
   get: (id) => api(`/api/leads/${id}`),
   update: (id, body) => api(`/api/leads/${id}`, { method: "PATCH", body }),
   draftEmail: (id, body = {}) => api(`/api/leads/${id}/draft-email`, { method: "POST", body }),
+  saveDraftEmail: (id, body) => api(`/api/leads/${id}/draft-email`, { method: "PATCH", body }),
+  approveDraftEmail: (id) => api(`/api/leads/${id}/draft-email/approve`, { method: "POST", body: {} }),
   stats: () => api("/api/leads/stats"),
   getReps: () => api("/api/leads/team-reps"),
   create: (body) => api("/api/leads", { method: "POST", body }),
@@ -311,6 +313,7 @@ export const aseOperatingApi = {
   getPresence: () => api("/api/ase/presence"),
   setPresence: (body) => api("/api/ase/presence", { method: "POST", body }),
   getQueueStatus: () => api("/api/ase/queues"),
+  refreshIntelligence: (leadId) => api(`/api/v1/intelligence/leads/${leadId}/refresh`, { method: "POST" }),
 };
 
 export const cadenceApi = {

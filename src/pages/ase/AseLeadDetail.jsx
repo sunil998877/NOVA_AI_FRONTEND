@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -21,9 +21,11 @@ import {
   Briefcase,
   ExternalLink,
   ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
 import { useToast } from "../../components/ui/toast";
 import { aseService } from "../../services/ase.service";
 import { useAuth } from "../../lib/AuthContext";
@@ -37,6 +39,7 @@ import { ClickToCallButton } from "../../components/ase/ClickToCallButton";
 import { AutonomousCallButton } from "../../components/ase/AutonomousCallButton";
 import LeadCadenceCard from "../../components/ase/LeadCadenceCard";
 import LeadMeetingCard from "../../components/ase/LeadMeetingCard";
+import { companyResearchView } from "../../lib/companyResearchView";
 
 const BRAIN_EVENT_TYPES = new Set([
   "NOVA_BRAIN_DECISION",
@@ -78,6 +81,8 @@ export default function AseLeadDetail() {
   const [updating, setUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [loadError, setLoadError] = useState(null);
+  const [refreshingResearch, setRefreshingResearch] = useState(false);
+  const retriedResearchFor = useRef(null);
 
   const fetchLead = useCallback(async (isInitial = false) => {
     if (isInitial) {
@@ -127,13 +132,50 @@ export default function AseLeadDetail() {
         || type === "CHANNELOUTCOMERECEIVED"
         || type === "EMAIL_OPENED"
         || type === "EMAILOPENED"
+        || type.includes("RESEARCH")
+        || type.includes("EMAIL_DRAFT")
+        || type.includes("PERSONALIZATION")
       ) {
         fetchLead(false);
       }
     };
+    const refreshSoft = () => fetchLead(false);
     socket.on("ase:lead_event", onLeadEvent);
-    return () => socket.off("ase:lead_event", onLeadEvent);
+    socket.on("company_research_started", refreshSoft);
+    socket.on("company_research_completed", refreshSoft);
+    socket.on("company_research_failed", refreshSoft);
+    socket.on("email_personalization_started", refreshSoft);
+    socket.on("email_personalization_completed", refreshSoft);
+    return () => {
+      socket.off("ase:lead_event", onLeadEvent);
+      socket.off("company_research_started", refreshSoft);
+      socket.off("company_research_completed", refreshSoft);
+      socket.off("company_research_failed", refreshSoft);
+      socket.off("email_personalization_started", refreshSoft);
+      socket.off("email_personalization_completed", refreshSoft);
+    };
   }, [socket, id, fetchLead]);
+
+  const refreshResearch = useCallback(async () => {
+    if (!id || refreshingResearch) return;
+    setRefreshingResearch(true);
+    try {
+      await aseService.refreshIntelligence(id);
+      await fetchLead(false);
+    } catch (err) {
+      toastError("Research", err.message || "Could not refresh company intelligence");
+    } finally {
+      setRefreshingResearch(false);
+    }
+  }, [id, refreshingResearch, fetchLead, toastError]);
+
+  useEffect(() => {
+    const view = companyResearchView(data?.lead?.metadata?.company_research);
+    if (!id || !view?.ungrounded || retriedResearchFor.current === String(id)) return undefined;
+    retriedResearchFor.current = String(id);
+    refreshResearch();
+    return undefined;
+  }, [id, data?.lead?.metadata?.company_research, refreshResearch]);
 
   const handleStateChange = async (newStatus) => {
     try {
@@ -207,6 +249,7 @@ export default function AseLeadDetail() {
   }
 
   const { lead, timeline = [] } = data || {};
+  const researchView = companyResearchView(lead?.metadata?.company_research);
   if (!lead) {
     return (
       <div className="p-8 text-center text-muted-foreground border border-dashed rounded-xl bg-card">
@@ -528,23 +571,34 @@ export default function AseLeadDetail() {
 
       {activeTab === "insights" && (
         <div className="w-full space-y-6">
-          {lead.metadata?.company_research ? (
+          {researchView ? (
             <Card className="border-primary/30 bg-primary/5 w-full">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <CardTitle className="text-base flex items-center gap-2 text-primary">
                     <Sparkles className="w-4 h-4 text-primary" />
                     AI Company Intelligence
                   </CardTitle>
                   <div className="flex items-center gap-1.5">
-                    {lead.metadata.company_research.qualityStatus && (
+                    {researchView.qualityStatus && (
                       <Badge variant="outline" className="text-[10px] font-mono">
-                        {lead.metadata.company_research.qualityStatus}
+                        {researchView.qualityStatus}
                       </Badge>
                     )}
                     <Badge variant="outline" className="text-[10px] font-mono">
-                      {lead.metadata.company_research.source || "ai_analyzed"}
+                      {researchView.source || "ai_analyzed"}
                     </Badge>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-[10px]"
+                      disabled={refreshingResearch}
+                      onClick={refreshResearch}
+                    >
+                      <RefreshCw className={`w-3 h-3 mr-1 ${refreshingResearch ? "animate-spin" : ""}`} />
+                      Retry
+                    </Button>
                   </div>
                 </div>
                 <CardDescription className="text-xs">
@@ -552,44 +606,50 @@ export default function AseLeadDetail() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-xs">
-                {lead.metadata.company_research.domain && (
+                {researchView.domain && (
                   <div>
                     <span className="font-semibold text-muted-foreground block text-[11px]">Resolved Domain</span>
-                    <p className="mt-0.5 text-foreground/90">{lead.metadata.company_research.domain}</p>
+                    <p className="mt-0.5 text-foreground/90">{researchView.domain}</p>
                   </div>
                 )}
-                {lead.metadata.company_research.qualityStatus === "INSUFFICIENT_EVIDENCE" && (
+                {(researchView.ungrounded || lead.metadata.company_research.qualityStatus === "INSUFFICIENT_EVIDENCE") && (
                   <p className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-amber-800">
-                    Public evidence was insufficient. Personalized claims were withheld.
+                    No verified public website yet. Personalized claims are withheld from calls and email until a source is found.
                   </p>
                 )}
                 <div>
                   <span className="font-semibold text-muted-foreground block text-[11px]">Executive Summary</span>
-                  <p className="mt-0.5 text-foreground/90">{lead.metadata.company_research.summary || "No verified company summary is available."}</p>
+                  <p className="mt-0.5 text-foreground/90">{researchView.summary || "No verified company summary is available."}</p>
                 </div>
-                {lead.metadata.company_research.coreServices && (
+                {researchView.inference && (
+                  <div>
+                    <span className="font-semibold text-muted-foreground block text-[11px]">Unverified inference (not used in outreach)</span>
+                    <p className="mt-0.5 text-foreground/90">{researchView.inference}</p>
+                  </div>
+                )}
+                {researchView.coreServices && (
                   <div>
                     <span className="font-semibold text-muted-foreground block text-[11px]">Core Offerings & Solutions</span>
-                    <p className="mt-0.5 text-foreground/90">{lead.metadata.company_research.coreServices}</p>
+                    <p className="mt-0.5 text-foreground/90">{researchView.coreServices}</p>
                   </div>
                 )}
-                {lead.metadata.company_research.targetAudience && (
+                {researchView.targetAudience && (
                   <div>
                     <span className="font-semibold text-muted-foreground block text-[11px]">Target Market</span>
-                    <p className="mt-0.5 text-foreground/90">{lead.metadata.company_research.targetAudience}</p>
+                    <p className="mt-0.5 text-foreground/90">{researchView.targetAudience}</p>
                   </div>
                 )}
-                {lead.metadata.company_research.growthOpportunity && (
+                {researchView.growthOpportunity && (
                   <div className="rounded-md p-2.5 bg-background/60 border border-primary/20">
                     <span className="font-semibold text-primary block text-[11px]">Autonomous Outreach Hook</span>
-                    <p className="mt-0.5 text-foreground">{lead.metadata.company_research.growthOpportunity}</p>
+                    <p className="mt-0.5 text-foreground">{researchView.growthOpportunity}</p>
                   </div>
                 )}
-                {Array.isArray(lead.metadata.company_research.sources) && lead.metadata.company_research.sources.length > 0 && (
+                {researchView.sources.length > 0 && (
                   <div>
                     <span className="font-semibold text-muted-foreground block text-[11px]">Evidence Sources</span>
                     <ul className="mt-1 space-y-1">
-                      {lead.metadata.company_research.sources.map((source) => (
+                      {researchView.sources.map((source) => (
                         <li key={source.url}>
                           <a href={source.url} target="_blank" rel="noreferrer" className="text-primary underline-offset-2 hover:underline">
                             {source.title || source.url}
