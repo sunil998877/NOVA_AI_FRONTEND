@@ -37,6 +37,7 @@ import { Badge } from "../components/ui/badge";
 import { useToast } from "../components/ui/toast";
 import { leadApi, callbackApi, suppressionApi, voiceApi } from "../lib/api";
 import { listNextBestAction } from "../lib/presentNextBestAction";
+import { companyResearchView } from "../lib/companyResearchView";
 import SegmentedPagination from "../components/ui/pagination";
 import CsvExcelImportDialog from "../components/leads/CsvExcelImportDialog";
 import InternationalPhoneInput from "../components/leads/InternationalPhoneInput";
@@ -826,7 +827,10 @@ function LeadDetailModal({ open, onOpenChange, data, onRefresh }) {
           </div>
         </div>
 
-        {lead.metadata?.company_research && (
+        {lead.metadata?.company_research && (() => {
+          const view = companyResearchView(lead.metadata.company_research);
+          if (!view) return null;
+          return (
           <div className="rounded-xl border border-violet-200/80 bg-violet-50/40 dark:border-violet-900 dark:bg-violet-950/20 p-5 text-xs">
             <div className="flex items-center justify-between mb-3 border-b border-violet-200/60 dark:border-violet-800 pb-2">
               <span className="font-bold text-violet-700 dark:text-violet-300 flex items-center gap-2 text-sm">
@@ -834,29 +838,38 @@ function LeadDetailModal({ open, onOpenChange, data, onRefresh }) {
                 AI Company Intelligence ({lead.metadata.company_research.company})
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded border border-violet-300 font-mono text-muted-foreground uppercase">
-                {lead.metadata.company_research.source || "ai_analyzed"}
+                {view.source || "ai_analyzed"}
               </span>
             </div>
+            {view.ungrounded && (
+              <p className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-amber-800">
+                No verified public website yet. Personalized claims are withheld until a source is found.
+              </p>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Executive Overview</span>
-                <p className="text-foreground/90 text-xs leading-relaxed">{lead.metadata.company_research.summary}</p>
+                <p className="text-foreground/90 text-xs leading-relaxed">{view.summary || "No verified company summary is available."}</p>
               </div>
-              {lead.metadata.company_research.coreServices && (
+              {view.coreServices && (
                 <div>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Core Services & Solutions</span>
-                  <p className="text-foreground/90 text-xs leading-relaxed">{lead.metadata.company_research.coreServices}</p>
+                  <p className="text-foreground/90 text-xs leading-relaxed">{view.coreServices}</p>
                 </div>
               )}
             </div>
-            {lead.metadata.company_research.growthOpportunity && (
+            {view.inference && (
+              <p className="mt-3 text-xs text-muted-foreground">Unverified inference (not used in outreach): {view.inference}</p>
+            )}
+            {view.growthOpportunity && (
               <div className="mt-3 rounded-lg p-3 bg-background/80 border border-violet-200/80 dark:border-violet-800">
                 <span className="text-[11px] font-bold text-violet-700 dark:text-violet-300 block mb-0.5">Autonomous Outreach Angle</span>
-                <p className="text-xs text-foreground leading-relaxed">{lead.metadata.company_research.growthOpportunity}</p>
+                <p className="text-xs text-foreground leading-relaxed">{view.growthOpportunity}</p>
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
 
         <div className="border border-border/80 rounded-xl p-5 bg-card">
           <div className="flex items-center justify-between mb-4 border-b border-border/60 pb-3">
