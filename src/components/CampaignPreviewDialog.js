@@ -285,7 +285,7 @@ export function CampaignPreviewDialog({
     serverPreview?.sampleSender?.senderEmail ||
     campaign?.sender_email ||
     campaign?.senderEmail ||
-    "skp66235@gmail.com";
+    "sender@example.com";
 
   const effectiveHtml = useMemo(() => {
     if (serverPreview?.html) return serverPreview.html;
