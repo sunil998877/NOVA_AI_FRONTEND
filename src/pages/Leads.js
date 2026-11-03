@@ -80,6 +80,7 @@ export default function Leads() {
   const [selectedLead, setSelectedLead] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [completeCallbackTarget, setCompleteCallbackTarget] = useState(null);
+  const [deletingPage, setDeletingPage] = useState(false);
 
   const fetchLeads = async (page = currentPage, query = searchQuery) => {
     try {
@@ -160,6 +161,28 @@ export default function Leads() {
       fetchStats();
     } catch (err) {
       toastError("Error", err.message);
+    }
+  };
+
+  const handleDeletePage = async () => {
+    const ids = leads.map((lead) => lead.id).filter(Boolean);
+    if (!ids.length) return;
+    if (!window.confirm(`Delete all ${ids.length} lead${ids.length === 1 ? "" : "s"} on this page? This cannot be undone.`)) return;
+    setDeletingPage(true);
+    let deleted = 0;
+    try {
+      for (const id of ids) {
+        await leadApi.remove(id);
+        deleted += 1;
+      }
+      success("Deleted", `Removed ${deleted} lead${deleted === 1 ? "" : "s"} from page ${currentPage}.`);
+      await Promise.all([fetchLeads(currentPage), fetchStats()]);
+    } catch (err) {
+      toastError("Error", deleted ? `Deleted ${deleted}, then failed: ${err.message}` : err.message);
+      fetchLeads(currentPage);
+      fetchStats();
+    } finally {
+      setDeletingPage(false);
     }
   };
 
@@ -422,25 +445,38 @@ export default function Leads() {
         <Card>
           <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
             <CardTitle>Autonomous Pipeline Leads</CardTitle>
-            <div className="relative w-full sm:w-72 md:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input
-                type="text"
-                placeholder="Find lead by name, company, email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-8 h-9 text-sm rounded-lg border-border focus-visible:ring-primary/20"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-sm"
-                  title="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <div className="relative w-full sm:w-72 md:w-80">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  type="text"
+                  placeholder="Find lead by name, company, email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-8 h-9 text-sm rounded-lg border-border focus-visible:ring-primary/20"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-sm"
+                    title="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-9 shrink-0"
+                disabled={loading || deletingPage || leads.length === 0}
+                onClick={handleDeletePage}
+                title="Delete every lead shown on this page"
+              >
+                <Trash2 className="mr-1.5 h-4 w-4" />
+                {deletingPage ? "Deleting…" : `Delete page (${leads.length})`}
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
