@@ -613,11 +613,11 @@ export default function AseCalls() {
                 Plivo Balance & Line
               </p>
               <h3 className="text-2xl sm:text-3xl font-extrabold text-violet-700 dark:text-violet-300 tracking-tight truncate">
-                ${historyData.stats.balance}
+                Connected
               </h3>
-              <p className="text-xs font-mono font-medium text-muted-foreground flex items-center gap-1 truncate">
+              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1 truncate">
                 <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />
-                <span className="truncate">{historyData.stats.fromNumber}</span>
+                <span className="truncate">Verified carrier line</span>
               </p>
             </div>
             <div className="p-3 rounded-2xl bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 shrink-0">
@@ -894,7 +894,7 @@ export default function AseCalls() {
                   Outbound Direct Telephony
                 </CardTitle>
                 <CardDescription>
-                  Make instant voice calls over Plivo carrier infrastructure with verified Caller ID ({historyData.stats.fromNumber}).
+                  Make instant voice calls over Plivo carrier infrastructure with verified Caller ID.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-5">
@@ -992,7 +992,7 @@ export default function AseCalls() {
                   <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/60">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                      <span>Verified Caller ID: <strong className="font-mono text-foreground">{historyData.stats.fromNumber}</strong></span>
+                      <span>Verified Caller ID</span>
                     </div>
 
                     <Button
@@ -1066,13 +1066,11 @@ export default function AseCalls() {
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-muted/40 border border-border/60">
                   <span className="text-muted-foreground font-medium">Outbound Caller ID:</span>
-                  <span className="font-mono font-bold text-foreground">{historyData.stats.fromNumber}</span>
+                  <span className="font-mono font-bold text-foreground">—</span>
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-muted/40 border border-border/60">
                   <span className="text-muted-foreground font-medium">Credit Balance:</span>
-                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                    ${historyData.stats.balance}
-                  </span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">—</span>
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-muted/40 border border-border/60">
                   <span className="text-muted-foreground font-medium">Text-to-Speech Engine:</span>
